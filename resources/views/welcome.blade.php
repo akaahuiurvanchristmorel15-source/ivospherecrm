@@ -194,7 +194,7 @@
 
             <div class="flex items-center gap-2">
                 @if(Route::has('login'))
-                    <a href="{{ route('login') }}" class="hidden rounded-xl px-3 py-2 text-sm font-medium text-[#64748B] hover:text-[#0B0F14] sm:block">Espace client</a>
+                    <a href="{{ route('login') }}" class="hidden rounded-xl px-3 py-2 text-sm font-medium text-[#64748B] hover:text-[#0B0F14] sm:block">Espace employé</a>
                 @endif
                 <a href="#devis" class="hidden rounded-xl bg-[#0066FF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0052CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 sm:inline-flex">Demander un devis</a>
                 <button type="button" @click="menu = !menu" :aria-expanded="menu" aria-controls="menu-mobile" aria-label="Menu"
