@@ -217,7 +217,7 @@
             </ul>
             <a href="#devis" class="mt-3 flex items-center justify-center rounded-xl bg-[#0066FF] px-4 py-3 text-sm font-semibold text-white">Demander un devis</a>
             @if(Route::has('login'))
-                <a href="{{ route('login') }}" class="mt-2 flex items-center justify-center rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm font-semibold text-[#0B0F14]">Espace client</a>
+                <a href="{{ route('login') }}" class="mt-2 flex items-center justify-center rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm font-semibold text-[#0B0F14]">Espace employé</a>
             @endif
         </nav>
     </header>
