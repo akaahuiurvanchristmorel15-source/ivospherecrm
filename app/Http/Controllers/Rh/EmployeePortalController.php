@@ -61,8 +61,8 @@ class EmployeePortalController extends Controller
         // 4. Planning hebdomadaire en cours
         $currentSchedule = WorkSchedule::with('days')
             ->where('employee_id', $employee->id)
-            ->where('is_active', true)
-            ->latest()
+            ->active()
+            ->orderByDesc('week_start_date')
             ->first();
 
         // 5. Score journalier d'évaluation

@@ -216,7 +216,7 @@
                         <div class="mt-4 -mx-4 px-4 sm:mx-0 sm:px-0 flex sm:grid sm:grid-cols-7 gap-2 overflow-x-auto no-scrollbar snap-x">
                             @foreach($currentSchedule->days as $d)
                                 @php
-                                    $isToday = strtolower($d->day_of_week) === strtolower(now()->locale('en')->isoFormat('dddd'));
+                                    $isToday = (int) $d->day_of_week === (int) now()->isoWeekday();
                                 @endphp
                                 <div class="snap-start shrink-0 w-[4.5rem] sm:w-auto rounded-xl px-2 py-3 text-center {{ $isToday ? 'bg-[#0B0F14] text-white' : 'bg-[#F5F7FA]' }}">
                                     <p class="text-[10px] uppercase tracking-wider {{ $isToday ? 'text-white/70' : 'text-[#64748B]' }}">{{ mb_substr($d->day_name_fr, 0, 3) }}</p>

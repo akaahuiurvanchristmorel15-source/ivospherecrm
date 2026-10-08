@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -72,5 +73,20 @@ class WorkSchedule extends Model
         $day = $this->getDayForDate($date);
 
         return $day ? (bool) $day->is_working_day : false;
+    }
+
+    public function scopeActive(Builder $query): void
+    {
+        $query->where('status', '!=', 'archive');
+    }
+
+    public function scopeValid(Builder $query): void
+    {
+        $query->where('status', 'valide');
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->status !== 'archive';
     }
 }

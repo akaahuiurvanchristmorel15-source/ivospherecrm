@@ -50,4 +50,14 @@ class ScheduleDay extends Model
             default => 'Inconnu',
         };
     }
+
+    public function getDayNameFrAttribute(): string
+    {
+        return $this->day_name;
+    }
+
+    public function getIsWorkingAttribute(): bool
+    {
+        return (bool) $this->is_working_day;
+    }
 }
