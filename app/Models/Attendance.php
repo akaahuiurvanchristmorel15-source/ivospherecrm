@@ -78,6 +78,14 @@ class Attendance extends Model
         $query->whereBetween('date', [$startDate, $endDate]);
     }
 
+    public function scopeLate(Builder $query): void
+    {
+        $query->where(function (Builder $q) {
+            $q->where('status', 'retard')
+                ->orWhere('delay_minutes', '>', 0);
+        });
+    }
+
     /**
      * Indique si la sortie a été clôturée automatiquement par le système.
      */
@@ -110,5 +118,15 @@ class Attendance extends Model
     public function getCheckOutTimeAttribute(): ?string
     {
         return $this->check_out ?? ($this->check_out_at ? $this->check_out_at->format('H:i:s') : null);
+    }
+
+    public function getIsLateAttribute(): bool
+    {
+        return $this->status === 'retard' || ($this->delay_minutes ?? 0) > 0;
+    }
+
+    public function getLateMinutesAttribute(): int
+    {
+        return (int) ($this->delay_minutes ?? 0);
     }
 }

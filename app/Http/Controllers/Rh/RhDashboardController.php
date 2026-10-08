@@ -28,7 +28,7 @@ class RhDashboardController extends Controller
             ->count();
 
         $lateToday = Attendance::where('date', $today)
-            ->where('is_late', true)
+            ->late()
             ->count();
 
         $activeContracts = EmployeeContract::active()->count();
@@ -58,12 +58,15 @@ class RhDashboardController extends Controller
             ->take(5)
             ->get();
 
-        $recentActivities = ActivityLog::where('module', 'rh')
-            ->orWhereIn('action', [
-                'creation_employe', 'modification_employe', 'approbation_conge',
-                'pointage_arrivee', 'pointage_depart', 'pointage_depart_automatique',
-                'validation_tache_manager', 'validation_evaluation_mensuelle',
-            ])
+        $recentActivities = ActivityLog::whereIn('action', [
+            'creation_employe', 'modification_employe', 'suppression_employe',
+            'demande_conge', 'approbation_conge', 'refus_conge',
+            'pointage_arrivee', 'pointage_arrivee_qr', 'pointage_depart', 'pointage_depart_automatique',
+            'validation_tache_manager', 'validation_evaluation_mensuelle',
+        ])
+            ->orWhere('subject_type', 'like', '%Employee%')
+            ->orWhere('subject_type', 'like', '%Attendance%')
+            ->orWhere('subject_type', 'like', '%LeaveRequest%')
             ->latest()
             ->take(6)
             ->get();

@@ -28,7 +28,7 @@ class UserSeeder extends Seeder
                 'all_domains' => true,
                 'role' => 'administrateur',
             ],
-            
+
         ];
 
         foreach ($users as $userData) {
