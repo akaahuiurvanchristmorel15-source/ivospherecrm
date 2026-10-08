@@ -403,9 +403,6 @@
                                 {{-- Galerie de 3 visuels par pôle (administrable via Paramètres) --}}
                                 <div>
                                     <div class="mb-3 flex items-center justify-between">
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-[#64748B]">
-                                            Aperçu en images (3 réalisations clés)
-                                        </p>
                                         <span class="rounded-md bg-[#F5F7FA] px-2 py-0.5 text-[11px] font-medium text-[#64748B]">
                                             {{ $p['short'] }}
                                         </span>
