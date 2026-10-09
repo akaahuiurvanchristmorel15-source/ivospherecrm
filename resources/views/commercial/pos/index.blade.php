@@ -535,8 +535,21 @@
                     return 0;
                 },
 
+                getItemCartQty(productId) {
+                    const item = this.cart.find(i => i.product_id === productId);
+                    return item ? item.quantity : 0;
+                },
+
                 setExactAmount() {
                     this.amountPaid = this.netTotal;
+                },
+
+                setCashAmount(amount) {
+                    this.amountPaid = Math.max(0, Math.round(Number(amount) || 0));
+                },
+
+                addCashAmount(amount) {
+                    this.amountPaid = Math.max(0, Math.round((Number(this.amountPaid) || 0) + (Number(amount) || 0)));
                 },
 
                 updateTotals() {
@@ -575,7 +588,7 @@
             domains: {{ Js::from($domains) }}
         })"
         @keydown.escape.window="cartOpen = false"
-        class="space-y-5 pb-24 lg:pb-0"
+        class="space-y-4 sm:space-y-5 pb-24 md:pb-0"
     >
         <x-page-header title="Caisse & vente comptoir">
             <x-slot:actions>
@@ -588,13 +601,13 @@
             </x-slot:actions>
         </x-page-header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_440px] gap-6 items-start">
+        <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_340px] lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] gap-4 lg:gap-6 items-start">
 
             {{-- ===================== CATALOGUE ===================== --}}
-            <section class="min-w-0 space-y-4">
-                {{-- Recherche + scanner --}}
-                <div class="flex gap-2">
-                    <div class="relative flex-1">
+            <section class="min-w-0 space-y-3.5 sm:space-y-4">
+                {{-- Recherche + scanner + raccourci panier mobile --}}
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1 min-w-0">
                         <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"/></svg>
                         <input
                             type="text"
@@ -604,62 +617,95 @@
                             autocomplete="off"
                             enterkeyhint="search"
                             placeholder="Nom, référence ou code-barres"
-                            class="w-full h-11 pl-10 pr-10 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/15 transition"
+                            class="w-full h-11 pl-10 pr-9 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/15 transition"
                         >
                         <button type="button" x-show="search" x-cloak @click="search = ''; $refs.searchInput.focus()"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-400 hover:text-slate-700" aria-label="Effacer la recherche">
+                                class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700" aria-label="Effacer la recherche">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
+
                     <button type="button" @click="openScanner()"
-                            class="shrink-0 h-11 inline-flex items-center gap-2 px-4 rounded-lg bg-slate-900 hover:bg-[#0066FF] text-white text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2"
+                            class="shrink-0 h-11 inline-flex items-center gap-2 px-3 sm:px-4 rounded-xl bg-slate-900 hover:bg-[#0066FF] text-white text-xs sm:text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]"
                             aria-label="Scanner avec la caméra">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
                         <span class="hidden sm:inline">Scanner</span>
+                    </button>
+
+                    {{-- Accès direct panier en haut sur smartphones (< md) --}}
+                    <button type="button" @click="cartOpen = true"
+                            class="md:hidden shrink-0 relative h-11 px-3 rounded-xl border border-blue-200 bg-blue-50 text-[#0066FF] hover:bg-blue-100 flex items-center justify-center transition-colors active:scale-95"
+                            aria-label="Ouvrir le panier">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                        <span x-show="cartCount > 0" x-cloak
+                              class="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-[#0066FF] text-white text-[11px] font-bold flex items-center justify-center shadow-xs"
+                              x-text="cartCount"></span>
                     </button>
                 </div>
 
-                {{-- Domaines : puces défilantes (mobile) / retour à la ligne (desktop) --}}
-                <div class="-mx-4 px-4 sm:mx-0 sm:px-0 flex sm:flex-wrap gap-2 overflow-x-auto sm:overflow-visible pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {{-- Domaines : ruban fluide à défilement tactile horizontal (tous formats) --}}
+                <div class="-mx-3.5 px-3.5 sm:mx-0 sm:px-0 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth">
                     <button type="button" @click="selectedDomain = ''"
-                            :class="selectedDomain === '' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
-                            class="shrink-0 h-9 px-3.5 rounded-full border text-sm font-medium transition-colors whitespace-nowrap">
-                        Tous <span class="ml-1 opacity-60" x-text="countProductsForDomain('')"></span>
+                            :class="selectedDomain === '' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                            class="shrink-0 h-8 sm:h-9 px-3 sm:px-3.5 rounded-full border text-xs sm:text-sm font-medium transition-all whitespace-nowrap active:scale-95">
+                        Tous <span class="ml-1 opacity-70" x-text="countProductsForDomain('')"></span>
                     </button>
                     @foreach($domains as $dom)
                         <button type="button" @click="selectedDomain = '{{ $dom->id }}'"
-                                :class="selectedDomain == '{{ $dom->id }}' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
-                                class="shrink-0 h-9 px-3.5 rounded-full border text-sm font-medium transition-colors whitespace-nowrap">
-                            {{ $dom->name }} <span class="ml-1 opacity-60" x-text="countProductsForDomain('{{ $dom->id }}')"></span>
+                                :class="selectedDomain == '{{ $dom->id }}' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                                class="shrink-0 h-8 sm:h-9 px-3 sm:px-3.5 rounded-full border text-xs sm:text-sm font-medium transition-all whitespace-nowrap active:scale-95">
+                            {{ $dom->name }} <span class="ml-1 opacity-70" x-text="countProductsForDomain('{{ $dom->id }}')"></span>
                         </button>
                     @endforeach
                 </div>
 
-                {{-- Grille produits --}}
-                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                {{-- Grille produits : responsive téléphones, tablettes portrait & paysage --}}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
                     <template x-for="product in filteredProducts" :key="product.id">
                         <button type="button"
                                 @click="addToCart(product)"
                                 :disabled="stockOf(product) <= 0"
-                                class="group text-left flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden transition hover:border-[#0066FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:active:scale-100">
-                            <div class="aspect-[4/3] bg-slate-50 flex items-center justify-center overflow-hidden">
+                                class="group text-left flex flex-col bg-white border border-slate-200 rounded-xl sm:rounded-2xl overflow-hidden transition-all hover:border-[#0066FF] hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:active:scale-100 touch-manipulation relative">
+                            {{-- Image du produit + Badge quantité au panier --}}
+                            <div class="relative aspect-square sm:aspect-[4/3] bg-slate-50 flex items-center justify-center overflow-hidden">
                                 <template x-if="product.image">
-                                    <img :src="'/storage/' + product.image" :alt="product.name" loading="lazy" class="w-full h-full object-cover">
+                                    <img :src="'/storage/' + product.image" :alt="product.name" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                                 </template>
                                 <template x-if="!product.image">
-                                    <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                    <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
+                                        <svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                    </div>
                                 </template>
+
+                                {{-- Badge dynamique : nombre d'exemplaires déjà dans le panier --}}
+                                <div x-show="getItemCartQty(product.id) > 0" x-cloak
+                                     class="absolute top-2 right-2 min-w-5 h-5 px-1.5 rounded-full bg-[#0066FF] text-white text-[11px] font-bold flex items-center justify-center shadow-md">
+                                    <span x-text="getItemCartQty(product.id)"></span>
+                                </div>
+
+                                {{-- Voile rupture de stock --}}
+                                <div x-show="stockOf(product) <= 0" x-cloak
+                                     class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center">
+                                    <span class="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] sm:text-xs font-bold tracking-wider uppercase">Épuisé</span>
+                                </div>
                             </div>
-                            <div class="p-3 flex-1 flex flex-col gap-1">
-                                <h4 class="text-sm font-medium text-slate-900 leading-snug line-clamp-2" x-text="product.name"></h4>
-                                <p class="text-xs text-slate-400 truncate" x-text="product.sku || product.barcode || ''"></p>
-                                <div class="mt-auto pt-2 flex items-end justify-between gap-2">
-                                    <span class="text-sm font-semibold text-slate-900" x-text="money(product.selling_price) + ' F'"></span>
-                                    <span class="flex items-center gap-1.5 text-xs shrink-0"
+
+                            {{-- Détails produit --}}
+                            <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-1.5">
+                                <div>
+                                    <h4 class="text-xs sm:text-sm font-semibold text-slate-900 leading-snug line-clamp-2" x-text="product.name"></h4>
+                                    <p class="text-[10px] sm:text-xs text-slate-400 truncate mt-0.5" x-text="product.sku || product.barcode || ''"></p>
+                                </div>
+
+                                <div class="pt-1.5 flex items-end justify-between gap-1 border-t border-slate-100">
+                                    <div class="min-w-0">
+                                        <span class="text-xs sm:text-sm font-bold text-slate-900 block leading-tight truncate" x-text="money(product.selling_price) + ' F'"></span>
+                                    </div>
+                                    <span class="flex items-center gap-1 text-[10px] sm:text-xs font-medium shrink-0"
                                           :class="stockOf(product) <= 0 ? 'text-rose-600' : (stockOf(product) <= 5 ? 'text-amber-600' : 'text-slate-500')">
                                         <span class="w-1.5 h-1.5 rounded-full"
                                               :class="stockOf(product) <= 0 ? 'bg-rose-500' : (stockOf(product) <= 5 ? 'bg-amber-500' : 'bg-emerald-500')"></span>
-                                        <span x-text="stockOf(product) <= 0 ? 'Épuisé' : stockOf(product)"></span>
+                                        <span x-text="stockOf(product) <= 0 ? '0' : stockOf(product)"></span>
                                     </span>
                                 </div>
                             </div>
@@ -673,30 +719,37 @@
                 </div>
             </section>
 
-            {{-- ===================== PANIER (colonne fixe desktop / feuille mobile) ===================== --}}
+            {{-- ===================== PANIER (colonne fixe tablettes/desktop · feuille coulissante smartphones) ===================== --}}
             <div x-show="cartOpen" x-cloak x-transition.opacity @click="cartOpen = false"
-                 class="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"></div>
+                 class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs md:hidden"></div>
 
             <aside
-                :class="cartOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'"
-                class="fixed inset-x-0 bottom-0 z-50 h-[92dvh] rounded-t-2xl transition-transform duration-300 ease-out
-                       lg:static lg:z-auto lg:h-auto lg:rounded-xl lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)]
-                       bg-white border border-slate-200 shadow-xl lg:shadow-none flex flex-col overflow-hidden"
+                :class="cartOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'"
+                class="fixed inset-x-0 bottom-0 z-50 h-[92dvh] rounded-t-3xl transition-transform duration-300 ease-out
+                       md:static md:z-auto md:h-auto md:rounded-2xl md:sticky md:top-4 md:max-h-[calc(100dvh-5.5rem)]
+                       bg-white border border-slate-200 shadow-2xl md:shadow-xs flex flex-col overflow-hidden"
                 aria-label="Panier"
             >
-                {{-- En-tête --}}
-                <div class="shrink-0 px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <h2 class="text-base font-semibold text-slate-900">Panier</h2>
-                        <span class="min-w-6 h-6 px-2 rounded-full text-xs font-semibold inline-flex items-center justify-center"
+                {{-- Poignée mobile pour fermer / glisser --}}
+                <div class="md:hidden flex justify-center pt-2.5 pb-1 shrink-0 bg-white" @click="cartOpen = false">
+                    <div class="w-10 h-1.5 rounded-full bg-slate-300"></div>
+                </div>
+
+                {{-- En-tête panier --}}
+                <div class="shrink-0 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-slate-200 flex items-center justify-between bg-white">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-sm sm:text-base font-bold text-slate-900">Panier</h2>
+                        <span class="min-w-6 h-6 px-2 rounded-full text-xs font-bold inline-flex items-center justify-center transition-colors"
                               :class="cartCount > 0 ? 'bg-[#0066FF] text-white' : 'bg-slate-100 text-slate-500'"
                               x-text="cartCount"></span>
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1.5">
                         <button type="button" @click="clearCart()" x-show="cart.length > 0" x-cloak
-                                class="text-sm text-slate-500 hover:text-rose-600 px-2 py-1 rounded-md transition-colors">Vider</button>
-                        <button type="button" @click="cartOpen = false" class="lg:hidden p-2 -mr-2 rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Fermer le panier">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                class="text-xs font-semibold text-slate-500 hover:text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors">
+                            Vider
+                        </button>
+                        <button type="button" @click="cartOpen = false" class="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors" aria-label="Fermer le panier">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
                 </div>
@@ -704,17 +757,17 @@
                 <form action="{{ route('commercial.pos.checkout') }}" method="POST" @submit="submitCheckout($event)" class="flex-1 min-h-0 flex flex-col">
                     @csrf
 
-                    {{-- Zone défilante --}}
+                    {{-- Zone défilante : Client, Articles, Mode de paiement --}}
                     <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-slate-100">
 
                         {{-- Client --}}
-                        <div class="p-5">
-                            <div class="flex items-center justify-between mb-2">
-                                <label for="customer_id" class="text-sm font-medium text-slate-700">Client</label>
-                                <a href="{{ route('commercial.customers.create') }}" target="_blank" class="text-sm text-[#0066FF] hover:underline">Nouveau client</a>
+                        <div class="p-4 sm:p-5">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label for="customer_id" class="text-xs sm:text-sm font-semibold text-slate-700">Client</label>
+                                <a href="{{ route('commercial.customers.create') }}" target="_blank" class="text-xs sm:text-sm text-[#0066FF] hover:underline font-medium">Nouveau client</a>
                             </div>
                             <select id="customer_id" name="customer_id" x-model="customerId"
-                                    class="w-full h-11 px-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/15">
+                                    class="w-full h-10 sm:h-11 px-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/15 transition">
                                 <option value="">Client comptoir (par défaut)</option>
                                 @foreach($customers as $c)
                                     <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }} • {{ $c->loyalty_level ?? 'BRONZE' }})</option>
@@ -722,51 +775,53 @@
                             </select>
                         </div>
 
-                        {{-- Articles --}}
-                        <div class="p-5">
+                        {{-- Articles du panier --}}
+                        <div class="p-4 sm:p-5">
                             <template x-if="cart.length === 0">
                                 <div class="py-8 text-center">
-                                    <div class="w-11 h-11 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                                    <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                                     </div>
-                                    <p class="mt-3 text-sm font-medium text-slate-900">Le panier est vide</p>
-                                    <p class="text-sm text-slate-500">Touchez un article ou scannez un code-barres.</p>
+                                    <p class="mt-3 text-sm font-semibold text-slate-900">Le panier est vide</p>
+                                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Touchez un article ou scannez un code-barres.</p>
                                 </div>
                             </template>
 
-                            <ul class="space-y-3" x-show="cart.length > 0">
+                            <ul class="space-y-2.5 sm:space-y-3" x-show="cart.length > 0">
                                 <template x-for="(item, index) in cart" :key="item.product_id">
-                                    <li class="flex items-start gap-3">
+                                    <li class="flex items-start gap-2.5 sm:gap-3 p-2.5 rounded-xl bg-slate-50/60 border border-slate-100">
                                         <template x-if="item.image">
-                                            <img :src="'/storage/' + item.image" alt="" class="w-12 h-12 rounded-lg object-cover bg-slate-50 border border-slate-200 shrink-0">
+                                            <img :src="'/storage/' + item.image" alt="" class="w-11 h-11 sm:w-12 sm:h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0">
                                         </template>
                                         <template x-if="!item.image">
-                                            <div class="w-12 h-12 rounded-lg bg-slate-100 shrink-0"></div>
+                                            <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-white border border-slate-200 text-slate-300 flex items-center justify-center shrink-0">
+                                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                            </div>
                                         </template>
 
                                         <div class="flex-1 min-w-0">
-                                            <div class="flex items-start justify-between gap-2">
-                                                <p class="text-sm font-medium text-slate-900 leading-snug line-clamp-2" x-text="item.name"></p>
-                                                <button type="button" @click="removeFromCart(index)" class="p-1 -mr-1 rounded-md text-slate-400 hover:text-rose-600 shrink-0" aria-label="Retirer l'article">
+                                            <div class="flex items-start justify-between gap-1.5">
+                                                <p class="text-xs sm:text-sm font-semibold text-slate-900 leading-snug line-clamp-2" x-text="item.name"></p>
+                                                <button type="button" @click="removeFromCart(index)" class="p-1 -mr-1 rounded-md text-slate-400 hover:text-rose-600 shrink-0 transition-colors" aria-label="Retirer l'article">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                                 </button>
                                             </div>
-                                            <p class="text-xs text-slate-500 mt-0.5" x-text="money(item.unit_price) + ' F / unité'"></p>
+                                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="money(item.unit_price) + ' F / unité'"></p>
 
-                                            <div class="mt-2 flex items-center justify-between">
-                                                <div class="inline-flex items-center border border-slate-200 rounded-lg">
-                                                    <button type="button" @click="updateQty(index, -1)" class="w-9 h-9 flex items-center justify-center text-slate-600 hover:bg-slate-50 rounded-l-lg" aria-label="Diminuer">−</button>
-                                                    <span class="w-9 text-center text-sm font-semibold tabular-nums"
+                                            <div class="mt-2 flex items-center justify-between gap-2">
+                                                <div class="inline-flex items-center bg-white border border-slate-200 rounded-lg shadow-2xs">
+                                                    <button type="button" @click="updateQty(index, -1)" class="w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-l-lg transition active:scale-95 touch-manipulation font-bold text-base" aria-label="Diminuer">−</button>
+                                                    <span class="min-w-8 text-center text-xs sm:text-sm font-bold tabular-nums px-1"
                                                           :class="item.quantity > Number(item.available_stock ?? 0) ? 'text-rose-600' : 'text-slate-900'"
                                                           x-text="item.quantity"></span>
                                                     <button type="button" @click="updateQty(index, 1)"
                                                             :disabled="item.quantity >= Number(item.available_stock ?? 0)"
-                                                            class="w-9 h-9 flex items-center justify-center text-slate-600 hover:bg-slate-50 rounded-r-lg disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Augmenter">+</button>
+                                                            class="w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-r-lg disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95 touch-manipulation font-bold text-base" aria-label="Augmenter">+</button>
                                                 </div>
-                                                <span class="text-sm font-semibold text-slate-900 tabular-nums" x-text="money(item.quantity * item.unit_price) + ' F'"></span>
+                                                <span class="text-xs sm:text-sm font-bold text-slate-900 tabular-nums shrink-0" x-text="money(item.quantity * item.unit_price) + ' F'"></span>
                                             </div>
 
-                                            <p x-show="item.quantity > Number(item.available_stock ?? 0)" x-cloak class="mt-1.5 text-xs text-rose-600">
+                                            <p x-show="item.quantity > Number(item.available_stock ?? 0)" x-cloak class="mt-1 text-[11px] font-semibold text-rose-600">
                                                 Stock insuffisant : <span x-text="item.available_stock ?? 0"></span> disponible(s)
                                             </p>
                                         </div>
@@ -780,66 +835,98 @@
                             </ul>
                         </div>
 
-                        {{-- Règlement --}}
-                        <div class="p-5 space-y-4">
-                            <p class="text-sm font-medium text-slate-700">Mode de règlement</p>
+                        {{-- Mode de règlement --}}
+                        <div class="p-4 sm:p-5 space-y-3.5 sm:space-y-4">
+                            <p class="text-xs sm:text-sm font-semibold text-slate-700">Mode de règlement</p>
 
-                            <div class="grid grid-cols-3 gap-2">
+                            <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
                                 @foreach($paymentMethods as $value => [$label, $icon])
                                     <label class="relative cursor-pointer select-none">
                                         <input type="radio" name="payment_method" value="{{ $value }}" x-model="paymentMethod" class="peer sr-only">
-                                        <span class="flex flex-col items-center justify-center gap-1 h-[68px] rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium text-center px-1 transition
-                                                     hover:border-slate-300 peer-checked:border-[#0066FF] peer-checked:bg-[#0066FF]/5 peer-checked:text-[#0066FF] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0066FF]">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
-                                            {{ $label }}
+                                        <span class="flex flex-col items-center justify-center gap-1 h-[62px] sm:h-[68px] rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] sm:text-xs font-semibold text-center px-1 transition
+                                                     hover:border-slate-300 peer-checked:border-[#0066FF] peer-checked:bg-[#0066FF]/5 peer-checked:text-[#0066FF] peer-checked:shadow-2xs active:scale-98">
+                                            <svg class="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
+                                            <span class="truncate w-full block">{{ $label }}</span>
                                         </span>
                                     </label>
                                 @endforeach
                             </div>
 
                             {{-- Opérateur Mobile Money --}}
-                            <div x-show="paymentMethod === 'mobile_money'" x-cloak x-transition.opacity class="space-y-3">
+                            <div x-show="paymentMethod === 'mobile_money'" x-cloak x-transition.opacity class="space-y-2.5">
                                 <input type="hidden" name="mobile_money_provider" :value="mobileMoneyProvider">
                                 <div class="grid grid-cols-2 gap-2">
                                     <button type="button" @click="mobileMoneyProvider = 'wave'"
-                                            :class="mobileMoneyProvider === 'wave' ? 'border-[#1DC4FF] bg-sky-50 ring-1 ring-[#1DC4FF]' : 'border-slate-200 hover:border-slate-300'"
-                                            class="flex items-center gap-3 p-3 rounded-lg border bg-white text-left transition">
-                                        <img src="{{ asset('images/payments/wave.png') }}" alt="" class="w-9 h-9 object-contain rounded-md shrink-0">
+                                            :class="mobileMoneyProvider === 'wave' ? 'border-[#1DC4FF] bg-sky-50 ring-2 ring-[#1DC4FF]/30' : 'border-slate-200 hover:border-slate-300'"
+                                            class="flex items-center gap-2 sm:gap-3 p-2.5 rounded-xl border bg-white text-left transition active:scale-98">
+                                        <img src="{{ asset('images/payments/wave.png') }}" alt="" class="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shrink-0">
                                         <span class="min-w-0">
-                                            <span class="block text-sm font-medium text-slate-900">Wave</span>
-                                            <span class="block text-xs text-slate-500 truncate">QR code</span>
+                                            <span class="block text-xs sm:text-sm font-bold text-slate-900 leading-tight">Wave</span>
+                                            <span class="block text-[10px] sm:text-xs text-slate-500 truncate">QR code</span>
                                         </span>
                                     </button>
                                     <button type="button" @click="mobileMoneyProvider = 'orange_money'"
-                                            :class="mobileMoneyProvider === 'orange_money' ? 'border-[#FF7900] bg-orange-50 ring-1 ring-[#FF7900]' : 'border-slate-200 hover:border-slate-300'"
-                                            class="flex items-center gap-3 p-3 rounded-lg border bg-white text-left transition">
-                                        <img src="{{ asset('images/payments/orange-money.png') }}" alt="" class="w-9 h-9 object-contain rounded-md shrink-0">
+                                            :class="mobileMoneyProvider === 'orange_money' ? 'border-[#FF7900] bg-orange-50 ring-2 ring-[#FF7900]/30' : 'border-slate-200 hover:border-slate-300'"
+                                            class="flex items-center gap-2 sm:gap-3 p-2.5 rounded-xl border bg-white text-left transition active:scale-98">
+                                        <img src="{{ asset('images/payments/orange-money.png') }}" alt="" class="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shrink-0">
                                         <span class="min-w-0">
-                                            <span class="block text-sm font-medium text-slate-900">Orange Money</span>
-                                            <span class="block text-xs text-slate-500 truncate">QR ou #144#</span>
+                                            <span class="block text-xs sm:text-sm font-bold text-slate-900 leading-tight">Orange</span>
+                                            <span class="block text-[10px] sm:text-xs text-slate-500 truncate">QR / #144#</span>
                                         </span>
                                     </button>
                                 </div>
-                                <p class="text-xs text-slate-500" x-text="mobileMoneyProvider === 'wave'
+                                <p class="text-[11px] text-slate-500" x-text="mobileMoneyProvider === 'wave'
                                     ? 'Faites scanner le QR Wave au client, puis validez à réception.'
                                     : 'Le client paie par QR code ou avec le code marchand #144#.'"></p>
                             </div>
 
-                            {{-- Espèces --}}
+                            {{-- Espèces avec coupures rapides FCFA (ergonomie caisse tactile) --}}
                             <template x-if="paymentMethod === 'especes'">
                                 <div class="space-y-2.5">
                                     <div class="flex items-center justify-between">
-                                        <label for="amount_paid" class="text-sm text-slate-600">Montant reçu</label>
-                                        <button type="button" @click="setExactAmount()" class="text-sm text-[#0066FF] hover:underline">Montant exact</button>
+                                        <label for="amount_paid" class="text-xs sm:text-sm font-semibold text-slate-700">Montant reçu</label>
+                                        <button type="button" @click="setExactAmount()" class="text-xs sm:text-sm font-semibold text-[#0066FF] hover:underline">
+                                            Montant exact
+                                        </button>
                                     </div>
                                     <div class="relative">
                                         <input id="amount_paid" type="number" inputmode="numeric" min="0" name="amount_paid" x-model.number="amountPaid"
-                                               class="w-full h-12 pl-3 pr-16 bg-white border border-slate-200 rounded-lg text-lg font-semibold tabular-nums text-slate-900 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/15">
-                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">FCFA</span>
+                                               class="w-full h-11 sm:h-12 pl-3 pr-16 bg-white border border-slate-200 rounded-xl text-base sm:text-lg font-bold tabular-nums text-slate-900 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/15 transition">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs sm:text-sm font-medium text-slate-400 pointer-events-none">FCFA</span>
                                     </div>
-                                    <div x-show="changeToReturn > 0" x-cloak class="flex items-center justify-between px-3 py-2.5 rounded-lg bg-emerald-50 text-emerald-800 text-sm">
-                                        <span>Monnaie à rendre</span>
-                                        <span class="font-semibold tabular-nums" x-text="money(changeToReturn) + ' FCFA'"></span>
+
+                                    {{-- Billets & pièces rapides FCFA --}}
+                                    <div class="flex flex-wrap gap-1.5 pt-0.5">
+                                        <button type="button" @click="setExactAmount()"
+                                                :class="amountPaid === netTotal ? 'bg-[#0066FF] text-white border-[#0066FF]' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'"
+                                                class="px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition active:scale-95 shadow-2xs">
+                                            Exact
+                                        </button>
+                                        <button type="button" @click="setCashAmount(1000)"
+                                                class="px-2.5 py-1 rounded-lg border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 text-[11px] font-semibold transition active:scale-95 shadow-2xs">
+                                            1 000 F
+                                        </button>
+                                        <button type="button" @click="setCashAmount(2000)"
+                                                class="px-2.5 py-1 rounded-lg border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 text-[11px] font-semibold transition active:scale-95 shadow-2xs">
+                                            2 000 F
+                                        </button>
+                                        <button type="button" @click="setCashAmount(5000)"
+                                                class="px-2.5 py-1 rounded-lg border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 text-[11px] font-semibold transition active:scale-95 shadow-2xs">
+                                            5 000 F
+                                        </button>
+                                        <button type="button" @click="setCashAmount(10000)"
+                                                class="px-2.5 py-1 rounded-lg border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 text-[11px] font-semibold transition active:scale-95 shadow-2xs">
+                                            10 000 F
+                                        </button>
+                                        <button type="button" @click="setCashAmount(20000)"
+                                                class="px-2.5 py-1 rounded-lg border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 text-[11px] font-semibold transition active:scale-95 shadow-2xs">
+                                            20 000 F
+                                        </button>
+                                    </div>
+
+                                    <div x-show="changeToReturn > 0" x-cloak class="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-900 text-xs sm:text-sm">
+                                        <span class="font-medium">Monnaie à rendre</span>
+                                        <span class="font-bold tabular-nums text-emerald-700" x-text="money(changeToReturn) + ' FCFA'"></span>
                                     </div>
                                 </div>
                             </template>
@@ -850,41 +937,41 @@
                         </div>
                     </div>
 
-                    {{-- Pied fixe : alerte stock + total + validation --}}
-                    <div class="shrink-0 border-t border-slate-200 bg-white p-5 space-y-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-                        <div x-show="hasStockErrors" x-cloak class="px-3 py-2.5 rounded-lg bg-rose-50 text-rose-800 text-sm">
-                            <p class="font-medium">Stock insuffisant</p>
+                    {{-- Pied fixe du panier : alerte stock + total + validation --}}
+                    <div class="shrink-0 border-t border-slate-200 bg-white p-4 sm:p-5 space-y-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+                        <div x-show="hasStockErrors" x-cloak class="px-3 py-2.5 rounded-xl bg-rose-50 text-rose-800 text-xs sm:text-sm">
+                            <p class="font-semibold">Stock insuffisant</p>
                             <ul class="mt-1 space-y-0.5 text-xs">
                                 <template x-for="err in stockErrors" :key="err.product_id">
                                     <li class="flex justify-between gap-2">
                                         <span class="truncate" x-text="err.name"></span>
-                                        <span class="shrink-0" x-text="err.quantity + ' / ' + (err.available_stock ?? 0)"></span>
+                                        <span class="shrink-0 font-bold" x-text="err.quantity + ' / ' + (err.available_stock ?? 0)"></span>
                                     </li>
                                 </template>
                             </ul>
                         </div>
 
-                        <dl class="space-y-1.5 text-sm">
+                        <dl class="space-y-1.5 text-xs sm:text-sm">
                             <div class="flex justify-between text-slate-500">
                                 <dt>Sous-total</dt>
-                                <dd class="tabular-nums text-slate-700" x-text="money(subtotal) + ' FCFA'"></dd>
+                                <dd class="tabular-nums font-medium text-slate-700" x-text="money(subtotal) + ' FCFA'"></dd>
                             </div>
                             <div class="flex justify-between text-emerald-700" x-show="discountAmount > 0" x-cloak>
                                 <dt>Remise</dt>
-                                <dd class="tabular-nums" x-text="'− ' + money(discountAmount) + ' FCFA'"></dd>
+                                <dd class="tabular-nums font-semibold" x-text="'− ' + money(discountAmount) + ' FCFA'"></dd>
                             </div>
                             <div class="flex justify-between text-slate-500" x-show="taxAmount > 0" x-cloak>
                                 <dt>TVA</dt>
-                                <dd class="tabular-nums text-slate-700" x-text="'+ ' + money(taxAmount) + ' FCFA'"></dd>
+                                <dd class="tabular-nums font-medium text-slate-700" x-text="'+ ' + money(taxAmount) + ' FCFA'"></dd>
                             </div>
                             <div class="flex justify-between items-baseline pt-2 border-t border-slate-100">
-                                <dt class="font-medium text-slate-900">Total à payer</dt>
-                                <dd class="text-xl font-semibold text-slate-900 tabular-nums" x-text="money(netTotal) + ' FCFA'"></dd>
+                                <dt class="font-bold text-slate-900 text-sm sm:text-base">Total à payer</dt>
+                                <dd class="text-lg sm:text-xl font-bold text-slate-900 tabular-nums" x-text="money(netTotal) + ' FCFA'"></dd>
                             </div>
                         </dl>
 
                         <button type="submit" :disabled="cart.length === 0 || hasStockErrors"
-                                class="w-full h-12 rounded-lg bg-[#0066FF] hover:bg-[#0052CC] text-white text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">
+                                class="w-full h-11 sm:h-12 rounded-xl bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs sm:text-sm font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed shadow-sm active:scale-[0.99]">
                             <span x-text="hasStockErrors ? 'Corrigez le stock pour valider' : 'Valider l’encaissement'"></span>
                         </button>
                     </div>
@@ -892,16 +979,16 @@
             </aside>
         </div>
 
-        {{-- Barre panier (mobile / tablette) --}}
+        {{-- Barre panier fixe (smartphones < md) --}}
         <div x-show="!cartOpen" x-cloak
-             class="lg:hidden fixed inset-x-0 bottom-0 z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-slate-200">
+             class="md:hidden fixed inset-x-0 bottom-0 z-40 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
             <button type="button" @click="cartOpen = true"
-                    class="w-full h-12 px-4 rounded-lg bg-[#0066FF] hover:bg-[#0052CC] text-white flex items-center justify-between text-sm font-semibold transition-colors">
-                <span class="flex items-center gap-2">
-                    <span class="min-w-6 h-6 px-1.5 rounded-full bg-white/20 inline-flex items-center justify-center text-xs" x-text="cartCount"></span>
-                    Voir le panier
+                    class="w-full h-12 px-4 rounded-xl bg-[#0066FF] hover:bg-[#0052CC] active:scale-[0.99] text-white flex items-center justify-between text-sm font-bold transition-all shadow-md">
+                <span class="flex items-center gap-2.5">
+                    <span class="min-w-6 h-6 px-1.5 rounded-full bg-white/25 inline-flex items-center justify-center text-xs font-bold" x-text="cartCount"></span>
+                    <span>Voir le panier</span>
                 </span>
-                <span class="tabular-nums" x-text="money(netTotal) + ' F'"></span>
+                <span class="tabular-nums" x-text="money(netTotal) + ' FCFA'"></span>
             </button>
         </div>
 
@@ -937,7 +1024,7 @@
                 </div>
 
                 {{-- Viseur vidéo caméra --}}
-                <div class="relative bg-black aspect-[4/3] flex items-center justify-center overflow-hidden">
+                <div class="relative bg-black aspect-[4/3] max-h-[35vh] sm:max-h-[42vh] flex items-center justify-center overflow-hidden">
                     <video x-ref="scannerVideo" id="posScannerVideo" class="absolute inset-0 w-full h-full object-cover" playsinline muted autoplay></video>
 
                     {{-- Viseur réticule laser --}}
@@ -1032,7 +1119,7 @@
              x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
              x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
              role="status" aria-live="polite"
-             class="fixed z-[80] left-1/2 -translate-x-1/2 bottom-24 lg:bottom-8 w-[calc(100%-2rem)] max-w-sm px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white"
+             class="fixed z-[80] left-1/2 -translate-x-1/2 bottom-20 md:bottom-6 w-[calc(100%-2rem)] max-w-sm px-4 py-3 rounded-xl shadow-xl text-xs sm:text-sm font-semibold text-white"
              :class="scanFeedback?.type === 'success' ? 'bg-emerald-600' : (scanFeedback?.type === 'warning' ? 'bg-amber-600' : 'bg-rose-600')">
             <span x-text="scanFeedback?.message"></span>
         </div>

@@ -1,5 +1,6 @@
 @props([])
 
+@if(!request()->routeIs('commercial.pos.*'))
 <div x-data="{ quickActionsOpen: false }" @open-quick-actions.window="quickActionsOpen = true" class="md:hidden">
     <!-- Backdrop pour la feuille d'actions mobile -->
     <div 
@@ -201,3 +202,4 @@
         </a>
     </nav>
 </div>
+@endif
