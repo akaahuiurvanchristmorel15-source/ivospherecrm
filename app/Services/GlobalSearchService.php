@@ -28,16 +28,17 @@ class GlobalSearchService
         $results = [];
 
         // 1. Clients
-        $customers = Customer::where('first_name', 'like', "%{$term}%")
-            ->orWhere('last_name', 'like', "%{$term}%")
-            ->orWhere('company_name', 'like', "%{$term}%")
+        $customers = Customer::where('name', 'like', "%{$term}%")
+            ->orWhere('company', 'like', "%{$term}%")
+            ->orWhere('contact_person', 'like', "%{$term}%")
             ->orWhere('phone', 'like', "%{$term}%")
+            ->orWhere('email', 'like', "%{$term}%")
             ->take(5)
             ->get();
 
         if ($customers->isNotEmpty()) {
             $results['Clients'] = $customers->map(function ($c) {
-                $name = $c->company_name ? "{$c->company_name} ({$c->first_name} {$c->last_name})" : "{$c->first_name} {$c->last_name}";
+                $name = $c->company ? "{$c->company} ({$c->name})" : $c->name;
 
                 return [
                     'id' => $c->id,

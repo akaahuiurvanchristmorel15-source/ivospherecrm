@@ -284,7 +284,7 @@ class FinanceDashboardController extends Controller
         $currentMonthClosed = FinanceService::isPeriodLocked(now());
 
         // Customers & Suppliers for modal quick actions
-        $customers = Customer::orderBy('company_name')->get();
+        $customers = Customer::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
 
         return view('finance.index', compact(

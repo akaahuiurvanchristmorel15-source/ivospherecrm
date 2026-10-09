@@ -49,9 +49,14 @@ class AutomationEngineService
         }
 
         // 2. Check Low Stock Products
-        $lowStockProducts = Product::where('is_active', true)
-            ->whereColumn('stock', '<=', 'alert_stock')
-            ->get();
+        $lowStockProducts = Product::with(['warehouseStocks', 'movements'])
+            ->where('is_active', true)
+            ->get()
+            ->filter(function ($prod) {
+                $threshold = $prod->min_stock > 0 ? (int) $prod->min_stock : 5;
+
+                return (int) $prod->current_stock <= $threshold;
+            });
 
         foreach ($lowStockProducts as $prod) {
             $alreadyAlerted = SmartAlert::where('type', 'low_stock')
@@ -60,14 +65,15 @@ class AutomationEngineService
                 ->exists();
 
             if (! $alreadyAlerted) {
+                $threshold = $prod->min_stock > 0 ? (int) $prod->min_stock : 5;
                 SmartAlert::create([
                     'type' => 'low_stock',
                     'title' => "Rupture imminente de stock : {$prod->name}",
-                    'description' => "Stock actuel ({$prod->stock}) sous le seuil d'alerte ({$prod->alert_stock}).",
+                    'description' => "Stock actuel ({$prod->current_stock}) sous le seuil d'alerte ({$threshold}).",
                     'priority' => 'urgente',
                     'domain_id' => $prod->domain_id,
                     'action_url' => route('commercial.products.show', $prod->id),
-                    'metadata' => ['product_id' => $prod->id, 'current_stock' => $prod->stock],
+                    'metadata' => ['product_id' => $prod->id, 'current_stock' => $prod->current_stock, 'min_stock' => $threshold],
                 ]);
                 $alertsGenerated++;
             }
