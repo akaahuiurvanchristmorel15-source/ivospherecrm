@@ -358,19 +358,87 @@
                             </div>
                         </div>
                     @else
-                        <!-- Affichage des stocks existants par dépôt -->
-                        <div class="md:col-span-2 p-4 rounded-xl bg-[#F5F7FA] border border-[#E2E8F0] space-y-2">
-                            <h4 class="text-xs font-bold text-[#0B0F14] uppercase tracking-wider">Répartition Actuelle par Entrepôt</h4>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                @forelse($warehouseStocks as $ws)
-                                    <div class="p-2.5 bg-white rounded-lg border border-[#E2E8F0]">
-                                        <p class="font-bold text-[#0B0F14] truncate">{{ $ws->warehouse->name }}</p>
-                                        <p class="text-slate-500 text-[11px] mt-0.5">Physique : <strong class="text-[#0B0F14]">{{ $ws->physical_quantity }}</strong></p>
-                                        <p class="text-slate-500 text-[11px]">Dispo : <strong class="text-[#0066FF]">{{ $ws->available_quantity }}</strong></p>
+                        <!-- Gestion et Modification Directe des Stocks par Entrepôt -->
+                        <div class="md:col-span-2 p-4 rounded-xl bg-[#F5F7FA] border border-[#E2E8F0] space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E2E8F0] pb-2.5">
+                                <div>
+                                    <h4 class="text-xs font-bold text-[#0B0F14] uppercase tracking-wider flex items-center gap-2">
+                                        <span>📦 Stocks & Répartition par Entrepôt</span>
+                                        <span class="rounded bg-blue-100 text-[#0066FF] px-2 py-0.5 text-[10px] font-semibold">Modifiable en direct</span>
+                                    </h4>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">
+                                        Modifiez directement les quantités physiques par entrepôt ou assignez un nouvel entrepôt. Les ajustements seront automatiquement inscrits au journal WMS.
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[11px] text-slate-500 font-medium">Stock Total :</span>
+                                    <span class="text-xs font-bold text-[#0066FF] ml-1">{{ $product->current_stock }} {{ $product->unit ?? 'pièces' }}</span>
+                                </div>
+                            </div>
+
+                            @if($warehouseStocks->isNotEmpty())
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    @foreach($warehouseStocks as $ws)
+                                        <div class="p-3 bg-white rounded-xl border border-[#E2E8F0] shadow-2xs space-y-2">
+                                            <div class="flex items-center justify-between">
+                                                <span class="font-bold text-xs text-[#0B0F14] truncate">{{ $ws->warehouse->name }}</span>
+                                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">{{ $ws->warehouse->code }}</span>
+                                            </div>
+                                            <div class="flex items-center justify-between text-[11px] text-slate-500">
+                                                <span>Disponible : <strong class="text-[#0066FF]">{{ $ws->available_quantity }}</strong></span>
+                                                <span>Réservé : <strong class="text-amber-700">{{ $ws->reserved_quantity }}</strong></span>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-semibold text-slate-600 uppercase mb-1">Stock Physique Actuel</label>
+                                                <div class="relative">
+                                                    <input 
+                                                        type="number" 
+                                                        name="warehouse_stocks[{{ $ws->warehouse_id }}]" 
+                                                        value="{{ old('warehouse_stocks.'.$ws->warehouse_id, $ws->physical_quantity) }}" 
+                                                        min="0" 
+                                                        required
+                                                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-bold text-[#0B0F14] focus:bg-white focus:outline-none focus:border-[#0066FF]"
+                                                    >
+                                                    <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">
+                                                        {{ $product->unit ?? 'unités' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                                    Cet article n'est actuellement affecté à aucun entrepôt physique (Stock = 0).
+                                </div>
+                            @endif
+
+                            {{-- Option d'assignation à un nouvel entrepôt --}}
+                            <div class="pt-3 border-t border-[#E2E8F0]">
+                                <h5 class="text-xs font-bold text-[#0B0F14] mb-2 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    <span>Affecter à un autre entrepôt / Initialiser du stock</span>
+                                </h5>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">Sélectionner un entrepôt</label>
+                                        <select name="new_warehouse_id" class="w-full px-3 py-2 rounded-lg bg-white border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
+                                            <option value="">-- Choisir un entrepôt à ajouter --</option>
+                                            @foreach($warehouses as $wh)
+                                                @if(! $warehouseStocks->pluck('warehouse_id')->contains($wh->id))
+                                                    <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->code }})</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
                                     </div>
-                                @empty
-                                    <p class="text-xs text-slate-400 py-2">Aucun stock actuellement enregistré dans les entrepôts.</p>
-                                @endforelse
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">Quantité à injecter</label>
+                                        <div class="relative">
+                                            <input type="number" name="new_warehouse_quantity" min="0" placeholder="0" class="w-full px-3 py-2 rounded-lg bg-white border border-[#E2E8F0] text-xs font-bold text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
+                                            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">{{ $product->unit ?? 'unités' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     @endif

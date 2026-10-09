@@ -715,4 +715,116 @@ class StockDashboardController extends Controller
 
         return back()->with('success', "Demande d'approvisionnement VIP {$pr->reference} créée ({$pr->quantity} unités). Risque de rupture neutralisé !");
     }
+
+    /**
+     * Ajustement et réassignation rapide du stock par entrepôt.
+     */
+    public function adjustStock(Request $request)
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'action_type' => 'required|in:set,add,remove,transfer',
+            'quantity' => 'required|integer|min:0',
+            'target_warehouse_id' => 'nullable|required_if:action_type,transfer|exists:warehouses,id|different:warehouse_id',
+            'reason' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $product = Product::findOrFail($validated['product_id']);
+        $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
+        $currentStock = StockService::getStock($product->id, $warehouse->id);
+        $actionType = $validated['action_type'];
+        $qty = (int) $validated['quantity'];
+        $reason = $validated['reason'] ?? 'Ajustement manuel de stock';
+        $notes = $validated['notes'] ?? null;
+        $unitCost = (float) ($product->purchase_price ?: ($product->selling_price * 0.7));
+
+        try {
+            if ($actionType === 'set') {
+                StockService::processMovement([
+                    'warehouse_id' => $warehouse->id,
+                    'product_id' => $product->id,
+                    'domain_id' => $product->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'ajustement',
+                    'reason_motif' => $reason,
+                    'quantity' => $qty,
+                    'unit_cost' => $unitCost,
+                    'reference' => 'AJUST-'.strtoupper(Str::random(6)),
+                    'notes' => $notes ?: "Ajustement du stock de {$currentStock} à {$qty} pour {$warehouse->name}",
+                    'date' => now(),
+                ]);
+                $msg = "Stock de '{$product->name}' ajusté à {$qty} unité(s) dans {$warehouse->name}.";
+            } elseif ($actionType === 'add') {
+                if ($qty <= 0) {
+                    return back()->with('error', 'La quantité à ajouter doit être supérieure à 0.');
+                }
+                StockService::processMovement([
+                    'warehouse_id' => $warehouse->id,
+                    'product_id' => $product->id,
+                    'domain_id' => $product->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'entree',
+                    'reason_motif' => $reason,
+                    'quantity' => $qty,
+                    'unit_cost' => $unitCost,
+                    'reference' => 'ENT-'.strtoupper(Str::random(6)),
+                    'notes' => $notes ?: "Ajout direct de {$qty} unité(s) pour {$warehouse->name}",
+                    'date' => now(),
+                ]);
+                $msg = "{$qty} unité(s) ajoutée(s) au stock de '{$product->name}' dans {$warehouse->name}.";
+            } elseif ($actionType === 'remove') {
+                if ($qty <= 0) {
+                    return back()->with('error', 'La quantité à retirer doit être supérieure à 0.');
+                }
+                if ($currentStock < $qty) {
+                    return back()->with('error', "Stock insuffisant dans {$warehouse->name} (Disponible : {$currentStock}).");
+                }
+                StockService::processMovement([
+                    'warehouse_id' => $warehouse->id,
+                    'product_id' => $product->id,
+                    'domain_id' => $product->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'sortie',
+                    'reason_motif' => $reason,
+                    'quantity' => $qty,
+                    'unit_cost' => $unitCost,
+                    'reference' => 'SRT-'.strtoupper(Str::random(6)),
+                    'notes' => $notes ?: "Sortie directe de {$qty} unité(s) depuis {$warehouse->name}",
+                    'date' => now(),
+                ]);
+                $msg = "{$qty} unité(s) retirée(s) du stock de '{$product->name}' dans {$warehouse->name}.";
+            } elseif ($actionType === 'transfer') {
+                if ($qty <= 0) {
+                    return back()->with('error', 'La quantité à transférer doit être supérieure à 0.');
+                }
+                if ($currentStock < $qty) {
+                    return back()->with('error', "Stock insuffisant pour ce transfert depuis {$warehouse->name} (Disponible : {$currentStock}).");
+                }
+                $targetWarehouse = Warehouse::findOrFail($validated['target_warehouse_id']);
+                StockService::processMovement([
+                    'warehouse_id' => $warehouse->id,
+                    'destination_warehouse_id' => $targetWarehouse->id,
+                    'product_id' => $product->id,
+                    'domain_id' => $product->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'transfert',
+                    'reason_motif' => $reason ?: 'Transfert / Changement d\'entrepôt',
+                    'quantity' => $qty,
+                    'unit_cost' => $unitCost,
+                    'reference' => 'TRF-'.strtoupper(Str::random(6)),
+                    'notes' => $notes ?: "Transfert de {$qty} unité(s) de {$warehouse->name} vers {$targetWarehouse->name}",
+                    'date' => now(),
+                ]);
+                $msg = "Transfert de {$qty} unité(s) de '{$product->name}' depuis {$warehouse->name} vers {$targetWarehouse->name} effectué avec succès.";
+            }
+
+            ActivityLogger::log('stock_adjusted', $msg, $product);
+
+            return redirect()->route('stock.index', ['tab' => 'disponibilite'])->with('success', $msg);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la mise à jour du stock : '.$e->getMessage());
+        }
+    }
 }

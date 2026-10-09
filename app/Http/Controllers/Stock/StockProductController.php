@@ -154,6 +154,10 @@ class StockProductController extends Controller
             'image_camera' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
             'delete_image' => 'nullable|boolean',
             'is_active' => 'boolean',
+            'warehouse_stocks' => 'nullable|array',
+            'warehouse_stocks.*' => 'nullable|integer|min:0',
+            'new_warehouse_id' => 'nullable|exists:warehouses,id',
+            'new_warehouse_quantity' => 'nullable|integer|min:0',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
@@ -181,13 +185,65 @@ class StockProductController extends Controller
             $validated['image'] = $imageFile->store('products', 'public');
         }
 
-        unset($validated['delete_image'], $validated['image_camera']);
+        $warehouseStocksInput = $validated['warehouse_stocks'] ?? [];
+        $newWarehouseId = $validated['new_warehouse_id'] ?? null;
+        $newWarehouseQty = (int) ($validated['new_warehouse_quantity'] ?? 0);
+
+        unset($validated['delete_image'], $validated['image_camera'], $validated['warehouse_stocks'], $validated['new_warehouse_id'], $validated['new_warehouse_quantity']);
 
         $product->update($validated);
 
+        // Traitement de l'ajustement des stocks par entrepôt existant
+        if (! empty($warehouseStocksInput) && is_array($warehouseStocksInput)) {
+            foreach ($warehouseStocksInput as $whId => $newQty) {
+                $whId = (int) $whId;
+                if ($whId <= 0 || ! Warehouse::where('id', $whId)->exists()) {
+                    continue;
+                }
+                $newQty = max(0, (int) $newQty);
+                $currentQty = StockService::getStock($product->id, $whId);
+
+                if ($currentQty !== $newQty) {
+                    StockService::processMovement([
+                        'warehouse_id' => $whId,
+                        'product_id' => $product->id,
+                        'domain_id' => $product->domain_id,
+                        'user_id' => auth()->id(),
+                        'type' => 'ajustement',
+                        'reason_motif' => 'Modification fiche article',
+                        'quantity' => $newQty,
+                        'unit_cost' => $product->purchase_price ?: ($product->selling_price * 0.7),
+                        'reference' => 'AJUST-'.strtoupper(Str::random(6)),
+                        'notes' => "Ajustement du stock depuis la fiche article ({$currentQty} -> {$newQty})",
+                        'date' => now(),
+                    ]);
+                }
+            }
+        }
+
+        // Affectation et initialisation d'un nouvel entrepôt
+        if ($newWarehouseId && $newWarehouseQty > 0) {
+            if (! isset($warehouseStocksInput[$newWarehouseId])) {
+                $currentNewWhQty = StockService::getStock($product->id, (int) $newWarehouseId);
+                StockService::processMovement([
+                    'warehouse_id' => (int) $newWarehouseId,
+                    'product_id' => $product->id,
+                    'domain_id' => $product->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'entree',
+                    'reason_motif' => 'Affectation entrepôt fiche article',
+                    'quantity' => $newWarehouseQty,
+                    'unit_cost' => $product->purchase_price ?: ($product->selling_price * 0.7),
+                    'reference' => 'ENT-'.strtoupper(Str::random(6)),
+                    'notes' => "Attribution d'entrepôt et ajout de stock depuis la fiche article (+{$newWarehouseQty})",
+                    'date' => now(),
+                ]);
+            }
+        }
+
         ActivityLogger::log('updated_stock_product', 'Mise à jour de l\'article '.$product->name.' dans les stocks', $product);
 
-        return redirect()->route('stock.index', ['tab' => 'disponibilite'])->with('success', 'Fiche article "'.$product->name.'" mise à jour avec succès.');
+        return redirect()->route('stock.index', ['tab' => 'disponibilite'])->with('success', 'Fiche article "'.$product->name.'" et stocks par entrepôt mis à jour avec succès.');
     }
 
     public function destroy(Product $product)

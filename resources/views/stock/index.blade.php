@@ -822,7 +822,18 @@
                                         </span>
                                     </td>
                                     <td class="px-5 py-3.5 text-right font-bold text-[#0B0F14]">
-                                        {{ $product->current_stock }}
+                                        <div class="text-sm font-bold">{{ $product->current_stock }}</div>
+                                        @if($product->warehouseStocks->isNotEmpty())
+                                            <div class="flex flex-wrap gap-1 justify-end mt-1">
+                                                @foreach($product->warehouseStocks as $ws)
+                                                    @if($ws->physical_quantity > 0)
+                                                        <span class="inline-flex items-center text-[10px] font-medium px-1.5 py-0.2 rounded bg-slate-100 text-slate-700" title="{{ $ws->warehouse?->name ?? 'Entrepôt' }}">
+                                                            {{ $ws->warehouse?->code ?: Str::limit($ws->warehouse?->name, 8) }}: <strong class="ml-0.5 text-[#0B0F14]">{{ $ws->physical_quantity }}</strong>
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="px-5 py-3.5 text-right font-semibold text-amber-700">
                                         {{ $product->reserved_stock }}
@@ -844,6 +855,30 @@
                                     </td>
                                     <td class="px-5 py-3.5 text-right">
                                         <div class="flex items-center justify-end gap-1.5">
+                                            {{-- Bouton Ajuster Stock & Entrepôt --}}
+                                            <button 
+                                                type="button" 
+                                                @click="$dispatch('open-stock-adjust', { 
+                                                    id: {{ $product->id }}, 
+                                                    name: '{{ addslashes($product->name) }}', 
+                                                    sku: '{{ $product->sku }}', 
+                                                    unit: '{{ addslashes($product->unit ?? 'pièce') }}', 
+                                                    current_stock: {{ $product->current_stock }}, 
+                                                    stocks: {{ json_encode($product->warehouseStocks->map(fn($ws) => [
+                                                        'warehouse_id' => $ws->warehouse_id,
+                                                        'warehouse_name' => $ws->warehouse?->name ?? 'Entrepôt',
+                                                        'warehouse_code' => $ws->warehouse?->code ?? '',
+                                                        'physical_quantity' => $ws->physical_quantity,
+                                                    ])) }} 
+                                                })"
+                                                class="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition border border-transparent hover:border-emerald-200"
+                                                title="Ajuster le stock & entrepôt"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                                </svg>
+                                            </button>
+
                                             {{-- Bouton Modal QR Code Produit --}}
                                             <button 
                                                 type="button" 
@@ -1006,12 +1041,46 @@
                                     </div>
                                 </div>
 
+                                @if($product->warehouseStocks->isNotEmpty())
+                                    <div class="mt-2 flex flex-wrap gap-1 items-center px-0.5">
+                                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Dépôts :</span>
+                                        @foreach($product->warehouseStocks as $ws)
+                                            @if($ws->physical_quantity > 0)
+                                                <span class="inline-flex items-center text-[10px] font-medium px-1.5 py-0.2 rounded bg-slate-100 text-slate-700">
+                                                    {{ $ws->warehouse?->code ?: Str::limit($ws->warehouse?->name, 8) }}: <strong class="ml-1 text-[#0B0F14]">{{ $ws->physical_quantity }}</strong>
+                                                </span>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+
                                 {{-- Card Footer Action --}}
                                 <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                                     <div class="font-mono text-[10px] text-slate-500 font-semibold">
                                         EAN: {{ $product->formatted_ean }}
                                     </div>
                                     <div class="flex items-center gap-2">
+                                        <button 
+                                            type="button" 
+                                            @click="$dispatch('open-stock-adjust', { 
+                                                id: {{ $product->id }}, 
+                                                name: '{{ addslashes($product->name) }}', 
+                                                sku: '{{ $product->sku }}', 
+                                                unit: '{{ addslashes($product->unit ?? 'pièce') }}', 
+                                                current_stock: {{ $product->current_stock }}, 
+                                                stocks: {{ json_encode($product->warehouseStocks->map(fn($ws) => [
+                                                    'warehouse_id' => $ws->warehouse_id,
+                                                    'warehouse_name' => $ws->warehouse?->name ?? 'Entrepôt',
+                                                    'warehouse_code' => $ws->warehouse?->code ?? '',
+                                                    'physical_quantity' => $ws->physical_quantity,
+                                                ])) }} 
+                                            })"
+                                            class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                                            <span>Ajuster</span>
+                                        </button>
+
                                         <button 
                                             type="button" 
                                             @click="$dispatch('open-product-qr', { 
@@ -1496,4 +1565,7 @@
         </div>
 
     </div>
+
+    {{-- Modal d'Ajustement Rapide de Stock & Entrepôt --}}
+    <x-stock-adjust-modal :warehouses="$warehouses" />
 </x-layouts.app>
