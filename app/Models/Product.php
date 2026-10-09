@@ -33,6 +33,24 @@ class Product extends Model
                 $product->barcode = static::generateEan13();
             }
         });
+
+        static::saving(function (Product $product) {
+            if ($product->purchase_price === null) {
+                $product->purchase_price = 0;
+            }
+            if ($product->selling_price === null) {
+                $product->selling_price = 0;
+            }
+            if ($product->tax_rate === null) {
+                $product->tax_rate = 18;
+            }
+            if ($product->min_stock === null) {
+                $product->min_stock = 0;
+            }
+            if (empty($product->unit)) {
+                $product->unit = 'pièce';
+            }
+        });
     }
 
     /**

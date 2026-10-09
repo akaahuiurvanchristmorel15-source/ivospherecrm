@@ -60,6 +60,11 @@ class StockProductController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+        $validated['purchase_price'] = $validated['purchase_price'] ?? 0;
+        $validated['tax_rate'] = $validated['tax_rate'] ?? 18;
+        $validated['min_stock'] = $validated['min_stock'] ?? 0;
+        $validated['unit'] = ! empty($validated['unit']) ? $validated['unit'] : 'pièce';
+
         if (empty($validated['barcode'])) {
             $validated['barcode'] = Product::generateEan13();
         }
@@ -147,6 +152,11 @@ class StockProductController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+        $validated['purchase_price'] = $validated['purchase_price'] ?? 0;
+        $validated['tax_rate'] = $validated['tax_rate'] ?? 18;
+        $validated['min_stock'] = $validated['min_stock'] ?? 0;
+        $validated['unit'] = ! empty($validated['unit']) ? $validated['unit'] : 'pièce';
+
         if (empty($validated['barcode'])) {
             $validated['barcode'] = Product::generateEan13($product->id);
         }
