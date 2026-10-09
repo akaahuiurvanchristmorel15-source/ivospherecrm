@@ -172,19 +172,36 @@
                     x-data="{
                         imagePreview: '{{ isset($product) && $product->image ? asset('storage/' . $product->image) : '' }}',
                         deleteImage: '0',
-                        onImageChange(event) {
+                        onImageChange(event, source = 'file') {
                             const file = event.target.files[0];
                             if (file) {
                                 this.deleteImage = '0';
                                 const reader = new FileReader();
                                 reader.onload = (e) => { this.imagePreview = e.target.result; };
                                 reader.readAsDataURL(file);
+
+                                if (source === 'camera') {
+                                    try {
+                                        if (window.DataTransfer && this.$refs.fileInput) {
+                                            const dt = new DataTransfer();
+                                            dt.items.add(file);
+                                            this.$refs.fileInput.files = dt.files;
+                                        }
+                                    } catch (err) {}
+                                } else if (source === 'file') {
+                                    if (this.$refs.cameraInput) {
+                                        this.$refs.cameraInput.value = '';
+                                    }
+                                }
                             }
                         },
                         removeImage() {
                             this.imagePreview = '';
                             if (this.$refs.fileInput) {
                                 this.$refs.fileInput.value = '';
+                            }
+                            if (this.$refs.cameraInput) {
+                                this.$refs.cameraInput.value = '';
                             }
                             this.deleteImage = '1';
                         }
@@ -216,37 +233,62 @@
                             </button>
                         </div>
 
-                        <!-- Contrôles d'upload -->
-                        <div class="flex-1 space-y-2 text-center sm:text-left">
+                        <!-- Contrôles d'upload & Prise de photo -->
+                        <div class="flex-1 space-y-2.5 text-center sm:text-left">
                             <div>
-                                <label class="block text-xs font-bold text-[#0B0F14]">Sélectionner une photo du produit</label>
-                                <p class="text-[11px] text-[#64748B] mt-0.5">Formats autorisés : JPG, PNG, WEBP ou SVG (Max. 5 Mo). Un format carré (1:1) est conseillé pour un affichage optimal.</p>
+                                <label class="block text-xs font-bold text-[#0B0F14]">Photo ou visuel de l'article</label>
+                                <p class="text-[11px] text-[#64748B] mt-0.5">Prenez une photo en direct avec votre smartphone ou importez une image (JPG, PNG, WEBP, SVG · Max. 5 Mo).</p>
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2 pt-1 justify-center sm:justify-start">
-                                <label class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#0066FF] hover:text-[#0066FF] text-[#0B0F14] font-semibold text-xs cursor-pointer transition-all shadow-xs active:scale-95">
-                                    <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                    <span x-text="imagePreview ? 'Remplacer la photo' : 'Parcourir les fichiers'"></span>
+                                <!-- Bouton Caméra / Appareil photo Smartphone -->
+                                <label class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-semibold text-xs cursor-pointer transition-all shadow-sm active:scale-95">
+                                    <svg class="w-4 h-4 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span>Prendre une photo</span>
+                                    <input 
+                                        type="file" 
+                                        name="image_camera" 
+                                        x-ref="cameraInput" 
+                                        @change="onImageChange($event, 'camera')" 
+                                        accept="image/*" 
+                                        capture="environment" 
+                                        class="sr-only"
+                                    >
+                                </label>
+
+                                <!-- Bouton Galerie / Fichiers -->
+                                <label class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#0066FF] hover:text-[#0066FF] text-[#0B0F14] font-semibold text-xs cursor-pointer transition-all shadow-2xs active:scale-95">
+                                    <svg class="w-4 h-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                    <span x-text="imagePreview ? 'Changer de fichier' : 'Galerie / Fichiers'"></span>
                                     <input 
                                         type="file" 
                                         name="image" 
                                         x-ref="fileInput" 
-                                        @change="onImageChange($event)" 
+                                        @change="onImageChange($event, 'file')" 
                                         accept="image/png,image/jpeg,image/webp,image/svg+xml" 
                                         class="sr-only"
                                     >
                                 </label>
 
+                                <!-- Bouton Supprimer -->
                                 <button 
                                     type="button" 
                                     x-show="imagePreview" 
                                     @click="removeImage()" 
-                                    class="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 font-semibold text-xs transition-colors"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 font-semibold text-xs transition-colors"
                                 >
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     <span>Supprimer</span>
                                 </button>
                             </div>
+
+                            <p class="text-[11px] text-[#64748B] flex items-center justify-center sm:justify-start gap-1.5 pt-0.5">
+                                <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                <span>Sur smartphone, <strong>« Prendre une photo »</strong> ouvre directement l'appareil photo du téléphone.</span>
+                            </p>
                         </div>
                     </div>
                 </div>

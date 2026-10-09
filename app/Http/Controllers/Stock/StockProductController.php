@@ -54,6 +54,7 @@ class StockProductController extends Controller
             'min_stock' => 'nullable|numeric|min:0',
             'max_stock' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
+            'image_camera' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
             'is_active' => 'boolean',
             'initial_warehouse_id' => 'nullable|exists:warehouses,id',
             'initial_quantity' => 'nullable|integer|min:0',
@@ -68,9 +69,12 @@ class StockProductController extends Controller
         if (empty($validated['barcode'])) {
             $validated['barcode'] = Product::generateEan13();
         }
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
+
+        $imageFile = $request->file('image') ?? $request->file('image_camera');
+        if ($imageFile) {
+            $validated['image'] = $imageFile->store('products', 'public');
         }
+        unset($validated['image_camera']);
 
         $initialWarehouseId = $validated['initial_warehouse_id'] ?? null;
         $initialQuantity = (int) ($validated['initial_quantity'] ?? 0);
@@ -147,6 +151,7 @@ class StockProductController extends Controller
             'min_stock' => 'nullable|numeric|min:0',
             'max_stock' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
+            'image_camera' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
             'delete_image' => 'nullable|boolean',
             'is_active' => 'boolean',
         ]);
@@ -168,14 +173,15 @@ class StockProductController extends Controller
             $validated['image'] = null;
         }
 
-        if ($request->hasFile('image')) {
+        $imageFile = $request->file('image') ?? $request->file('image_camera');
+        if ($imageFile) {
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
             }
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $validated['image'] = $imageFile->store('products', 'public');
         }
 
-        unset($validated['delete_image']);
+        unset($validated['delete_image'], $validated['image_camera']);
 
         $product->update($validated);
 
