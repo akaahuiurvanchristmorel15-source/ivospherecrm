@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Commercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Domain;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Quotation;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
@@ -42,9 +44,11 @@ class QuotationController extends Controller
 
     public function create()
     {
-        $customers = Customer::active()->get();
+        $customers = Customer::active()->orderBy('name')->get();
+        $domains = Domain::active()->orderBy('name')->get();
+        $products = Product::active()->orderBy('name')->get(['id', 'name', 'selling_price', 'tax_rate', 'sku']);
 
-        return view('commercial.quotations.create_edit', compact('customers'));
+        return view('commercial.quotations.create_edit', compact('customers', 'domains', 'products'));
     }
 
     public function store(Request $request)
@@ -67,7 +71,7 @@ class QuotationController extends Controller
         ]);
 
         $validated['reference'] = 'DEV-'.Str::upper(Str::random(8));
-        $validated['user_id'] = auth()->id();
+        $validated['user_id'] = auth()->id() ?? 1;
 
         $quotation = Quotation::create(array_diff_key($validated, array_flip(['items'])));
 
@@ -78,8 +82,8 @@ class QuotationController extends Controller
             $discount = $item['discount'] ?? 0;
 
             $subtotal = $quantity * $price;
-            $tax_amount = ($subtotal - $discount) * ($tax_rate / 100);
-            $total = $subtotal - $discount + $tax_amount;
+            $tax_amount = max(0, $subtotal - $discount) * ($tax_rate / 100);
+            $total = max(0, $subtotal - $discount) + $tax_amount;
 
             $quotation->items()->create([
                 'product_id' => $item['product_id'] ?? null,
@@ -101,7 +105,7 @@ class QuotationController extends Controller
 
     public function show(Quotation $quotation)
     {
-        $quotation->load(['items.product', 'customer', 'user']);
+        $quotation->load(['items.product', 'customer', 'user', 'domain']);
 
         return view('commercial.quotations.show', compact('quotation'));
     }
@@ -109,9 +113,11 @@ class QuotationController extends Controller
     public function edit(Quotation $quotation)
     {
         $quotation->load('items');
-        $customers = Customer::active()->get();
+        $customers = Customer::active()->orderBy('name')->get();
+        $domains = Domain::active()->orderBy('name')->get();
+        $products = Product::active()->orderBy('name')->get(['id', 'name', 'selling_price', 'tax_rate', 'sku']);
 
-        return view('commercial.quotations.create_edit', compact('quotation', 'customers'));
+        return view('commercial.quotations.create_edit', compact('quotation', 'customers', 'domains', 'products'));
     }
 
     public function update(Request $request, Quotation $quotation)
@@ -143,8 +149,8 @@ class QuotationController extends Controller
             $discount = $item['discount'] ?? 0;
 
             $subtotal = $quantity * $price;
-            $tax_amount = ($subtotal - $discount) * ($tax_rate / 100);
-            $total = $subtotal - $discount + $tax_amount;
+            $tax_amount = max(0, $subtotal - $discount) * ($tax_rate / 100);
+            $total = max(0, $subtotal - $discount) + $tax_amount;
 
             $quotation->items()->create([
                 'product_id' => $item['product_id'] ?? null,

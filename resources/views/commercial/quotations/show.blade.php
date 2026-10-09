@@ -112,20 +112,44 @@
                 @endforeach
             </div>
 
-            <!-- Récapitulatif financier -->
-            <div class="flex justify-end">
-                <div class="w-72 space-y-2 text-xs bg-[#F5F7FA] p-4 rounded-xl border border-[#E2E8F0]">
-                    <div class="flex justify-between text-[#64748B]">
-                        <span>Total Hors Taxes (HT)</span>
-                        <span class="font-semibold text-[#0B0F14]">{{ number_format($quotation->subtotal, 0, ',', ' ') }} FCFA</span>
-                    </div>
-                    <div class="flex justify-between text-[#64748B]">
-                        <span>Montant TVA</span>
-                        <span class="font-semibold text-[#0B0F14]">{{ number_format($quotation->tax_amount, 0, ',', ' ') }} FCFA</span>
-                    </div>
-                    <div class="flex justify-between text-sm font-bold text-[#0B0F14] pt-2 border-t border-[#E2E8F0]">
-                        <span>Total TTC</span>
-                        <span class="text-[#0066FF]">{{ number_format($quotation->total, 0, ',', ' ') }} FCFA</span>
+            <!-- Conditions, Notes et Récapitulatif financier -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div class="space-y-4">
+                    @if($quotation->conditions)
+                        <div class="p-4 rounded-xl bg-[#F5F7FA] border border-[#E2E8F0] space-y-1">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Conditions Commerciales & Modalités</span>
+                            <p class="text-xs text-[#0B0F14] leading-relaxed whitespace-pre-line">{{ $quotation->conditions }}</p>
+                        </div>
+                    @endif
+
+                    @if($quotation->notes)
+                        <div class="p-4 rounded-xl bg-[#F5F7FA] border border-[#E2E8F0] space-y-1">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Notes Particulières</span>
+                            <p class="text-xs text-[#0B0F14] leading-relaxed whitespace-pre-line">{{ $quotation->notes }}</p>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="flex justify-end">
+                    <div class="w-full sm:w-80 space-y-2 text-xs bg-[#F5F7FA] p-4 rounded-xl border border-[#E2E8F0]">
+                        <div class="flex justify-between text-[#64748B]">
+                            <span>Total Hors Taxes (HT) :</span>
+                            <span class="font-semibold text-[#0B0F14]">{{ number_format($quotation->subtotal, 0, ',', ' ') }} FCFA</span>
+                        </div>
+                        @if($quotation->discount > 0)
+                            <div class="flex justify-between text-emerald-600 font-semibold">
+                                <span>Remise Commerciale :</span>
+                                <span>− {{ number_format($quotation->discount, 0, ',', ' ') }} FCFA</span>
+                            </div>
+                        @endif
+                        <div class="flex justify-between text-[#64748B]">
+                            <span>Montant Total TVA :</span>
+                            <span class="font-semibold text-[#0B0F14]">{{ number_format($quotation->tax_amount, 0, ',', ' ') }} FCFA</span>
+                        </div>
+                        <div class="flex justify-between text-sm font-bold text-[#0B0F14] pt-2 border-t border-[#E2E8F0]">
+                            <span>Total Net TTC :</span>
+                            <span class="text-[#0066FF] font-mono text-base">{{ number_format($quotation->total, 0, ',', ' ') }} FCFA</span>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -96,5 +96,6 @@
     <script src="{{ asset('vendor/qrcodejs/qrcode.min.js') }}"></script>
     <x-product-qr-modal />
 
+    @stack('scripts')
 </body>
 </html>

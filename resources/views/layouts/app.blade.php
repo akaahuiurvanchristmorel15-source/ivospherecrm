@@ -78,5 +78,6 @@
     <!-- Spotlight Search Global Modal (CTRL+K) -->
     <x-spotlight-search />
 
+    @stack('scripts')
 </body>
 </html>
