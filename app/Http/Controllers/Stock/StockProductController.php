@@ -13,10 +13,12 @@ use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Services\ActivityLogger;
 use App\Services\QrCodeService;
+use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class StockProductController extends Controller
 {
