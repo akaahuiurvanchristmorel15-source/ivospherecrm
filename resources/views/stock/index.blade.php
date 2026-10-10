@@ -798,6 +798,11 @@
                         </p>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
+                        <a href="{{ route('stock.products.print-catalog', request()->query()) }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-[#0066FF] hover:border-[#0066FF] transition shadow-2xs">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            <span>Imprimer Catalogue PDF (A4 Paysage)</span>
+                        </a>
+
                         <a href="{{ route('stock.products.create') }}" class="inline-flex items-center gap-1.5 rounded-xl bg-[#0066FF] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 transition shadow-xs">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m8-8H4"/></svg>
                             <span>+ Nouveau Produit</span>
@@ -833,13 +838,42 @@
                                     </td>
                                     <td class="px-5 py-3.5">
                                         <div class="flex items-center gap-3">
-                                            @if($product->image)
-                                                <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-10 h-10 rounded-lg object-cover border border-[#E2E8F0] shrink-0 shadow-2xs">
-                                            @else
-                                                <div class="w-10 h-10 rounded-lg bg-slate-100 border border-[#E2E8F0] flex items-center justify-center text-slate-400 shrink-0">
-                                                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                            {{-- Vignette interactive : Clic pour prise de photo ou téléversement --}}
+                                            <button 
+                                                type="button" 
+                                                @click="$dispatch('open-product-photo', { 
+                                                    id: {{ $product->id }}, 
+                                                    name: '{{ addslashes($product->name) }}', 
+                                                    sku: '{{ $product->sku }}', 
+                                                    current_image: '{{ $product->image ? asset('storage/' . $product->image) : '' }}', 
+                                                    action_url: '{{ route('stock.products.quick-image', $product) }}' 
+                                                })"
+                                                class="relative group/photo cursor-pointer rounded-lg overflow-hidden border border-[#E2E8F0] shrink-0 hover:ring-2 hover:ring-[#0066FF] hover:ring-offset-1 transition-all focus:outline-hidden"
+                                                title="Cliquer pour changer ou prendre la photo de l'article"
+                                            >
+                                                @if($product->image)
+                                                    <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-10 h-10 object-cover">
+                                                @else
+                                                    <div class="w-10 h-10 bg-slate-100 flex items-center justify-center text-slate-400">
+                                                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                                    </div>
+                                                @endif
+
+                                                {{-- Overlay au survol avec icône caméra --}}
+                                                <div class="absolute inset-0 bg-[#0B0F14]/50 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                    <svg class="w-4 h-4 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                        <circle cx="12" cy="13" r="3" stroke-width="2" />
+                                                    </svg>
                                                 </div>
-                                            @endif
+
+                                                {{-- Badge discret caméra --}}
+                                                <div class="absolute bottom-0 right-0 p-0.5 bg-[#0066FF] text-white rounded-tl shadow-xs">
+                                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                    </svg>
+                                                </div>
+                                            </button>
                                             <div class="min-w-0">
                                                 <div class="flex items-center gap-1.5">
                                                     <span class="font-bold text-[#0B0F14] truncate">{{ $product->name }}</span>
@@ -997,6 +1031,13 @@
                                 Rupture ({{ $outOfStockCount }})
                             </button>
                         </div>
+
+                        <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+                            <a href="{{ route('stock.products.print-catalog', request()->query()) }}" target="_blank" class="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-700 hover:text-[#0066FF] shadow-2xs">
+                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                <span>Imprimer Catalogue PDF (A4 Paysage)</span>
+                            </a>
+                        </div>
                     </div>
 
                     {{-- Products List --}}
@@ -1012,13 +1053,32 @@
                                 
                                 {{-- Card Header: Thumbnail + Title + Status Pill --}}
                                 <div class="flex items-start gap-3">
-                                    @if($product->image)
-                                        <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-12 h-12 rounded-xl object-cover border border-slate-100 shrink-0 shadow-2xs">
-                                    @else
-                                        <div class="w-12 h-12 rounded-xl bg-slate-100/80 border border-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                    {{-- Vignette interactive Mobile : Clic pour prise de photo ou téléversement --}}
+                                    <button 
+                                        type="button" 
+                                        @click="$dispatch('open-product-photo', { 
+                                            id: {{ $product->id }}, 
+                                            name: '{{ addslashes($product->name) }}', 
+                                            sku: '{{ $product->sku }}', 
+                                            current_image: '{{ $product->image ? asset('storage/' . $product->image) : '' }}', 
+                                            action_url: '{{ route('stock.products.quick-image', $product) }}' 
+                                        })"
+                                        class="relative group/photo cursor-pointer rounded-xl overflow-hidden border border-slate-200 shrink-0 hover:ring-2 hover:ring-[#0066FF] hover:ring-offset-1 transition-all focus:outline-hidden"
+                                        title="Prendre une photo ou importer un visuel"
+                                    >
+                                        @if($product->image)
+                                            <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-12 h-12 object-cover">
+                                        @else
+                                            <div class="w-12 h-12 bg-slate-100 flex items-center justify-center text-slate-400">
+                                                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                            </div>
+                                        @endif
+                                        <div class="absolute bottom-0 right-0 p-0.5 bg-[#0066FF] text-white rounded-tl shadow-xs">
+                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            </svg>
                                         </div>
-                                    @endif
+                                    </button>
 
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center justify-between gap-1.5">
@@ -1610,4 +1670,10 @@
 
     {{-- Modal de confirmation / transfert pour suppression d'entrepôt --}}
     <x-delete-warehouse-modal :warehouses="$warehouses" />
+
+    {{-- Modal QR Code Produit --}}
+    <x-product-qr-modal />
+
+    {{-- Modal Prise de Photo Directe & Upload Image Produit --}}
+    <x-product-quick-photo-modal />
 </x-layouts.app>

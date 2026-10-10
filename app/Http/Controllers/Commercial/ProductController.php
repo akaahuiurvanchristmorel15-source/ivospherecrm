@@ -23,6 +23,11 @@ class ProductController extends Controller
         return redirect()->route('stock.index', ['tab' => 'disponibilite']);
     }
 
+    public function printCatalog(Request $request)
+    {
+        return redirect()->route('stock.products.print-catalog', $request->all());
+    }
+
     public function create()
     {
         return redirect()->route('stock.products.create');

@@ -264,6 +264,101 @@ class StockProductController extends Controller
     }
 
     /**
+     * Impression / Export PDF au format A4 Paysage du catalogue produit.
+     * Tableau de 20 produits par page avec Désignation, Quantité, Prix Unitaire (vide) et Prix Revente (vide).
+     */
+    public function printCatalog(Request $request)
+    {
+        $query = Product::with(['domain', 'category', 'brand', 'warehouseStocks']);
+
+        if ($request->filled('domain_id')) {
+            $query->where('domain_id', $request->domain_id);
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                    ->orWhere('sku', 'like', "%{$s}%")
+                    ->orWhere('barcode', 'like', "%{$s}%");
+            });
+        }
+
+        $products = $query->orderBy('name')->get();
+
+        // Découpage strict en paquets de 20 produits par page A4 Paysage
+        $chunks = $products->chunk(20);
+
+        return view('stock.products.print_catalog', compact('products', 'chunks'));
+    }
+
+    /**
+     * Mise à jour rapide de la photo du produit (upload fichier ou capture directe smartphone).
+     */
+    public function updateImage(Request $request, Product $product)
+    {
+        $request->validate([
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
+            'image_camera' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
+            'delete_image' => 'nullable|boolean',
+        ]);
+
+        if ($request->boolean('delete_image')) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+            $product->update(['image' => null]);
+
+            ActivityLogger::log('updated_stock_product_image', "Suppression de la photo de l'article {$product->name}", $product);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "La photo de l'article \"{$product->name}\" a été supprimée.",
+                    'image_url' => null,
+                ]);
+            }
+
+            return back()->with('success', "La photo de l'article \"{$product->name}\" a été supprimée.");
+        }
+
+        $imageFile = $request->file('image') ?? $request->file('image_camera');
+        if (! $imageFile) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun fichier image sélectionné.',
+                ], 422);
+            }
+
+            return back()->with('error', 'Aucun fichier image sélectionné.');
+        }
+
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
+        }
+
+        $path = $imageFile->store('products', 'public');
+        $product->update(['image' => $path]);
+
+        ActivityLogger::log('updated_stock_product_image', "Mise à jour rapide de la photo de l'article {$product->name}", $product);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Photo de l'article \"{$product->name}\" mise à jour avec succès.",
+                'image_url' => asset('storage/'.$path),
+            ]);
+        }
+
+        return back()->with('success', "Photo de l'article \"{$product->name}\" mise à jour avec succès.");
+    }
+
+    /**
      * Téléchargement du QR Code avec EAN au format PNG.
      */
     public function downloadQr(Request $request, Product $product, QrCodeService $qrService): Response

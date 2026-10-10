@@ -14,6 +14,11 @@
             </x-slot:breadcrumbs>
 
             <x-slot:actions>
+                <x-button variant="secondary" href="{{ route('commercial.products.print-catalog', request()->query()) }}" target="_blank" class="flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    <span>Imprimer Catalogue (A4 Paysage)</span>
+                </x-button>
+
                 <x-button variant="secondary" href="{{ route('commercial.pos.index') }}" class="flex items-center gap-1.5">
                     <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     <span>Vente POS</span>
@@ -244,4 +249,10 @@
             @endif
         </x-card>
     </div>
+
+    {{-- Modal QR Code Produit --}}
+    <x-product-qr-modal />
+
+    {{-- Modal Prise de Photo Directe & Upload Image Produit --}}
+    <x-product-quick-photo-modal />
 </x-layouts.app>

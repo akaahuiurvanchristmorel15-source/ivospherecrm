@@ -240,6 +240,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('appointments', CommercialAppointmentController::class);
 
         // Produits & Catalogue (avec QR Code & EAN)
+        Route::get('products/print-catalog', [ProductController::class, 'printCatalog'])->name('products.print-catalog');
         Route::get('products/{product}/qr-download', [ProductController::class, 'downloadQr'])->name('products.qr-download');
         Route::resource('products', ProductController::class);
 
@@ -367,6 +368,8 @@ Route::middleware('auth')->group(function () {
         Route::post('revenue-booster/secure-stock', [StockDashboardController::class, 'secureStock'])->name('revenue-booster.secure-stock');
 
         Route::resource('warehouses', WarehouseController::class);
+        Route::get('products/print-catalog', [StockProductController::class, 'printCatalog'])->name('products.print-catalog');
+        Route::post('products/{product}/quick-image', [StockProductController::class, 'updateImage'])->name('products.quick-image');
         Route::get('products/{product}/qr-download', [StockProductController::class, 'downloadQr'])->name('products.qr-download');
         Route::resource('products', StockProductController::class)->except(['show']);
         Route::get('movements', [StockMovementController::class, 'index'])->name('movements.index');
