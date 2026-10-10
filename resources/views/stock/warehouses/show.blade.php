@@ -12,6 +12,20 @@
             </x-slot>
             <x-slot name="actions">
                 <div class="flex items-center gap-3">
+                    <button 
+                        type="button" 
+                        @click="$dispatch('open-delete-warehouse', { 
+                            id: {{ $warehouse->id }}, 
+                            name: '{{ addslashes($warehouse->name) }}', 
+                            code: '{{ $warehouse->code }}', 
+                            totalStock: {{ (int) $warehouse->warehouseStocks->sum('physical_quantity') }},
+                            productCount: {{ (int) $warehouse->warehouseStocks->where('physical_quantity', '>', 0)->count() }}
+                        })"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition border border-rose-200"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        <span>Supprimer</span>
+                    </button>
                     <x-button href="{{ route('stock.warehouses.edit', $warehouse) }}" variant="secondary">
                         Modifier
                     </x-button>
@@ -296,4 +310,7 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal de confirmation / transfert pour suppression d'entrepôt --}}
+    <x-delete-warehouse-modal />
 </x-layouts.app>

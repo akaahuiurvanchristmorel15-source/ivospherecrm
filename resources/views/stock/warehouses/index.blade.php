@@ -92,9 +92,24 @@
                 </div>
                 
                 <div class="mt-5 flex items-center justify-between border-t border-[#E2E8F0] pt-4">
-                    <a href="{{ route('stock.warehouses.edit', $warehouse) }}" class="text-xs font-medium text-[#64748B] hover:text-[#0B0F14]">
-                        Paramètres
-                    </a>
+                    <div class="flex items-center gap-3">
+                        <a href="{{ route('stock.warehouses.edit', $warehouse) }}" class="text-xs font-medium text-[#64748B] hover:text-[#0B0F14]">
+                            Paramètres
+                        </a>
+                        <button 
+                            type="button" 
+                            @click="$dispatch('open-delete-warehouse', { 
+                                id: {{ $warehouse->id }}, 
+                                name: '{{ addslashes($warehouse->name) }}', 
+                                code: '{{ $warehouse->code }}', 
+                                totalStock: {{ (int) $warehouse->total_items }},
+                                productCount: {{ (int) $warehouse->product_count }}
+                            })"
+                            class="text-xs font-medium text-rose-500 hover:text-rose-700 transition"
+                        >
+                            Supprimer
+                        </button>
+                    </div>
                     <a href="{{ route('stock.warehouses.show', $warehouse) }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0066FF] hover:underline">
                         <span>Accéder au stock</span>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -118,4 +133,7 @@
             {{ $warehouses->links() }}
         </div>
     @endif
+
+    {{-- Modal de confirmation / transfert pour suppression d'entrepôt --}}
+    <x-delete-warehouse-modal :warehouses="$warehouses" />
 </x-layouts.app>

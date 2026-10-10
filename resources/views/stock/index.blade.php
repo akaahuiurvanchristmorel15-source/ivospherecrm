@@ -731,20 +731,52 @@
              ======================================================================= --}}
         <div x-show="activeTab === 'disponibilite'" x-cloak class="space-y-6">
             {{-- Multi-Warehouse Cards --}}
-            <div class="flex overflow-x-auto no-scrollbar gap-2.5 pb-1 md:grid md:grid-cols-3 lg:grid-cols-5 md:gap-4 md:pb-0">
-                @foreach($warehouses as $wh)
-                    <div class="min-w-[190px] shrink-0 md:min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs">
-                        <div class="flex items-center justify-between">
-                            <span class="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-[#0B0F14]">{{ $wh->code }}</span>
-                            <span class="text-[10px] font-medium text-slate-400 truncate max-w-[90px]">{{ $wh->location }}</span>
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Sites de Stockage & Dépôts ({{ $warehouses->count() }})
+                    </h3>
+                    <a href="{{ route('stock.warehouses.index') }}" class="text-xs font-semibold text-[#0066FF] hover:underline flex items-center gap-1">
+                        <span>Gérer tous les entrepôts</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+
+                <div class="flex overflow-x-auto no-scrollbar gap-2.5 pb-1 md:grid md:grid-cols-3 lg:grid-cols-5 md:gap-4 md:pb-0">
+                    @foreach($warehouses as $wh)
+                        <div class="min-w-[190px] shrink-0 md:min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs hover:border-[#0066FF]/30 transition relative group">
+                            <div class="flex items-center justify-between">
+                                <span class="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-[#0B0F14]">{{ $wh->code }}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <a href="{{ route('stock.warehouses.show', $wh) }}" class="text-slate-400 hover:text-[#0066FF] transition" title="Consulter l'entrepôt">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </a>
+                                    <button 
+                                        type="button" 
+                                        @click="$dispatch('open-delete-warehouse', { 
+                                            id: {{ $wh->id }}, 
+                                            name: '{{ addslashes($wh->name) }}', 
+                                            code: '{{ $wh->code }}', 
+                                            totalStock: {{ (int) $wh->warehouseStocks->sum('physical_quantity') }},
+                                            productCount: {{ (int) $wh->warehouseStocks->where('physical_quantity', '>', 0)->count() }}
+                                        })"
+                                        class="text-slate-400 hover:text-rose-600 transition" 
+                                        title="Supprimer cet entrepôt"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <h3 class="mt-2 text-xs font-bold text-[#0B0F14] truncate">
+                                <a href="{{ route('stock.warehouses.show', $wh) }}" class="hover:text-[#0066FF]">{{ $wh->name }}</a>
+                            </h3>
+                            <p class="mt-1 text-[11px] text-slate-500">
+                                Physique : <strong class="text-[#0B0F14]">{{ $wh->warehouseStocks->sum('physical_quantity') }}</strong> •
+                                Réservé : <strong class="text-amber-700">{{ $wh->warehouseStocks->sum('reserved_quantity') }}</strong>
+                            </p>
                         </div>
-                        <h3 class="mt-2 text-xs font-bold text-[#0B0F14] truncate">{{ $wh->name }}</h3>
-                        <p class="mt-1 text-[11px] text-slate-500">
-                            Physique : <strong class="text-[#0B0F14]">{{ $wh->warehouseStocks->sum('physical_quantity') }}</strong> •
-                            Réservé : <strong class="text-amber-700">{{ $wh->warehouseStocks->sum('reserved_quantity') }}</strong>
-                        </p>
-                    </div>
-                @endforeach
+                    @endforeach
+                </div>
             </div>
 
             {{-- Detailed Product Matrix --}}
@@ -1568,4 +1600,7 @@
 
     {{-- Modal d'Ajustement Rapide de Stock & Entrepôt --}}
     <x-stock-adjust-modal :warehouses="$warehouses" />
+
+    {{-- Modal de confirmation / transfert pour suppression d'entrepôt --}}
+    <x-delete-warehouse-modal :warehouses="$warehouses" />
 </x-layouts.app>
