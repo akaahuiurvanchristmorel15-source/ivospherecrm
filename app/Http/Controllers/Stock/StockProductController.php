@@ -153,6 +153,101 @@ class StockProductController extends Controller
             ->with('success', "{$createdCount} nouveau(x) produit(s) ont été créés avec succès et intégrés à l'entrepôt \"{$warehouse->name}\".");
     }
 
+    public function bulkEdit(Request $request)
+    {
+        $rawIds = $request->input('product_ids', []);
+        $productIds = [];
+
+        if (is_array($rawIds)) {
+            $productIds = array_filter(array_map('intval', $rawIds));
+        } elseif (is_string($rawIds) && strlen(trim($rawIds)) > 0) {
+            $productIds = array_filter(array_map('intval', explode(',', $rawIds)));
+        }
+
+        $query = Product::with(['domain', 'category', 'brand', 'warehouseStocks.warehouse']);
+
+        if (! empty($productIds)) {
+            $query->whereIn('id', $productIds);
+        } elseif ($request->filled('domain_id')) {
+            $query->where('domain_id', $request->domain_id);
+        }
+
+        $products = $query->orderBy('name')->get();
+
+        if ($products->isEmpty()) {
+            $products = Product::with(['domain', 'category', 'brand', 'warehouseStocks.warehouse'])
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->take(50)
+                ->get();
+        }
+
+        $domains = Domain::active()->orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+
+        return view('stock.products.bulk_edit', compact('products', 'domains', 'categories'));
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'common_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
+            'apply_common_image_to_all' => 'nullable|boolean',
+            'products' => 'required|array|min:1',
+            'products.*.id' => 'required|exists:products,id',
+            'products.*.purchase_price' => 'nullable|numeric|min:0',
+            'products.*.selling_price' => 'required|numeric|min:0',
+            'products.*.image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
+            'products.*.delete_image' => 'nullable|boolean',
+        ]);
+
+        $commonImagePath = null;
+        if ($request->hasFile('common_image') && $request->boolean('apply_common_image_to_all')) {
+            $commonImagePath = $request->file('common_image')->store('products', 'public');
+        }
+
+        $updatedCount = 0;
+
+        DB::transaction(function () use ($request, $validated, $commonImagePath, &$updatedCount) {
+            foreach ($validated['products'] as $index => $itemData) {
+                $product = Product::find($itemData['id']);
+                if (! $product) {
+                    continue;
+                }
+
+                $updateData = [
+                    'purchase_price' => (float) ($itemData['purchase_price'] ?? 0),
+                    'selling_price' => (float) ($itemData['selling_price'] ?? 0),
+                ];
+
+                if ($request->hasFile("products.{$index}.image")) {
+                    $file = $request->file("products.{$index}.image");
+                    if ($file && $file->isValid()) {
+                        if ($product->image && Storage::disk('public')->exists($product->image)) {
+                            Storage::disk('public')->delete($product->image);
+                        }
+                        $updateData['image'] = $file->store('products', 'public');
+                    }
+                } elseif (! empty($itemData['delete_image'])) {
+                    if ($product->image && Storage::disk('public')->exists($product->image)) {
+                        Storage::disk('public')->delete($product->image);
+                    }
+                    $updateData['image'] = null;
+                } elseif ($commonImagePath) {
+                    $updateData['image'] = $commonImagePath;
+                }
+
+                $product->update($updateData);
+                $updatedCount++;
+            }
+        });
+
+        ActivityLogger::log('bulk_updated_stock_products', "Mise à jour groupée des prix et images de {$updatedCount} article(s)", null);
+
+        return redirect()->route('stock.index', ['tab' => 'disponibilite'])
+            ->with('success', "Les informations (prix d'achat, prix de revente et images) de {$updatedCount} article(s) ont été mises à jour avec succès.");
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

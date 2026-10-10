@@ -370,6 +370,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('warehouses', WarehouseController::class);
         Route::get('products/bulk-create', [StockProductController::class, 'bulkCreate'])->name('products.bulk-create');
         Route::post('products/bulk-store', [StockProductController::class, 'bulkStore'])->name('products.bulk-store');
+        Route::match(['get', 'post'], 'products/bulk-edit', [StockProductController::class, 'bulkEdit'])->name('products.bulk-edit');
+        Route::post('products/bulk-update', [StockProductController::class, 'bulkUpdate'])->name('products.bulk-update');
         Route::post('products/bulk-destroy', [StockProductController::class, 'bulkDestroy'])->name('products.bulk-destroy');
         Route::get('products/print-catalog', [StockProductController::class, 'printCatalog'])->name('products.print-catalog');
         Route::post('products/{product}/quick-image', [StockProductController::class, 'updateImage'])->name('products.quick-image');
