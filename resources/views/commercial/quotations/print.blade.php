@@ -225,17 +225,69 @@
         </button>
     </div>
 
+    @php
+        $companyName = \App\Models\Setting::get('company_name', 'IVOSPHERE GROUP');
+        $companyLegalForm = \App\Models\Setting::get('company_legal_form', '');
+        $companyCapital = \App\Models\Setting::get('company_capital', '');
+        $companyTagline = \App\Models\Setting::get('company_tagline', '');
+        $companyEmail = \App\Models\Setting::get('company_email', '');
+        $companyPhone = \App\Models\Setting::get('company_phone', '');
+        $companyAddress = \App\Models\Setting::get('company_address', '');
+        $companyPostalBox = \App\Models\Setting::get('company_postal_box', '');
+        $companyRccm = \App\Models\Setting::get('company_rccm', '');
+        $companyCc = \App\Models\Setting::get('company_cc', '');
+        $companyTaxRegime = \App\Models\Setting::get('company_tax_regime', '');
+        $companyTaxCenter = \App\Models\Setting::get('company_tax_center', '');
+        $companyCnps = \App\Models\Setting::get('company_cnps', '');
+        $currency = \App\Models\Setting::get('currency', 'FCFA');
+        $companyLogo = \App\Models\Setting::get('company_logo', '');
+    @endphp
+
     <div class="invoice-box">
         <!-- Header -->
         <div class="header">
             <div class="logo-box" style="display: flex; gap: 15px; align-items: center;">
-                <img src="{{ asset('images/logo.png') }}" alt="IVOSPHERE" style="height: 64px; width: 64px; object-fit: contain;">
+                @if($companyLogo && \Illuminate\Support\Facades\Storage::disk('public')->exists($companyLogo))
+                    <img src="{{ asset('storage/' . $companyLogo) }}" alt="{{ $companyName }}" style="height: 64px; width: 64px; object-fit: contain;">
+                @elseif(file_exists(public_path('images/logo.png')))
+                    <img src="{{ asset('images/logo.png') }}" alt="{{ $companyName }}" style="height: 64px; width: 64px; object-fit: contain;">
+                @else
+                    <div style="width: 56px; height: 56px; border-radius: 8px; background: #0b0f14; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; flex-shrink: 0;">
+                        {{ strtoupper(substr($companyName, 0, 2)) }}
+                    </div>
+                @endif
                 <div>
-                    <h1>{{ \App\Models\Setting::get('company_name', 'IVOSPHERE GROUP') }}</h1>
+                    <h1>
+                        {{ $companyName }}
+                        @if($companyLegalForm)
+                            <span style="font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase;">{{ $companyLegalForm }}</span>
+                        @endif
+                    </h1>
+                    @if($companyTagline)
+                        <p style="font-size: 11px; color: #64748b; font-style: italic;">{{ $companyTagline }}</p>
+                    @endif
                     <p><strong>Pôle :</strong> {{ $quotation->domain?->name ?? 'Commercial & Multiservices' }}</p>
-                    <p>{{ \App\Models\Setting::get('company_address', "Abidjan, Côte d'Ivoire • Cocody Angré 8e Tranche") }}</p>
-                    <p>Tél: {{ \App\Models\Setting::get('company_phone', '+225 27 22 00 00 00') }} • Email: {{ \App\Models\Setting::get('company_email', 'contact@ivosphere.com') }}</p>
-                    <p>RCCM: {{ \App\Models\Setting::get('company_rccm', 'CI-ABJ-2026-B-0012') }} • CC: {{ \App\Models\Setting::get('company_cc', '2026-IVOSPHERE') }}</p>
+                    @if($companyAddress)
+                        <p>{{ $companyAddress }}@if($companyPostalBox) • {{ $companyPostalBox }}@endif</p>
+                    @endif
+                    @if($companyPhone || $companyEmail)
+                        <p>
+                            @if($companyPhone)Tél: {{ $companyPhone }}@endif
+                            @if($companyPhone && $companyEmail) • @endif
+                            @if($companyEmail)Email: {{ $companyEmail }}@endif
+                        </p>
+                    @endif
+                    @php
+                        $fiscalInfo = array_filter([
+                            $companyRccm ? 'RCCM: ' . $companyRccm : null,
+                            $companyCc ? 'CC / NIF: ' . $companyCc : null,
+                            $companyTaxRegime ? 'Régime: ' . $companyTaxRegime : null,
+                            $companyTaxCenter ? 'Centre: ' . $companyTaxCenter : null,
+                        ]);
+                    @endphp
+                    @if(count($fiscalInfo))
+                        <p style="font-size: 11px; color: #64748b;">{{ implode(' • ', $fiscalInfo) }}</p>
+                    @endif
                 </div>
             </div>
             <div class="doc-title">
@@ -335,13 +387,38 @@
         <!-- Signatures -->
         <div class="signatures">
             <div class="signature-box">
-                <div class="sign-title">Pour IVOSPHERE GROUP</div>
+                <div class="sign-title">Pour {{ $companyName }} @if($companyLegalForm){{ $companyLegalForm }}@endif</div>
                 <div style="font-size: 10px; color: #64748b; margin-top: 30px;">Cachet & Signature autorisée</div>
             </div>
             <div class="signature-box">
                 <div class="sign-title">Bon pour Accord (Le Client)</div>
                 <div style="font-size: 10px; color: #64748b; margin-top: 30px;">Date, mention manuscrite et signature</div>
             </div>
+        </div>
+
+        {{-- Pied de page officiel avec mentions légales complètes --}}
+        <div style="margin-top: 36px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #64748b; text-align: center; line-height: 1.5; page-break-inside: avoid;">
+            <p style="margin: 0; font-weight: 600; color: #0f172a;">
+                {{ $companyName }}
+                @if($companyLegalForm) {{ $companyLegalForm }} @endif
+                @if($companyCapital) au capital de {{ $companyCapital }} @endif
+                @if($companyAddress) • Siège : {{ $companyAddress }} @endif
+                @if($companyPostalBox) ({{ $companyPostalBox }}) @endif
+            </p>
+            @php
+                $footerLegal = array_filter([
+                    $companyRccm ? 'RCCM : ' . $companyRccm : null,
+                    $companyCc ? 'CC / NIF : ' . $companyCc : null,
+                    $companyTaxRegime ? 'Régime fiscal : ' . $companyTaxRegime : null,
+                    $companyTaxCenter ? 'Centre des impôts : ' . $companyTaxCenter : null,
+                    $companyCnps ? 'N° CNPS : ' . $companyCnps : null,
+                    $companyPhone ? 'Tél : ' . $companyPhone : null,
+                    $companyEmail ? 'Email : ' . $companyEmail : null,
+                ]);
+            @endphp
+            @if(count($footerLegal))
+                <p style="margin: 3px 0 0 0;">{{ implode(' • ', $footerLegal) }}</p>
+            @endif
         </div>
     </div>
 </body>

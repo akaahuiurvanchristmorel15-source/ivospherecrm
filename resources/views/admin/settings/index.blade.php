@@ -38,9 +38,10 @@
                     ['company_tax_center', 'Centre des impôts', 'text', '', '', 'DGE, CDI Cocody, CDI Plateau', false, false, 'Centre de rattachement'],
                     ['company_cnps', 'Numéro employeur CNPS', 'text', '', '', '109283-A', true, false, 'Cotisations sociales'],
                 ]],
-                ['label' => 'Coordonnées bancaires', 'grid' => 'sm:grid-cols-3', 'fields' => [
+                ['label' => 'Coordonnées bancaires & règlements', 'grid' => 'sm:grid-cols-3', 'fields' => [
                     ['company_bank_name', 'Banque principale', 'text', '', '', 'Société Générale, Ecobank', false, false, null],
                     ['company_bank_rib', 'RIB / IBAN', 'text', '', 'sm:col-span-2', 'CI034 01001 012345678901 45', true, false, 'Imprimé au bas des factures pour les virements'],
+                    ['company_mobile_money', 'Numéro Mobile Money (Règlements)', 'text', '', 'sm:col-span-3', '+225 07 00 00 00 00 (Wave, Orange, MTN)', false, false, 'Affiché sur les factures pour les règlements par Mobile Money'],
                 ]],
             ],
         ],
@@ -104,12 +105,61 @@
         @endif
 
         {{-- ═══ Formulaire : identité et finances ═══ --}}
-        <form method="POST" action="{{ route('admin.settings.update') }}" class="space-y-5 sm:space-y-6">
+        <form method="POST" action="{{ route('admin.settings.update') }}" enctype="multipart/form-data" class="space-y-5 sm:space-y-6">
             @csrf
 
-            @foreach($sections as $section)
+            @foreach($sections as $sectionIndex => $section)
                 <x-card :title="$section['title']" :subtitle="$section['subtitle']">
                     <div class="space-y-6">
+                        @if($sectionIndex === 0)
+                            {{-- Logo officiel de l'entreprise affiché sur les factures et devis --}}
+                            <div x-data="{
+                                preview: '{{ $val('company_logo') ? asset('storage/' . $val('company_logo')) : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : '') }}',
+                                deleteLogo: false,
+                                onFileSelected(e) {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        this.deleteLogo = false;
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => { this.preview = ev.target.result; };
+                                        reader.readAsDataURL(file);
+                                    }
+                                },
+                                remove() {
+                                    this.deleteLogo = true;
+                                    this.preview = '';
+                                    if (this.$refs.logoInput) this.$refs.logoInput.value = '';
+                                }
+                            }" class="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row items-center gap-4">
+                                <input type="hidden" name="delete_logo" :value="deleteLogo ? '1' : '0'">
+                                
+                                <div class="relative w-20 h-20 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                                    <template x-if="preview">
+                                        <img :src="preview" alt="Logo Entreprise" class="w-full h-full object-contain">
+                                    </template>
+                                    <template x-if="!preview">
+                                        <div class="text-center text-slate-400 text-[10px] font-bold">AUCUN LOGO</div>
+                                    </template>
+                                </div>
+
+                                <div class="flex-1 text-center sm:text-left space-y-1">
+                                    <label class="block text-xs font-bold text-[#0B0F14]">Logo officiel de l'entreprise (Factures, Devis, Bordereaux)</label>
+                                    <p class="text-[11px] text-slate-500">Affiché sur l'ensemble des documents commerciaux et factures au format PDF / Impression (JPG, PNG, WEBP, SVG · Max. 4 Mo).</p>
+                                    
+                                    <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                                        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:text-[#0066FF] hover:border-[#0066FF] cursor-pointer transition shadow-2xs">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                            <span x-text="preview ? 'Changer de logo' : 'Téléverser un logo'"></span>
+                                            <input type="file" name="company_logo" x-ref="logoInput" @change="onFileSelected($event)" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="sr-only">
+                                        </label>
+
+                                        <button type="button" x-show="preview" @click="remove()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition">
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                         @foreach($section['blocks'] as $block)
                             <fieldset class="{{ !empty($block['note']) ? 'rounded-2xl border border-blue-100 bg-blue-50/30 p-4 sm:p-5' : '' }}">
                                 @if($block['label'])

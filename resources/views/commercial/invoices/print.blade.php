@@ -238,6 +238,27 @@
         <button onclick="window.print()" class="btn btn-primary">Imprimer / Enregistrer en PDF</button>
     </div>
 
+    @php
+        $companyName = \App\Models\Setting::get('company_name', 'IVOSPHERE GROUP');
+        $companyLegalForm = \App\Models\Setting::get('company_legal_form', '');
+        $companyCapital = \App\Models\Setting::get('company_capital', '');
+        $companyTagline = \App\Models\Setting::get('company_tagline', '');
+        $companyEmail = \App\Models\Setting::get('company_email', '');
+        $companyPhone = \App\Models\Setting::get('company_phone', '');
+        $companyAddress = \App\Models\Setting::get('company_address', '');
+        $companyPostalBox = \App\Models\Setting::get('company_postal_box', '');
+        $companyRccm = \App\Models\Setting::get('company_rccm', '');
+        $companyCc = \App\Models\Setting::get('company_cc', '');
+        $companyTaxRegime = \App\Models\Setting::get('company_tax_regime', '');
+        $companyTaxCenter = \App\Models\Setting::get('company_tax_center', '');
+        $companyCnps = \App\Models\Setting::get('company_cnps', '');
+        $companyBankName = \App\Models\Setting::get('company_bank_name', '');
+        $companyBankRib = \App\Models\Setting::get('company_bank_rib', '');
+        $companyMobileMoney = \App\Models\Setting::get('company_mobile_money', '');
+        $currency = \App\Models\Setting::get('currency', 'FCFA');
+        $companyLogo = \App\Models\Setting::get('company_logo', '');
+    @endphp
+
     <div class="invoice-box">
         {{-- Filigrane de statut --}}
         @if($invoice->status === 'payee')
@@ -251,13 +272,47 @@
         {{-- En-tête --}}
         <div class="header">
             <div class="company">
-                <img src="{{ asset('images/logo.png') }}" alt="IVOSPHERE">
+                @if($companyLogo && \Illuminate\Support\Facades\Storage::disk('public')->exists($companyLogo))
+                    <img src="{{ asset('storage/' . $companyLogo) }}" alt="{{ $companyName }}">
+                @elseif(file_exists(public_path('images/logo.png')))
+                    <img src="{{ asset('images/logo.png') }}" alt="{{ $companyName }}">
+                @else
+                    <div style="width: 56px; height: 56px; border-radius: 8px; background: #0b0f14; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; flex-shrink: 0;">
+                        {{ strtoupper(substr($companyName, 0, 2)) }}
+                    </div>
+                @endif
                 <div>
-                    <h1>{{ \App\Models\Setting::get('company_name', 'IVOSPHERE GROUP') }}</h1>
-                    <p class="pole">{{ $invoice->domain?->name ?? 'Commercial & Multiservices' }}</p>
-                    <p>{{ \App\Models\Setting::get('company_address', "Abidjan, Côte d'Ivoire • Cocody Angré 8e Tranche") }}</p>
-                    <p>{{ \App\Models\Setting::get('company_phone', '+225 27 22 00 00 00') }} • {{ \App\Models\Setting::get('company_email', 'contact@ivosphere.com') }}</p>
-                    <p>RCCM {{ \App\Models\Setting::get('company_rccm', 'CI-ABJ-2026-B-0012') }} • CC {{ \App\Models\Setting::get('company_cc', '2026-IVOSPHERE') }}</p>
+                    <h1>
+                        {{ $companyName }}
+                        @if($companyLegalForm)
+                            <span style="font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase;">{{ $companyLegalForm }}</span>
+                        @endif
+                    </h1>
+                    @if($companyTagline)
+                        <p style="font-size: 11px; color: var(--muted); font-style: italic; margin-top: 1px;">{{ $companyTagline }}</p>
+                    @endif
+                    <p class="pole" style="font-weight: 600; color: var(--brand);">{{ $invoice->domain?->name ?? 'Commercial & Multiservices' }}</p>
+                    @if($companyAddress)
+                        <p>{{ $companyAddress }}@if($companyPostalBox) • {{ $companyPostalBox }}@endif</p>
+                    @endif
+                    @if($companyPhone || $companyEmail)
+                        <p>
+                            @if($companyPhone)Tél : {{ $companyPhone }}@endif
+                            @if($companyPhone && $companyEmail) • @endif
+                            @if($companyEmail)Email : {{ $companyEmail }}@endif
+                        </p>
+                    @endif
+                    @php
+                        $fiscalBadges = array_filter([
+                            $companyRccm ? 'RCCM : ' . $companyRccm : null,
+                            $companyCc ? 'CC / NIF : ' . $companyCc : null,
+                            $companyTaxRegime ? 'Régime : ' . $companyTaxRegime : null,
+                            $companyTaxCenter ? 'Centre : ' . $companyTaxCenter : null,
+                        ]);
+                    @endphp
+                    @if(count($fiscalBadges))
+                        <p style="font-size: 11.5px; color: var(--muted); font-weight: 500;">{{ implode(' • ', $fiscalBadges) }}</p>
+                    @endif
                 </div>
             </div>
             <div class="doc-title">
@@ -323,9 +378,9 @@
                         @endif
                     </td>
                     <td class="text-center num" data-label="Quantité">{{ $item->quantity }}</td>
-                    <td class="text-right num" data-label="Prix unitaire">{{ number_format($item->unit_price, 0, ',', ' ') }} F</td>
-                    <td class="text-right num" data-label="Remise">{{ $item->discount > 0 ? number_format($item->discount, 0, ',', ' ') . ' F' : '—' }}</td>
-                    <td class="text-right num" data-label="Total HT" style="font-weight: 600;">{{ number_format(($item->quantity * $item->unit_price) - $item->discount, 0, ',', ' ') }} FCFA</td>
+                    <td class="text-right num" data-label="Prix unitaire">{{ number_format($item->unit_price, 0, ',', ' ') }} {{ $currency }}</td>
+                    <td class="text-right num" data-label="Remise">{{ $item->discount > 0 ? number_format($item->discount, 0, ',', ' ') . ' ' . $currency : '—' }}</td>
+                    <td class="text-right num" data-label="Total HT" style="font-weight: 600;">{{ number_format(($item->quantity * $item->unit_price) - $item->discount, 0, ',', ' ') }} {{ $currency }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -334,40 +389,48 @@
         {{-- Règlement & totaux --}}
         <div class="totals-section">
             <div class="payment-info">
-                <h4>Règlement</h4>
-                <p><strong>Mobile Money :</strong> +225 07 00 00 00 00 (Wave, Orange, MTN)</p>
-                <p><strong>Banque :</strong> {{ \App\Models\Setting::get('company_bank_name', 'Société Générale Côte d\'Ivoire (SGCI)') }}</p>
-                <p><strong>RIB / IBAN :</strong> <span class="mono">{{ \App\Models\Setting::get('company_bank_rib', 'CI034 01001 012345678901 45') }}</span></p>
-                <p><strong>Titulaire :</strong> {{ \App\Models\Setting::get('company_name', 'GROUPE IVOSPHERE') }} {{ \App\Models\Setting::get('company_legal_form', 'SARL') }}</p>
+                <h4>Règlement & Coordonnées Bancaires</h4>
+                @if($companyBankName)
+                    <p><strong>Banque :</strong> {{ $companyBankName }}</p>
+                @endif
+                @if($companyBankRib)
+                    <p><strong>RIB / IBAN :</strong> <span class="mono">{{ $companyBankRib }}</span></p>
+                @endif
+                @if($companyMobileMoney)
+                    <p><strong>Mobile Money :</strong> {{ $companyMobileMoney }}</p>
+                @elseif($companyPhone)
+                    <p><strong>Mobile Money / Tél :</strong> {{ $companyPhone }}</p>
+                @endif
+                <p><strong>Titulaire :</strong> {{ $companyName }} @if($companyLegalForm){{ $companyLegalForm }}@endif @if($companyCapital)(au capital de {{ $companyCapital }})@endif</p>
                 <p class="hint">Indiquez la référence <strong>{{ $invoice->reference }}</strong> dans le libellé de votre paiement.</p>
             </div>
 
             <table class="totals-table">
                 <tr>
                     <td>Sous-total HT</td>
-                    <td>{{ number_format($invoice->subtotal, 0, ',', ' ') }} FCFA</td>
+                    <td>{{ number_format($invoice->subtotal, 0, ',', ' ') }} {{ $currency }}</td>
                 </tr>
                 @if($invoice->discount > 0)
                 <tr class="discount">
                     <td>Remise commerciale</td>
-                    <td>− {{ number_format($invoice->discount, 0, ',', ' ') }} FCFA</td>
+                    <td>− {{ number_format($invoice->discount, 0, ',', ' ') }} {{ $currency }}</td>
                 </tr>
                 @endif
                 <tr>
                     <td>TVA ({{ $invoice->tax_amount > 0 ? '18 %' : '0 %' }})</td>
-                    <td>{{ number_format($invoice->tax_amount, 0, ',', ' ') }} FCFA</td>
+                    <td>{{ number_format($invoice->tax_amount, 0, ',', ' ') }} {{ $currency }}</td>
                 </tr>
                 <tr class="grand-total">
                     <td>Total TTC</td>
-                    <td>{{ number_format($invoice->total, 0, ',', ' ') }} FCFA</td>
+                    <td>{{ number_format($invoice->total, 0, ',', ' ') }} {{ $currency }}</td>
                 </tr>
                 <tr class="paid-row">
                     <td>Déjà réglé</td>
-                    <td>− {{ number_format($invoice->paid_amount, 0, ',', ' ') }} FCFA</td>
+                    <td>− {{ number_format($invoice->paid_amount, 0, ',', ' ') }} {{ $currency }}</td>
                 </tr>
                 <tr class="due-row">
                     <td>Reste à payer</td>
-                    <td style="color: {{ $invoice->remaining > 0 ? 'var(--bad)' : 'var(--ok)' }};">{{ number_format($invoice->remaining, 0, ',', ' ') }} FCFA</td>
+                    <td style="color: {{ $invoice->remaining > 0 ? 'var(--bad)' : 'var(--ok)' }};">{{ number_format($invoice->remaining, 0, ',', ' ') }} {{ $currency }}</td>
                 </tr>
             </table>
         </div>
@@ -391,7 +454,7 @@
                         <td class="mono cell-title">{{ $pay->reference }}</td>
                         <td data-label="Date">{{ $pay->date->format('d/m/Y') }}</td>
                         <td data-label="Mode" style="text-transform: capitalize;">{{ str_replace('_', ' ', $pay->method) }}</td>
-                        <td class="text-right num" data-label="Montant" style="font-weight: 600; color: var(--ok);">{{ number_format($pay->amount, 0, ',', ' ') }} FCFA</td>
+                        <td class="text-right num" data-label="Montant" style="font-weight: 600; color: var(--ok);">{{ number_format($pay->amount, 0, ',', ' ') }} {{ $currency }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -402,13 +465,38 @@
         {{-- Signatures --}}
         <div class="signatures">
             <div class="signature-box">
-                <div class="sign-title">Pour {{ \App\Models\Setting::get('company_name', 'IVOSPHERE GROUP') }}</div>
-                <div class="sign-hint">Direction financière et comptable (cachet)</div>
+                <div class="sign-title">Pour {{ $companyName }} @if($companyLegalForm){{ $companyLegalForm }}@endif</div>
+                <div class="sign-hint">Direction financière et comptable (cachet et signature)</div>
             </div>
             <div class="signature-box">
                 <div class="sign-title">Réception client</div>
-                <div class="sign-hint">Date, nom et signature</div>
+                <div class="sign-hint">Date, nom et signature client</div>
             </div>
+        </div>
+
+        {{-- Pied de page officiel avec mentions légales complètes enregistrées en paramètres --}}
+        <div style="margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 10px; color: var(--muted); text-align: center; line-height: 1.5; break-inside: avoid;">
+            <p style="margin: 0; font-weight: 600; color: var(--ink);">
+                {{ $companyName }}
+                @if($companyLegalForm) {{ $companyLegalForm }} @endif
+                @if($companyCapital) au capital de {{ $companyCapital }} @endif
+                @if($companyAddress) • Siège social : {{ $companyAddress }} @endif
+                @if($companyPostalBox) ({{ $companyPostalBox }}) @endif
+            </p>
+            @php
+                $footerLegal = array_filter([
+                    $companyRccm ? 'RCCM : ' . $companyRccm : null,
+                    $companyCc ? 'CC / NIF : ' . $companyCc : null,
+                    $companyTaxRegime ? 'Régime fiscal : ' . $companyTaxRegime : null,
+                    $companyTaxCenter ? 'Centre des impôts : ' . $companyTaxCenter : null,
+                    $companyCnps ? 'N° CNPS : ' . $companyCnps : null,
+                    $companyPhone ? 'Tél : ' . $companyPhone : null,
+                    $companyEmail ? 'Email : ' . $companyEmail : null,
+                ]);
+            @endphp
+            @if(count($footerLegal))
+                <p style="margin: 3px 0 0 0;">{{ implode(' • ', $footerLegal) }}</p>
+            @endif
         </div>
     </div>
 </body>

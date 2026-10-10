@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class SettingController extends Controller
@@ -38,6 +39,8 @@ class SettingController extends Controller
             'company_phone' => ['required', 'string', 'max:50'],
             'company_address' => ['required', 'string', 'max:255'],
             'company_postal_box' => ['nullable', 'string', 'max:100'],
+            'company_logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
+            'delete_logo' => ['nullable', 'boolean'],
 
             // Codes Administratifs & Identifiants Fiscaux
             'company_rccm' => ['nullable', 'string', 'max:100'],
@@ -46,15 +49,33 @@ class SettingController extends Controller
             'company_tax_center' => ['nullable', 'string', 'max:150'],
             'company_cnps' => ['nullable', 'string', 'max:100'],
 
-            // Coordonnées Bancaires Officielles
+            // Coordonnées Bancaires Officielles & Règlements
             'company_bank_name' => ['nullable', 'string', 'max:150'],
             'company_bank_rib' => ['nullable', 'string', 'max:150'],
+            'company_mobile_money' => ['nullable', 'string', 'max:150'],
 
             // Paramètres Financiers
             'currency' => ['required', 'string', 'max:20'],
             'default_tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'fiscal_year' => ['required', 'string', 'max:20'],
         ]);
+
+        if ($request->boolean('delete_logo')) {
+            $oldLogo = Setting::get('company_logo');
+            if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
+                Storage::disk('public')->delete($oldLogo);
+            }
+            Setting::set('company_logo', '', 'general', 'string');
+        } elseif ($request->hasFile('company_logo')) {
+            $oldLogo = Setting::get('company_logo');
+            if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
+                Storage::disk('public')->delete($oldLogo);
+            }
+            $logoPath = $request->file('company_logo')->store('settings', 'public');
+            Setting::set('company_logo', $logoPath, 'general', 'string');
+        }
+
+        unset($validated['company_logo'], $validated['delete_logo']);
 
         foreach ($validated as $key => $value) {
             $group = in_array($key, ['currency', 'default_tax_rate', 'fiscal_year']) ? 'finance' : 'general';

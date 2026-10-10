@@ -35,8 +35,17 @@
                             <p class="text-xs font-mono text-[#64748B] mt-1">{{ $invoice->reference }}</p>
                         </div>
                         <div class="sm:text-right text-xs">
-                            <p class="font-bold text-[#0B0F14] text-sm">IVOSPHERE ERP</p>
-                            <p class="text-[#64748B]">Abidjan, Côte d'Ivoire</p>
+                            <p class="font-bold text-[#0B0F14] text-sm">{{ \App\Models\Setting::get('company_name', 'IVOSPHERE GROUP') }} @if(\App\Models\Setting::get('company_legal_form')) <span class="text-xs text-slate-500 font-normal">{{ \App\Models\Setting::get('company_legal_form') }}</span> @endif</p>
+                            @if(\App\Models\Setting::get('company_address'))
+                                <p class="text-[#64748B]">{{ \App\Models\Setting::get('company_address') }}</p>
+                            @endif
+                            @if(\App\Models\Setting::get('company_phone') || \App\Models\Setting::get('company_email'))
+                                <p class="text-[#64748B]">
+                                    {{ \App\Models\Setting::get('company_phone') }}
+                                    @if(\App\Models\Setting::get('company_phone') && \App\Models\Setting::get('company_email')) • @endif
+                                    {{ \App\Models\Setting::get('company_email') }}
+                                </p>
+                            @endif
                             <span class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F5F7FA] border border-[#E2E8F0] text-[#0B0F14]">
                                 Statut : {{ str_replace('_', ' ', ucfirst($invoice->status)) }}
                             </span>
