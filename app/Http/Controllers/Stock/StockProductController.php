@@ -39,6 +39,120 @@ class StockProductController extends Controller
         return view('stock.products.create_edit', compact('categories', 'brands', 'suppliers', 'domains', 'warehouses'));
     }
 
+    public function bulkCreate()
+    {
+        $categories = Category::orderBy('name')->get();
+        $brands = Brand::orderBy('name')->get();
+        $suppliers = Supplier::orderBy('name')->get();
+        $domains = Domain::active()->orderBy('name')->get();
+        $warehouses = Warehouse::active()->orderBy('name')->get();
+        $defaultTaxRate = (float) Setting::get('default_tax_rate', 0);
+
+        return view('stock.products.bulk_create', compact('categories', 'brands', 'suppliers', 'domains', 'warehouses', 'defaultTaxRate'));
+    }
+
+    public function bulkStore(Request $request)
+    {
+        $validated = $request->validate([
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'domain_id' => 'nullable|exists:domains,id',
+            'category_id' => 'nullable|exists:categories,id',
+            'brand_id' => 'nullable|exists:brands,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'products' => 'required|array|min:1',
+            'products.*.name' => 'required|string|max:255',
+            'products.*.sku' => 'nullable|string|max:100',
+            'products.*.purchase_price' => 'nullable|numeric|min:0',
+            'products.*.selling_price' => 'required|numeric|min:0',
+            'products.*.initial_quantity' => 'nullable|integer|min:0',
+            'products.*.min_stock' => 'nullable|integer|min:0',
+            'products.*.unit' => 'nullable|string|max:50',
+            'products.*.domain_id' => 'nullable|exists:domains,id',
+            'products.*.category_id' => 'nullable|exists:categories,id',
+        ]);
+
+        $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
+        $globalDomainId = $validated['domain_id'] ?? null;
+        $globalCategoryId = $validated['category_id'] ?? null;
+        $globalBrandId = $validated['brand_id'] ?? null;
+        $globalSupplierId = $validated['supplier_id'] ?? null;
+        $defaultTaxRate = (float) Setting::get('default_tax_rate', 0);
+        $createdCount = 0;
+
+        DB::transaction(function () use ($validated, $warehouse, $globalDomainId, $globalCategoryId, $globalBrandId, $globalSupplierId, $defaultTaxRate, &$createdCount) {
+            foreach ($validated['products'] as $item) {
+                $name = trim($item['name'] ?? '');
+                if (empty($name)) {
+                    continue;
+                }
+
+                $sku = ! empty($item['sku']) ? trim($item['sku']) : 'PRD-'.strtoupper(Str::random(6));
+                while (Product::where('sku', $sku)->exists()) {
+                    $sku = 'PRD-'.strtoupper(Str::random(6));
+                }
+
+                $domainId = $item['domain_id'] ?? $globalDomainId;
+                $categoryId = $item['category_id'] ?? $globalCategoryId;
+                $brandId = $globalBrandId;
+                $supplierId = $globalSupplierId;
+                $purchasePrice = (float) ($item['purchase_price'] ?? 0);
+                $sellingPrice = (float) ($item['selling_price'] ?? 0);
+                $quantity = (int) ($item['initial_quantity'] ?? 0);
+                $minStock = (int) ($item['min_stock'] ?? 0);
+                $unit = ! empty($item['unit']) ? trim($item['unit']) : 'pièce';
+
+                $product = Product::create([
+                    'name' => $name,
+                    'sku' => $sku,
+                    'barcode' => Product::generateEan13(),
+                    'domain_id' => $domainId,
+                    'category_id' => $categoryId,
+                    'brand_id' => $brandId,
+                    'supplier_id' => $supplierId,
+                    'purchase_price' => $purchasePrice,
+                    'selling_price' => $sellingPrice,
+                    'tax_rate' => $defaultTaxRate,
+                    'min_stock' => $minStock,
+                    'unit' => $unit,
+                    'is_active' => true,
+                ]);
+
+                WarehouseStock::create([
+                    'warehouse_id' => $warehouse->id,
+                    'product_id' => $product->id,
+                    'physical_quantity' => $quantity,
+                    'reserved_quantity' => 0,
+                    'incoming_quantity' => 0,
+                ]);
+
+                if ($quantity > 0) {
+                    StockMovement::create([
+                        'warehouse_id' => $warehouse->id,
+                        'product_id' => $product->id,
+                        'domain_id' => $product->domain_id,
+                        'user_id' => auth()->id(),
+                        'type' => 'entree',
+                        'reason_motif' => 'stock_initial',
+                        'quantity' => $quantity,
+                        'stock_before' => 0,
+                        'stock_after' => $quantity,
+                        'unit_cost' => $purchasePrice ?: ($sellingPrice * 0.7),
+                        'reference' => 'INIT-'.$product->sku,
+                        'date' => now(),
+                        'notes' => "Création groupée d'articles dans l'entrepôt {$warehouse->name}",
+                    ]);
+                }
+
+                $createdCount++;
+            }
+        });
+
+        ActivityLogger::log('bulk_created_stock_products', "Création groupée de {$createdCount} article(s) dans l'entrepôt {$warehouse->name}", $warehouse);
+
+        return redirect()->route('stock.index', ['tab' => 'disponibilite'])
+            ->with('success', "{$createdCount} nouveau(x) produit(s) ont été créés avec succès et intégrés à l'entrepôt \"{$warehouse->name}\".");
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -253,15 +367,56 @@ class StockProductController extends Controller
     {
         $name = $product->name;
 
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
-        }
-
-        $product->delete();
+        DB::transaction(function () use ($product) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+            $product->warehouseStocks()->delete();
+            $product->movements()->delete();
+            $product->batches()->delete();
+            $product->delete();
+        });
 
         ActivityLogger::log('deleted_stock_product', 'Suppression de l\'article '.$name.' des stocks', null);
 
         return redirect()->route('stock.index', ['tab' => 'disponibilite'])->with('success', 'Article "'.$name.'" supprimé des stocks.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'product_ids' => 'required|array|min:1',
+            'product_ids.*' => 'required|integer|exists:products,id',
+        ]);
+
+        $products = Product::whereIn('id', $validated['product_ids'])->get();
+        $count = $products->count();
+
+        if ($count === 0) {
+            return redirect()->route('stock.index', ['tab' => 'disponibilite'])->with('error', 'Aucun produit sélectionné pour la suppression.');
+        }
+
+        $names = $products->pluck('name')->take(5)->implode(', ');
+        if ($count > 5) {
+            $names .= ' et '.($count - 5).' autres';
+        }
+
+        DB::transaction(function () use ($products) {
+            foreach ($products as $product) {
+                if ($product->image) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $product->warehouseStocks()->delete();
+                $product->movements()->delete();
+                $product->batches()->delete();
+                $product->delete();
+            }
+        });
+
+        ActivityLogger::log('bulk_deleted_stock_products', "Suppression groupée de {$count} articles : {$names}", null);
+
+        return redirect()->route('stock.index', ['tab' => 'disponibilite'])
+            ->with('success', "{$count} article(s) supprimé(s) des stocks avec succès.");
     }
 
     /**

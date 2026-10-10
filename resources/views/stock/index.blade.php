@@ -1,9 +1,21 @@
 <x-layouts.app title="Gestion des Stocks & Entrepôts (WMS)">
     <div x-data="{ 
-        activeTab: 'synthese',
+        activeTab: '{{ request('tab', 'synthese') }}',
         showMoreKpis: false,
         mobileSearch: '',
-        mobileFilterStatus: 'all'
+        mobileFilterStatus: 'all',
+        selectedProductIds: [],
+        allProductIds: {{ Js::from($products->pluck('id')->values()) }},
+        get isAllSelected() {
+            return this.allProductIds.length > 0 && this.selectedProductIds.length === this.allProductIds.length;
+        },
+        toggleSelectAll() {
+            if (this.isAllSelected) {
+                this.selectedProductIds = [];
+            } else {
+                this.selectedProductIds = [...this.allProductIds];
+            }
+        }
     }" class="space-y-4 sm:space-y-6 pb-12">
 
         {{-- Flash Feedback --}}
@@ -68,8 +80,14 @@
                     <span>Mouvement</span>
                 </a>
 
+                <a href="{{ route('stock.products.bulk-create') }}"
+                   class="h-10 px-3.5 rounded-xl border border-[#E2E8F0] bg-white text-xs font-semibold text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF] hover:border-[#0066FF] transition flex items-center justify-center gap-1.5 shadow-2xs">
+                    <svg class="h-4 w-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    <span>Ajout Groupé</span>
+                </a>
+
                 <a href="{{ route('stock.products.create') }}"
-                   class="h-10 px-4 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white text-xs font-medium transition flex items-center justify-center gap-1.5 shadow-xs">
+                   class="h-10 px-4 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
@@ -803,10 +821,48 @@
                             <span>Imprimer Catalogue PDF (A4 Paysage)</span>
                         </a>
 
+                        <a href="{{ route('stock.products.bulk-create') }}" class="inline-flex items-center gap-1.5 rounded-xl border border-[#0066FF]/30 bg-blue-50/60 px-3.5 py-2 text-xs font-bold text-[#0066FF] hover:bg-[#0066FF] hover:text-white transition shadow-2xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            <span>+ Ajout Groupé (En lot)</span>
+                        </a>
+
                         <a href="{{ route('stock.products.create') }}" class="inline-flex items-center gap-1.5 rounded-xl bg-[#0066FF] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 transition shadow-xs">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m8-8H4"/></svg>
                             <span>+ Nouveau Produit</span>
                         </a>
+                    </div>
+                </div>
+
+                {{-- Barre d'actions groupées si des produits sont sélectionnés --}}
+                <div 
+                    x-show="selectedProductIds.length > 0" 
+                    x-cloak 
+                    class="bg-[#0B0F14] text-white px-5 py-3 border-b border-slate-800 flex items-center justify-between gap-3 animate-in fade-in duration-200"
+                >
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[#0066FF] text-xs font-bold font-mono text-white" x-text="selectedProductIds.length"></span>
+                        <span class="text-xs font-medium">
+                            <strong x-text="selectedProductIds.length"></strong> article(s) sélectionné(s) dans le catalogue
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-2.5">
+                        <button 
+                            type="button" 
+                            @click="selectedProductIds = []" 
+                            class="px-3 py-1 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                        >
+                            Désélectionner tout
+                        </button>
+
+                        <button 
+                            type="button" 
+                            @click="$dispatch('open-bulk-delete-products', { product_ids: selectedProductIds })" 
+                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>Supprimer la sélection (<span x-text="selectedProductIds.length"></span>)</span>
+                        </button>
                     </div>
                 </div>
 
@@ -815,6 +871,15 @@
                     <table class="w-full text-left text-xs">
                         <thead class="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                             <tr>
+                                <th class="w-10 px-3 py-3.5 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        @change="toggleSelectAll()" 
+                                        :checked="isAllSelected"
+                                        class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF] cursor-pointer"
+                                        title="Tout sélectionner / désélectionner"
+                                    >
+                                </th>
                                 <th class="px-5 py-3.5">Référence / Code-Barres</th>
                                 <th class="px-5 py-3.5">Produit & Marque</th>
                                 <th class="px-5 py-3.5">Domaine</th>
@@ -829,7 +894,15 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach($products as $product)
-                                <tr class="hover:bg-slate-50/70">
+                                <tr class="hover:bg-slate-50/70 transition-colors" :class="{ 'bg-blue-50/40': selectedProductIds.includes({{ $product->id }}) }">
+                                    <td class="w-10 px-3 py-3.5 text-center">
+                                        <input 
+                                            type="checkbox" 
+                                            :value="{{ $product->id }}" 
+                                            x-model.number="selectedProductIds"
+                                            class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF] cursor-pointer"
+                                        >
+                                    </td>
                                     <td class="px-5 py-3.5 font-mono text-[11px] font-semibold text-slate-700">
                                         <div class="text-[#0066FF] font-bold">{{ $product->sku }}</div>
                                         <div class="text-[10px] text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
@@ -989,6 +1062,21 @@
                                             <a href="{{ route('stock.products.edit', $product) }}" class="p-1.5 rounded-lg text-slate-500 hover:text-[#0B0F14] hover:bg-slate-100 transition border border-transparent hover:border-slate-200" title="Modifier la fiche article">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                             </a>
+
+                                            {{-- Bouton Supprimer Article Individuel --}}
+                                            <button 
+                                                type="button" 
+                                                @click="$dispatch('open-delete-product', { 
+                                                    id: {{ $product->id }}, 
+                                                    name: '{{ addslashes($product->name) }}', 
+                                                    sku: '{{ $product->sku }}', 
+                                                    current_stock: {{ $product->current_stock }} 
+                                                })"
+                                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition border border-transparent hover:border-rose-200" 
+                                                title="Supprimer cet article"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -1082,9 +1170,12 @@
 
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center justify-between gap-1.5">
-                                            <span class="font-mono text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                                                {{ $product->sku }}
-                                            </span>
+                                            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                                <input type="checkbox" :value="{{ $product->id }}" x-model.number="selectedProductIds" class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
+                                                <span class="font-mono text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                                                    {{ $product->sku }}
+                                                </span>
+                                            </label>
                                             @if($availStock <= 0)
                                                 <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200/60 shrink-0">
                                                     <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
@@ -1204,6 +1295,21 @@
                                             <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                             <span>Fiche</span>
                                         </a>
+
+                                        <button 
+                                            type="button" 
+                                            @click="$dispatch('open-delete-product', { 
+                                                id: {{ $product->id }}, 
+                                                name: '{{ addslashes($product->name) }}', 
+                                                sku: '{{ $product->sku }}', 
+                                                current_stock: {{ $product->current_stock }} 
+                                            })"
+                                            class="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:underline"
+                                            title="Supprimer cet article"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <span>Suppr.</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1676,4 +1782,7 @@
 
     {{-- Modal Prise de Photo Directe & Upload Image Produit --}}
     <x-product-quick-photo-modal />
+
+    {{-- Modal de Suppression Produit Unitaire & Groupée --}}
+    <x-delete-product-modal />
 </x-layouts.app>

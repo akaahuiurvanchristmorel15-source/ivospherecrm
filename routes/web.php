@@ -368,6 +368,9 @@ Route::middleware('auth')->group(function () {
         Route::post('revenue-booster/secure-stock', [StockDashboardController::class, 'secureStock'])->name('revenue-booster.secure-stock');
 
         Route::resource('warehouses', WarehouseController::class);
+        Route::get('products/bulk-create', [StockProductController::class, 'bulkCreate'])->name('products.bulk-create');
+        Route::post('products/bulk-store', [StockProductController::class, 'bulkStore'])->name('products.bulk-store');
+        Route::post('products/bulk-destroy', [StockProductController::class, 'bulkDestroy'])->name('products.bulk-destroy');
         Route::get('products/print-catalog', [StockProductController::class, 'printCatalog'])->name('products.print-catalog');
         Route::post('products/{product}/quick-image', [StockProductController::class, 'updateImage'])->name('products.quick-image');
         Route::get('products/{product}/qr-download', [StockProductController::class, 'downloadQr'])->name('products.qr-download');
