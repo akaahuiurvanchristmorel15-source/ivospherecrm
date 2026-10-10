@@ -175,7 +175,7 @@
 
                     <div>
                         <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Taux de TVA (%)</label>
-                        <input type="number" step="0.01" name="tax_rate" value="{{ old('tax_rate', $product->tax_rate ?? '18') }}" class="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:border-[#0066FF] text-xs transition">
+                        <input type="number" step="0.01" name="tax_rate" value="{{ old('tax_rate', $product->tax_rate ?? \App\Models\Setting::get('default_tax_rate', 0)) }}" class="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:border-[#0066FF] text-xs transition">
                     </div>
                 </div>
             </x-card>

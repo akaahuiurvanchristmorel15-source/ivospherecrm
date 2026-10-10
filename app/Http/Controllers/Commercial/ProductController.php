@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Domain;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Services\ActivityLogger;
 use App\Services\QrCodeService;
 use Illuminate\Http\Request;
@@ -53,7 +54,7 @@ class ProductController extends Controller
 
         $validated['is_active'] = $request->has('is_active');
         $validated['purchase_price'] = $validated['purchase_price'] ?? 0;
-        $validated['tax_rate'] = $validated['tax_rate'] ?? 18;
+        $validated['tax_rate'] = $validated['tax_rate'] ?? (float) Setting::get('default_tax_rate', 0);
         $validated['min_stock'] = $validated['min_stock'] ?? 0;
         $validated['unit'] = ! empty($validated['unit']) ? $validated['unit'] : 'pièce';
 
@@ -102,7 +103,7 @@ class ProductController extends Controller
 
         $validated['is_active'] = $request->has('is_active');
         $validated['purchase_price'] = $validated['purchase_price'] ?? 0;
-        $validated['tax_rate'] = $validated['tax_rate'] ?? 18;
+        $validated['tax_rate'] = $validated['tax_rate'] ?? (float) Setting::get('default_tax_rate', 0);
         $validated['min_stock'] = $validated['min_stock'] ?? 0;
         $validated['unit'] = ! empty($validated['unit']) ? $validated['unit'] : 'pièce';
 

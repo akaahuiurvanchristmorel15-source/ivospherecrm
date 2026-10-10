@@ -2,6 +2,7 @@
     <x-slot:title>{{ isset($invoice) ? 'Modifier' : 'Nouvelle' }} Facture — IVOSPHERE ERP</x-slot>
 
     @php
+        $defaultTaxRate = (float) \App\Models\Setting::get('default_tax_rate', 0);
         $initialItems = [];
         if (old('items')) {
             foreach (old('items') as $oldItem) {
@@ -10,7 +11,7 @@
                     'description' => $oldItem['description'] ?? '',
                     'quantity' => (float) ($oldItem['quantity'] ?? 1),
                     'unit_price' => (float) ($oldItem['unit_price'] ?? 0),
-                    'tax_rate' => isset($oldItem['tax_rate']) && $oldItem['tax_rate'] !== '' ? (float) $oldItem['tax_rate'] : 18,
+                    'tax_rate' => isset($oldItem['tax_rate']) && $oldItem['tax_rate'] !== '' ? (float) $oldItem['tax_rate'] : $defaultTaxRate,
                     'discount' => (float) ($oldItem['discount'] ?? 0),
                 ];
             }
@@ -21,7 +22,7 @@
                     'description' => $invItem->description ?? '',
                     'quantity' => (float) $invItem->quantity,
                     'unit_price' => (float) $invItem->unit_price,
-                    'tax_rate' => (float) ($invItem->tax_rate ?? 18),
+                    'tax_rate' => (float) ($invItem->tax_rate ?? $defaultTaxRate),
                     'discount' => (float) ($invItem->discount ?? 0),
                 ];
             }
@@ -31,17 +32,17 @@
                 'description' => '',
                 'quantity' => 1,
                 'unit_price' => 0,
-                'tax_rate' => 18,
+                'tax_rate' => $defaultTaxRate,
                 'discount' => 0,
             ];
         }
 
-        $productsData = ($products ?? collect())->map(function($p) {
+        $productsData = ($products ?? collect())->map(function($p) use ($defaultTaxRate) {
             return [
                 'id' => $p->id,
                 'name' => $p->name,
                 'price' => (float) $p->selling_price,
-                'tax_rate' => (float) ($p->tax_rate ?? 18),
+                'tax_rate' => (float) ($p->tax_rate ?? $defaultTaxRate),
                 'sku' => $p->sku ?? '',
             ];
         })->values();
@@ -303,7 +304,7 @@
                                     min="0" 
                                     x-model.number="item.tax_rate" 
                                     :name="'items['+index+'][tax_rate]'" 
-                                    placeholder="18" 
+                                    placeholder="{{ $defaultTaxRate }}" 
                                     class="w-full min-h-[36px] px-2 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] text-xs text-left sm:text-right focus:outline-none focus:border-[#0066FF] transition font-mono"
                                 />
                             </div>
@@ -408,7 +409,7 @@
                         description: '',
                         quantity: 1,
                         unit_price: 0,
-                        tax_rate: 18,
+                        tax_rate: {{ $defaultTaxRate }},
                         discount: 0
                     });
                 },

@@ -42,7 +42,7 @@ class Product extends Model
                 $product->selling_price = 0;
             }
             if ($product->tax_rate === null) {
-                $product->tax_rate = 18;
+                $product->tax_rate = (float) Setting::get('default_tax_rate', 0);
             }
             if ($product->min_stock === null) {
                 $product->min_stock = 0;

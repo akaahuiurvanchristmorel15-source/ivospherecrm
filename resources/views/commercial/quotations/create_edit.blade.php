@@ -3,19 +3,20 @@
 
     @php
         $isEdit = isset($quotation);
+        $defaultTaxRate = (float) \App\Models\Setting::get('default_tax_rate', 0);
 
         // Préparation des lignes d'articles (avec conservation en cas d'erreur de validation)
         $rawOldItems = old('items');
         if (!empty($rawOldItems) && is_array($rawOldItems)) {
             $initialItems = array_values($rawOldItems);
         } elseif ($isEdit && $quotation->items->isNotEmpty()) {
-            $initialItems = $quotation->items->map(function ($item) {
+            $initialItems = $quotation->items->map(function ($item) use ($defaultTaxRate) {
                 return [
                     'product_id'  => $item->product_id,
                     'description' => $item->description,
                     'quantity'    => (float) $item->quantity,
                     'unit_price'  => (float) $item->unit_price,
-                    'tax_rate'    => (float) $item->tax_rate,
+                    'tax_rate'    => (float) ($item->tax_rate ?? $defaultTaxRate),
                     'discount'    => (float) ($item->discount ?? 0),
                 ];
             })->toArray();
@@ -26,7 +27,7 @@
                     'description' => '',
                     'quantity'    => 1,
                     'unit_price'  => 0,
-                    'tax_rate'    => 18,
+                    'tax_rate'    => $defaultTaxRate,
                     'discount'    => 0,
                 ]
             ];
@@ -271,7 +272,7 @@
                                     max="100" 
                                     x-model.number="item.tax_rate" 
                                     :name="'items['+index+'][tax_rate]'" 
-                                    placeholder="18" 
+                                    placeholder="{{ $defaultTaxRate }}" 
                                     class="w-full px-2 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] text-xs text-right font-mono focus:outline-none focus:border-[#0066FF] transition"
                                 >
                             </div>
@@ -400,7 +401,7 @@
                             this.items[index].description = p.name;
                         }
                         this.items[index].unit_price = parseFloat(p.selling_price) || 0;
-                        this.items[index].tax_rate = parseFloat(p.tax_rate ?? 18) || 0;
+                        this.items[index].tax_rate = parseFloat(p.tax_rate ?? {{ $defaultTaxRate }}) || 0;
                     }
                 },
 
@@ -410,7 +411,7 @@
                         description: '',
                         quantity: 1,
                         unit_price: 0,
-                        tax_rate: 18,
+                        tax_rate: {{ $defaultTaxRate }},
                         discount: 0,
                     });
                 },

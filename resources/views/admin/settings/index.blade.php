@@ -51,7 +51,7 @@
             'blocks' => [
                 ['label' => null, 'grid' => 'sm:grid-cols-3', 'fields' => [
                     ['currency', 'Devise du système', 'text', 'FCFA', '', '', true, true, null],
-                    ['default_tax_rate', 'TVA standard (%)', 'number', 18, '', '', true, true, null],
+                    ['default_tax_rate', 'TVA standard (%)', 'number', 0, '', '', true, true, 'Taux de TVA par défaut appliqué aux nouveaux articles et devis/factures.'],
                     ['fiscal_year', 'Exercice fiscal actif', 'text', now()->year, '', '', true, true, null],
                 ]],
             ],
@@ -182,6 +182,17 @@
                                                    @if($type === 'number') min="0" max="100" inputmode="numeric" @endif
                                                    class="{{ $in }} {{ $mono ? 'font-mono' : '' }}">
                                             @if($hint) <p class="mt-1 text-[11px] text-[#64748B]">{{ $hint }}</p> @endif
+                                            @if($name === 'default_tax_rate')
+                                                <div class="mt-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
+                                                    <label class="flex items-start gap-2 cursor-pointer select-none">
+                                                        <input type="checkbox" name="apply_tax_to_products" value="1" class="mt-0.5 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
+                                                        <span class="text-xs text-[#0B0F14] font-medium leading-tight">
+                                                            Mettre à jour tous les articles existants avec ce taux
+                                                            <span class="block text-[11px] font-normal text-slate-500 mt-0.5">Applique immédiatement cette nouvelle TVA à l'ensemble du catalogue.</span>
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>

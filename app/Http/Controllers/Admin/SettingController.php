@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Domain;
+use App\Models\Product;
 use App\Models\Setting;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -58,6 +59,7 @@ class SettingController extends Controller
             'currency' => ['required', 'string', 'max:20'],
             'default_tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'fiscal_year' => ['required', 'string', 'max:20'],
+            'apply_tax_to_products' => ['nullable', 'boolean'],
         ]);
 
         if ($request->boolean('delete_logo')) {
@@ -75,7 +77,8 @@ class SettingController extends Controller
             Setting::set('company_logo', $logoPath, 'general', 'string');
         }
 
-        unset($validated['company_logo'], $validated['delete_logo']);
+        $applyToProducts = $request->boolean('apply_tax_to_products');
+        unset($validated['company_logo'], $validated['delete_logo'], $validated['apply_tax_to_products']);
 
         foreach ($validated as $key => $value) {
             $group = in_array($key, ['currency', 'default_tax_rate', 'fiscal_year']) ? 'finance' : 'general';
@@ -84,13 +87,22 @@ class SettingController extends Controller
             Setting::set($key, $value ?? '', $group, $type);
         }
 
+        if ($applyToProducts) {
+            Product::query()->update(['tax_rate' => (float) $validated['default_tax_rate']]);
+        }
+
         ActivityLogger::log(
             action: 'mise_a_jour_parametres',
             description: 'A mis à jour les paramètres généraux et financiers de l\'ERP'
         );
 
+        $successMessage = 'Les paramètres système ont été enregistrés avec succès.';
+        if ($applyToProducts) {
+            $successMessage .= ' Le taux de TVA de tous les articles du catalogue a été mis à jour à '.(float) $validated['default_tax_rate'].'%.';
+        }
+
         return redirect()->route('admin.settings.index')
-            ->with('success', 'Les paramètres système ont été enregistrés avec succès.');
+            ->with('success', $successMessage);
     }
 
     /**
