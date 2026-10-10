@@ -98,16 +98,20 @@ class StockDashboardController extends Controller
         $totalProductsCount = $products->count();
         $totalStockItems = $products->sum('current_stock');
 
-        $availableStockValue = $products->sum(function (Product $p) {
-            return max(0, $p->available_stock) * (float) ($p->cost_price ?: ($p->unit_price * 0.65));
+        $availableStockValue = (float) $products->sum(function (Product $p) {
+            $cost = (float) ($p->purchase_price > 0 ? $p->purchase_price : ($p->selling_price * 0.65));
+
+            return max(0, (int) $p->available_stock) * $cost;
         });
 
-        $potentialSellingValue = $products->sum(function (Product $p) {
-            return max(0, $p->current_stock) * (float) $p->unit_price;
+        $potentialSellingValue = (float) $products->sum(function (Product $p) {
+            return max(0, (int) $p->current_stock) * (float) ($p->selling_price ?? 0);
         });
 
-        $immobilizedCostValue = $products->sum(function (Product $p) {
-            return max(0, $p->current_stock) * (float) ($p->cost_price ?: ($p->unit_price * 0.65));
+        $immobilizedCostValue = (float) $products->sum(function (Product $p) {
+            $cost = (float) ($p->purchase_price > 0 ? $p->purchase_price : ($p->selling_price * 0.65));
+
+            return max(0, (int) $p->current_stock) * $cost;
         });
 
         $lowStockProducts = $products->filter(fn (Product $p) => $p->current_stock > 0 && $p->current_stock <= max(1, (int) $p->min_stock));

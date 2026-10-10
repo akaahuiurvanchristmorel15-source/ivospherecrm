@@ -11,7 +11,7 @@
                 'domain' => $p->domain?->name ?? 'Général',
                 'stock' => $p->current_stock,
                 'unit' => $p->unit ?? 'pièce',
-                'price' => number_format((float) $p->unit_price, 0, ',', ' ')
+                'price' => number_format((float) ($p->selling_price ?? 0), 0, ',', ' ')
             ])),
             get matchedProduct() {
                 if (!this.code) return null;

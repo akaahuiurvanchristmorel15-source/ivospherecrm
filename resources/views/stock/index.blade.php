@@ -124,7 +124,14 @@
                             {{ number_format($availableStockValue, 0, ',', ' ') }} <span class="text-xs sm:text-sm font-normal text-slate-400">FCFA</span>
                         @endif
                     </div>
-                    <p class="mt-1 text-xs text-[#64748B] hidden sm:block">Vente: {{ number_format($potentialSellingValue / 1000000, 1, ',', ' ') }}M FCFA</p>
+                    <p class="mt-1 text-xs text-[#64748B] hidden sm:block">
+                        Vente : 
+                        @if($potentialSellingValue >= 1000000)
+                            {{ number_format($potentialSellingValue / 1000000, 1, ',', ' ') }}M FCFA
+                        @else
+                            {{ number_format($potentialSellingValue, 0, ',', ' ') }} FCFA
+                        @endif
+                    </p>
                 </div>
 
                 {{-- KPI 3: Stock Faible --}}
@@ -615,7 +622,7 @@
                                             <div class="min-w-0 pr-2">
                                                 <span class="font-semibold text-xs text-[#0B0F14] truncate block">{{ $dormant->name }}</span>
                                                 <span class="text-[11px] text-slate-400 block">
-                                                    Valeur immobilisée : {{ number_format($dormant->current_stock * ($dormant->cost_price ?: $dormant->unit_price * 0.65), 0, ',', ' ') }} FCFA
+                                                    Valeur immobilisée : {{ number_format($dormant->current_stock * ($dormant->purchase_price ?: $dormant->selling_price * 0.65), 0, ',', ' ') }} FCFA
                                                 </span>
                                             </div>
                                             <span class="rounded-md bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 border border-amber-200/60 shrink-0">
@@ -882,8 +889,8 @@
                                         {{ $product->min_stock }} / {{ $product->effective_max_stock }}
                                     </td>
                                     <td class="px-5 py-3.5 text-right">
-                                        <div class="font-semibold text-[#0B0F14]">{{ number_format((float) $product->unit_price, 0, ',', ' ') }} FCFA</div>
-                                        <div class="text-[10px] text-slate-400">Coût : {{ number_format((float) ($product->cost_price ?: $product->unit_price * 0.65), 0, ',', ' ') }} FCFA</div>
+                                        <div class="font-semibold text-[#0B0F14]">{{ number_format((float) $product->selling_price, 0, ',', ' ') }} FCFA</div>
+                                        <div class="text-[10px] text-slate-400">Coût : {{ number_format((float) ($product->purchase_price ?: $product->selling_price * 0.65), 0, ',', ' ') }} FCFA</div>
                                     </td>
                                     <td class="px-5 py-3.5 text-right">
                                         <div class="flex items-center justify-end gap-1.5">
@@ -919,9 +926,9 @@
                                                     name: '{{ addslashes($product->name) }}', 
                                                     sku: '{{ $product->sku }}', 
                                                     barcode: '{{ $product->ean }}', 
-                                                    price: '{{ number_format((float) $product->unit_price, 0, ',', ' ') }} FCFA', 
+                                                    price: '{{ number_format((float) $product->selling_price, 0, ',', ' ') }} FCFA', 
                                                     domain: '{{ addslashes($product->domain?->name ?? 'Général') }}', 
-                                                    unit: '{{ addslashes($product->unit ?? 'pièce') }}',
+                                                    unit: '{{ addslashes($product->unit ?? 'pièce') }}', 
                                                     qrDownloadUrl: '{{ route('stock.products.qr-download', $product) }}',
                                                     labelDownloadUrl: '{{ route('stock.products.qr-download', ['product' => $product, 'label' => 1]) }}'
                                                 })"
@@ -1069,7 +1076,7 @@
                                     </div>
                                     <div class="px-1">
                                         <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Prix Vente</span>
-                                        <span class="text-xs font-bold text-[#0066FF]">{{ number_format((float) $product->unit_price, 0, ',', ' ') }} F</span>
+                                        <span class="text-xs font-bold text-[#0066FF]">{{ number_format((float) $product->selling_price, 0, ',', ' ') }} F</span>
                                     </div>
                                 </div>
 
@@ -1120,9 +1127,9 @@
                                                 name: '{{ addslashes($product->name) }}', 
                                                 sku: '{{ $product->sku }}', 
                                                 barcode: '{{ $product->ean }}', 
-                                                price: '{{ number_format((float) $product->unit_price, 0, ',', ' ') }} FCFA', 
+                                                price: '{{ number_format((float) $product->selling_price, 0, ',', ' ') }} FCFA', 
                                                 domain: '{{ addslashes($product->domain?->name ?? 'Général') }}', 
-                                                unit: '{{ addslashes($product->unit ?? 'pièce') }}',
+                                                unit: '{{ addslashes($product->unit ?? 'pièce') }}', 
                                                 qrDownloadUrl: '{{ route('stock.products.qr-download', $product) }}',
                                                 labelDownloadUrl: '{{ route('stock.products.qr-download', ['product' => $product, 'label' => 1]) }}'
                                             })"

@@ -129,6 +129,16 @@ class Product extends Model
         return (float) ($this->selling_price - $this->purchase_price);
     }
 
+    public function getUnitPriceAttribute(): float
+    {
+        return (float) ($this->selling_price ?? 0);
+    }
+
+    public function getCostPriceAttribute(): float
+    {
+        return (float) ($this->purchase_price > 0 ? $this->purchase_price : ($this->selling_price * 0.65));
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
