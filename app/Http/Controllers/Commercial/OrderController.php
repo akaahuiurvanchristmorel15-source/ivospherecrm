@@ -3,21 +3,26 @@
 namespace App\Http\Controllers\Commercial;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Commercial\CancelOrderRequest;
 use App\Models\Customer;
 use App\Models\Domain;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\ActivityLogger;
+use App\Services\SaleLifecycleService;
 use App\Services\StockService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['customer', 'user']);
+        $query = Order::with(['customer', 'user', 'validator', 'canceller']);
 
         if ($request->filled('search')) {
             $query->where('reference', 'like', "%{$request->search}%");
@@ -101,6 +106,14 @@ class OrderController extends Controller
         }
 
         $order->update(['subtotal' => $subtotal, 'tax_amount' => $tax_amount, 'discount' => $discount, 'total' => $subtotal + $tax_amount - $discount]);
+
+        if ($order->status === Order::STATUS_VALIDATED) {
+            $order->update([
+                'validated_at' => now(),
+                'validated_by' => auth()->id(),
+            ]);
+        }
+
         StockService::deductOrderStock($order);
         ActivityLogger::log('created_order', 'Création de la commande '.$order->reference, $order);
 
@@ -109,13 +122,17 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load(['items.product', 'customer', 'user', 'invoices']);
+        $order->load(['items.product', 'customer', 'user', 'invoices', 'validator', 'canceller']);
 
         return view('commercial.orders.show', compact('order'));
     }
 
     public function edit(Order $order)
     {
+        if ($order->isFinal()) {
+            return redirect()->route('commercial.orders.show', $order)->with('error', 'Une vente validée ou annulée ne peut plus être modifiée.');
+        }
+
         $order->load(['items.product', 'customer']);
         $customers = Customer::active()->orderBy('name')->get();
         $products = Product::where('status', 'actif')->orWhere('is_active', true)->orderBy('name')->get();
@@ -126,12 +143,16 @@ class OrderController extends Controller
 
     public function update(Request $request, Order $order)
     {
+        if ($order->isFinal()) {
+            return redirect()->route('commercial.orders.show', $order)->with('error', 'Une vente validée ou annulée ne peut plus être modifiée.');
+        }
+
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'domain_id' => 'nullable|exists:domains,id',
             'date' => 'required|date',
             'delivery_date' => 'nullable|date',
-            'status' => 'required|in:en_attente,confirmée,en_cours,livrée,annulée',
+            'status' => ['required', Rule::in(Order::PENDING_STATUSES)],
             'notes' => 'nullable|string',
             'delivery_address' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -179,6 +200,10 @@ class OrderController extends Controller
 
     public function destroy(Order $order)
     {
+        if ($order->isFinal()) {
+            return back()->with('error', 'Une vente '.($order->isCancelled() ? 'annulée' : 'validée').' ne peut pas être supprimée.');
+        }
+
         $order->delete();
         ActivityLogger::log('deleted_order', 'Suppression de la commande '.$order->reference, $order);
 
@@ -187,12 +212,37 @@ class OrderController extends Controller
 
     public function updateStatus(Request $request, Order $order)
     {
-        $request->validate(['status' => 'required|in:en_attente,confirmée,en_cours,livrée,annulée']);
+        if ($order->isFinal()) {
+            return back()->with('error', 'Cette vente est '.($order->isCancelled() ? 'annulée' : 'validée').' : son statut est définitif.');
+        }
+
+        $request->validate(['status' => ['required', Rule::in(Order::PENDING_STATUSES)]]);
         $order->update(['status' => $request->status]);
-        StockService::deductOrderStock($order);
         ActivityLogger::log('status_order', 'Mise à jour du statut de la commande: '.$order->reference, $order);
 
         return back()->with('success', 'Statut mis à jour.');
+    }
+
+    public function validateSale(Request $request, Order $order, SaleLifecycleService $saleLifecycle): RedirectResponse
+    {
+        try {
+            $saleLifecycle->validate($order, $request->user());
+        } catch (ValidationException $exception) {
+            return back()->with('error', collect($exception->errors())->flatten()->first());
+        }
+
+        return back()->with('success', 'Vente '.$order->reference.' validée avec succès.');
+    }
+
+    public function cancel(CancelOrderRequest $request, Order $order, SaleLifecycleService $saleLifecycle): RedirectResponse
+    {
+        try {
+            $saleLifecycle->cancel($order, $request->user(), $request->validated('cancellation_reason'));
+        } catch (ValidationException $exception) {
+            return back()->with('error', collect($exception->errors())->flatten()->first());
+        }
+
+        return back()->with('success', 'Vente '.$order->reference.' annulée avec succès.');
     }
 
     public function generateInvoice(Order $order)

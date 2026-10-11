@@ -15,41 +15,126 @@
             </x-slot:breadcrumbs>
 
             <x-slot:actions>
-                <form action="{{ route('commercial.orders.invoice', $order) }}" method="POST" class="inline-block">
-                    @csrf
-                    <x-button variant="primary" type="submit" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        <span>Générer la Facture</span>
-                    </x-button>
-                </form>
+                @if(! $order->isCancelled())
+                    <form action="{{ route('commercial.orders.invoice', $order) }}" method="POST" class="inline-block">
+                        @csrf
+                        <x-button variant="primary" type="submit" class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Générer la Facture</span>
+                        </x-button>
+                    </form>
+                @endif
 
-                <x-button variant="secondary" href="{{ route('commercial.orders.edit', $order) }}">
-                    Modifier
-                </x-button>
+                @unless($order->isFinal())
+                    <x-button variant="secondary" href="{{ route('commercial.orders.edit', $order) }}">
+                        Modifier
+                    </x-button>
+                @endunless
+
+                @include('commercial.orders.partials.sale-actions', ['order' => $order, 'compact' => false])
             </x-slot:actions>
         </x-page-header>
 
         <!-- Statut de la commande (Card) -->
-        <x-card title="Suivi du Statut Logistique & Commercial">
-            <form action="{{ route('commercial.orders.status', $order) }}" method="POST" class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-                @csrf 
-                @method('PATCH')
-                
-                <div class="flex items-center gap-3">
-                    <label class="font-semibold text-[#0B0F14]">Statut actuel :</label>
-                    <select name="status" class="px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:border-[#0066FF] text-xs transition">
-                        @foreach(['en_attente', 'confirmée', 'en_cours', 'livrée', 'annulée'] as $st)
-                            <option value="{{ $st }}" {{ $order->status == $st ? 'selected' : '' }}>
-                                {{ str_replace('_', ' ', ucfirst($st)) }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+        <x-card title="Cycle de Vie & Validation Commerciale">
+            <div class="space-y-4">
+                @if($order->isValidated())
+                    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                        <div class="p-2 rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <div class="text-xs space-y-1.5 flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <h4 class="font-bold text-emerald-900 text-sm">Vente Validée</h4>
+                                @if($order->canBeCancelled())
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                        Annulable sous 3j
+                                    </span>
+                                @else
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                        Définitif
+                                    </span>
+                                @endif
+                            </div>
+                            <p class="text-emerald-800">
+                                Cette vente a été validée le <strong>{{ $order->validated_at?->format('d/m/Y à H:i') ?? $order->updated_at->format('d/m/Y à H:i') }}</strong>
+                                @if($order->validator) par <strong>{{ $order->validator->name }}</strong>@endif.
+                            </p>
+                            <p class="text-emerald-700">Le stock physique a été déduit.</p>
+                            @if($order->canBeCancelled())
+                                <p class="text-amber-800 font-semibold bg-amber-50 p-2 rounded-lg border border-amber-200">
+                                    ⏱️ Annulation autorisée pour les responsables jusqu'au <strong>{{ $order->cancellationDeadline()->format('d/m/Y') }}</strong> (délai de 3 jours).
+                                </p>
+                            @else
+                                <p class="text-slate-600 font-medium">
+                                    🔒 Le délai d'annulation de 3 jours est expiré : cette vente est désormais définitive.
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @elseif($order->isCancelled())
+                    <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3">
+                        <div class="p-2 rounded-lg bg-rose-100 text-rose-700 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </div>
+                        <div class="text-xs space-y-1">
+                            <h4 class="font-bold text-rose-900 text-sm">Vente Annulée</h4>
+                            <p class="text-rose-800">
+                                Annulée le <strong>{{ $order->cancelled_at?->format('d/m/Y à H:i') ?? $order->updated_at->format('d/m/Y à H:i') }}</strong>
+                                @if($order->canceller) par <strong>{{ $order->canceller->name }}</strong>@endif.
+                            </p>
+                            @if($order->cancellation_reason)
+                                <p class="text-rose-900 font-semibold bg-white/70 p-2 rounded-lg border border-rose-200">
+                                    Motif : <span class="font-normal">{{ $order->cancellation_reason }}</span>
+                                </p>
+                            @endif
+                            <p class="text-rose-700">Les stocks ont été réintégrés et les factures/règlements rattachés ont été annulés.</p>
+                        </div>
+                    </div>
+                @else
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-2.5 h-2.5 rounded-full {{ $order->canBeCancelled() ? 'bg-amber-500 animate-pulse' : 'bg-slate-400' }}"></span>
+                            <div>
+                                @if($order->canBeCancelled())
+                                    <p class="text-slate-800 font-medium">
+                                        Délai d'annulation de 3 jours actif — Annulation possible jusqu'au
+                                        <strong class="text-[#0B0F14] font-bold">{{ $order->cancellationDeadline()->format('d/m/Y') }}</strong>.
+                                    </p>
+                                @else
+                                    <p class="text-slate-700">
+                                        Le délai d'annulation de 3 jours est dépassé (limite atteinte le {{ $order->cancellationDeadline()->format('d/m/Y') }}).
+                                        Cette vente peut désormais uniquement être validée.
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="shrink-0 text-slate-500 font-mono text-[11px]">
+                            Émise le {{ $order->date?->format('d/m/Y') }}
+                        </div>
+                    </div>
 
-                <x-button variant="secondary" type="submit">
-                    Mettre à jour le statut
-                </x-button>
-            </form>
+                    <form action="{{ route('commercial.orders.status', $order) }}" method="POST" class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs pt-2">
+                        @csrf 
+                        @method('PATCH')
+                        
+                        <div class="flex items-center gap-3">
+                            <label class="font-semibold text-[#0B0F14]">Étape préparatoire :</label>
+                            <select name="status" class="px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:border-[#0066FF] text-xs transition">
+                                @foreach(\App\Models\Order::PENDING_STATUSES as $st)
+                                    <option value="{{ $st }}" {{ $order->status == $st ? 'selected' : '' }}>
+                                        {{ str_replace('_', ' ', ucfirst($st)) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <x-button variant="secondary" type="submit">
+                            Mettre à jour l'étape
+                        </x-button>
+                    </form>
+                @endif
+            </div>
         </x-card>
 
         <!-- Détail Commande -->

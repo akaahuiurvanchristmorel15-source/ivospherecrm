@@ -253,6 +253,10 @@ Route::middleware('auth')->group(function () {
         // Commandes
         Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.status');
         Route::post('orders/{order}/invoice', [OrderController::class, 'generateInvoice'])->name('orders.invoice');
+        Route::middleware('role:administrateur,responsable,responsable_commercial')->group(function () {
+            Route::post('orders/{order}/validate', [OrderController::class, 'validateSale'])->name('orders.validate');
+            Route::post('orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+        });
         Route::resource('orders', OrderController::class);
 
         // Factures & Règlements

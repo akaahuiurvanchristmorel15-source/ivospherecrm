@@ -170,8 +170,10 @@
                             <option value="en_attente" {{ $currentStatus === 'en_attente' ? 'selected' : '' }}>⏳ En attente</option>
                             <option value="confirmée" {{ $currentStatus === 'confirmée' ? 'selected' : '' }}>✅ Confirmée</option>
                             <option value="en_cours" {{ $currentStatus === 'en_cours' ? 'selected' : '' }}>⚙️ En cours de préparation</option>
-                            <option value="livrée" {{ $currentStatus === 'livrée' ? 'selected' : '' }}>📦 Livrée</option>
-                            <option value="annulée" {{ $currentStatus === 'annulée' ? 'selected' : '' }}>❌ Annulée</option>
+                            @if(! isset($order))
+                                <option value="livrée" {{ $currentStatus === 'livrée' ? 'selected' : '' }}>📦 Livrée</option>
+                                <option value="annulée" {{ $currentStatus === 'annulée' ? 'selected' : '' }}>❌ Annulée</option>
+                            @endif
                         </select>
                     </div>
 

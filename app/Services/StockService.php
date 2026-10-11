@@ -277,6 +277,103 @@ class StockService
     }
 
     /**
+     * Remet en stock les articles d'une commande annulée en inversant ses sorties de vente.
+     * Idempotente : ne réintègre pas deux fois le stock d'une même commande.
+     *
+     * @return array<StockMovement>
+     */
+    public static function restoreOrderStock(Order $order, ?string $notes = null): array
+    {
+        return DB::transaction(function () use ($order, $notes) {
+            $alreadyRestored = StockMovement::where('order_id', $order->id)
+                ->where('type', 'retour')
+                ->exists();
+
+            if ($alreadyRestored) {
+                return [];
+            }
+
+            $saleMovements = StockMovement::where('order_id', $order->id)
+                ->where('type', 'sortie')
+                ->get();
+
+            $movements = [];
+
+            foreach ($saleMovements as $saleMovement) {
+                $warehouseStock = WarehouseStock::firstOrCreate(
+                    ['warehouse_id' => $saleMovement->warehouse_id, 'product_id' => $saleMovement->product_id],
+                    ['physical_quantity' => 0, 'reserved_quantity' => 0, 'incoming_quantity' => 0]
+                );
+
+                $stockBefore = (int) $warehouseStock->physical_quantity;
+                $stockAfter = $stockBefore + (int) $saleMovement->quantity;
+
+                $warehouseStock->physical_quantity = $stockAfter;
+                $warehouseStock->save();
+
+                $movements[] = StockMovement::create([
+                    'warehouse_id' => $saleMovement->warehouse_id,
+                    'product_id' => $saleMovement->product_id,
+                    'domain_id' => $saleMovement->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'retour',
+                    'reason_motif' => 'annulation_vente',
+                    'quantity' => $saleMovement->quantity,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'reference' => $order->reference.'-ANN',
+                    'order_id' => $order->id,
+                    'date' => now(),
+                    'notes' => $notes ?? ('Remise en stock suite à l\'annulation de la vente '.$order->reference),
+                ]);
+
+                self::checkProductAlert((int) $saleMovement->product_id, (int) $saleMovement->warehouse_id, $stockAfter);
+            }
+
+            if ($saleMovements->isEmpty()) {
+                $order->loadMissing('items');
+                foreach ($order->items as $item) {
+                    if ($item->product_id && (int) $item->quantity > 0) {
+                        $fallbackWarehouse = ($order->domain_id ? Warehouse::where('domain_id', $order->domain_id)->first() : null)
+                            ?? Warehouse::first();
+
+                        if ($fallbackWarehouse) {
+                            $ws = WarehouseStock::firstOrCreate(
+                                ['warehouse_id' => $fallbackWarehouse->id, 'product_id' => $item->product_id],
+                                ['physical_quantity' => 0, 'reserved_quantity' => 0, 'incoming_quantity' => 0]
+                            );
+                            $stockBefore = (int) $ws->physical_quantity;
+                            $stockAfter = $stockBefore + (int) $item->quantity;
+                            $ws->physical_quantity = $stockAfter;
+                            $ws->save();
+
+                            $movements[] = StockMovement::create([
+                                'warehouse_id' => $fallbackWarehouse->id,
+                                'product_id' => $item->product_id,
+                                'domain_id' => $order->domain_id,
+                                'user_id' => auth()->id(),
+                                'type' => 'retour',
+                                'reason_motif' => 'annulation_vente',
+                                'quantity' => (int) $item->quantity,
+                                'stock_before' => $stockBefore,
+                                'stock_after' => $stockAfter,
+                                'reference' => $order->reference.'-ANN',
+                                'order_id' => $order->id,
+                                'date' => now(),
+                                'notes' => $notes ?? ('Remise en stock suite à l\'annulation de la vente '.$order->reference),
+                            ]);
+
+                            self::checkProductAlert((int) $item->product_id, (int) $fallbackWarehouse->id, $stockAfter);
+                        }
+                    }
+                }
+            }
+
+            return $movements;
+        });
+    }
+
+    /**
      * Get current stock for a product across all warehouses
      */
     public static function getTotalStock(int $productId): int
