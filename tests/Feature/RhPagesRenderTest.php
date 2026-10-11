@@ -2,6 +2,7 @@
 
 use App\Models\Attendance;
 use App\Models\DailyTaskSheet;
+use App\Models\Domain;
 use App\Models\Employee;
 use App\Models\SalesTarget;
 use App\Models\User;
@@ -98,4 +99,34 @@ test('rh list pages render their empty states', function () {
     $this->get(route('rh.attendance.index', ['date' => '2020-01-06']))->assertOk()->assertSee('Aucun pointage');
     $this->get(route('rh.daily-tasks.index'))->assertOk()->assertSee('Aucune fiche de tâches');
     $this->get(route('rh.sales-targets.index'))->assertOk()->assertSee('Aucun objectif commercial');
+});
+
+test('employee create and edit forms render and the edit form saves changes', function () {
+    $this->actingAs($this->admin);
+
+    $this->get(route('rh.employees.create'))->assertOk()->assertSee('Nouveau dossier employé');
+    $this->get(route('rh.employees.edit', $this->employee))
+        ->assertOk()
+        ->assertSee('Modifier le dossier')
+        ->assertSee('EMP-RENDER');
+
+    $this->put(route('rh.employees.update', $this->employee), [
+        'domain_id' => Domain::first()->id,
+        'employee_code' => 'EMP-RENDER',
+        'first_name' => 'Awa',
+        'last_name' => 'Koné',
+        'email' => 'awa.render@ivosphere.com',
+        'phone' => '0708091011',
+        'position' => 'Responsable boutique',
+        'gender' => 'F',
+        'contract_type' => 'CDI',
+        'status' => 'suspendu',
+    ])->assertSessionHasNoErrors();
+
+    $this->employee->refresh();
+
+    expect($this->employee->position)->toBe('Responsable boutique')
+        ->and($this->employee->status)->toBe('suspendu')
+        ->and($this->employee->contract_type)->toBe('CDI')
+        ->and($this->employee->phone)->toBe('+225 07 08 09 10 11');
 });
