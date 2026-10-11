@@ -62,8 +62,12 @@
 
                     <div>
                         <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Numéro de Téléphone</label>
-                        <input type="text" name="phone" value="{{ old('phone', $employee->phone) }}" class="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:border-[#0066FF] text-xs transition">
-                        @error('phone') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                        <input type="tel" name="phone" inputmode="tel" autocomplete="tel" value="{{ old('phone', $employee->phone) }}" placeholder="+225 07 08 09 10 11" class="w-full px-3.5 py-2 rounded-lg bg-white border text-[#0B0F14] focus:outline-none focus:border-[#0066FF] text-xs transition {{ $errors->has('phone') ? 'border-rose-400' : 'border-[#E2E8F0]' }}">
+                        @error('phone')
+                            <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span>
+                        @else
+                            <span class="text-[#64748B] text-[11px] mt-1 block">Indicatif pays conseillé (ex. +33 6 12 34 56 78). Sans indicatif, le numéro est considéré comme ivoirien.</span>
+                        @enderror
                     </div>
 
                     <div>

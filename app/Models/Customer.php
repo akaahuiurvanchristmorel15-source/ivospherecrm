@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PhoneNumberFormatter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -41,6 +42,30 @@ class Customer extends Model
         return [
             'loyalty_points' => 'integer',
         ];
+    }
+
+    /**
+     * Enregistre le numéro au format international (ex. « +225 07 08 09 10 11 »).
+     */
+    public function setPhoneAttribute(?string $value): void
+    {
+        $this->attributes['phone'] = PhoneNumberFormatter::format($value);
+    }
+
+    /**
+     * Enregistre le numéro au format international (ex. « +225 07 08 09 10 11 »).
+     */
+    public function setPhone2Attribute(?string $value): void
+    {
+        $this->attributes['phone2'] = PhoneNumberFormatter::format($value);
+    }
+
+    /**
+     * Enregistre le numéro au format international (ex. « +225 07 08 09 10 11 »).
+     */
+    public function setWhatsappAttribute(?string $value): void
+    {
+        $this->attributes['whatsapp'] = PhoneNumberFormatter::format($value);
     }
 
     public function getTotalSpentAttribute(): float

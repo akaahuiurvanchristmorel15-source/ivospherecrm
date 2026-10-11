@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\EmployeeSyncService;
+use App\Services\PhoneNumberFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -79,7 +80,7 @@ class EmployeeController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:employees,email',
-            'phone' => 'nullable|string|max:50',
+            'phone' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
             'position' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
             'date_of_birth' => 'nullable|date',
@@ -94,7 +95,7 @@ class EmployeeController extends Controller
             'create_user_account' => 'nullable|boolean',
             'role_id' => 'nullable|exists:roles,id',
             'user_password' => 'nullable|string|min:6',
-        ]);
+        ], ['phone.phone' => PhoneNumberFormatter::invalidMessage()], ['phone' => 'de téléphone']);
 
         $employee = Employee::create([
             'domain_id' => $validated['domain_id'],
@@ -171,7 +172,7 @@ class EmployeeController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:employees,email,'.$employee->id,
-            'phone' => 'nullable|string|max:50',
+            'phone' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
             'position' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
             'date_of_birth' => 'nullable|date',
@@ -186,7 +187,7 @@ class EmployeeController extends Controller
             'create_user_account' => 'nullable|boolean',
             'role_id' => 'nullable|exists:roles,id',
             'user_password' => 'nullable|string|min:6',
-        ]);
+        ], ['phone.phone' => PhoneNumberFormatter::invalidMessage()], ['phone' => 'de téléphone']);
 
         $employee->update([
             'domain_id' => $validated['domain_id'],

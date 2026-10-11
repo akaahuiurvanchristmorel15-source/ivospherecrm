@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PhoneNumberFormatter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -42,6 +43,14 @@ class Employee extends Model
             'date_of_birth' => 'date',
             'hire_date' => 'date',
         ];
+    }
+
+    /**
+     * Enregistre le numéro au format international (ex. « +225 07 08 09 10 11 »).
+     */
+    public function setPhoneAttribute(?string $value): void
+    {
+        $this->attributes['phone'] = PhoneNumberFormatter::format($value);
     }
 
     public function getFullNameAttribute(): string

@@ -100,26 +100,37 @@
                     <!-- Téléphone Principal -->
                     <div class="md:col-span-4">
                         <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Téléphone Principal *</label>
-                        <input 
-                            type="text" 
-                            name="phone" 
-                            value="{{ old('phone', $customer->phone ?? '') }}" 
-                            placeholder="+225 07 00 00 00 00" 
+                        <input
+                            type="tel"
+                            name="phone"
+                            inputmode="tel"
+                            autocomplete="tel"
+                            value="{{ old('phone', $customer->phone ?? '') }}"
+                            placeholder="+225 07 08 09 10 11"
                             required
-                            class="w-full px-3.5 py-2.5 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF] focus:border-[#0066FF] transition-colors"
+                            class="w-full px-3.5 py-2.5 bg-white border rounded-lg text-sm text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF] focus:border-[#0066FF] transition-colors {{ $errors->has('phone') ? 'border-rose-400' : 'border-[#E2E8F0]' }}"
                         >
+                        @error('phone')
+                            <p class="mt-1 text-[11px] font-medium text-rose-600">{{ $message }}</p>
+                        @else
+                            <p class="mt-1 text-[11px] text-[#64748B]">Indicatif pays conseillé (ex. +33 6 12 34 56 78). Sans indicatif, le numéro est considéré comme ivoirien.</p>
+                        @enderror
                     </div>
 
                     <!-- WhatsApp Direct -->
                     <div class="md:col-span-4">
                         <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Numéro WhatsApp Direct</label>
-                        <input 
-                            type="text" 
-                            name="whatsapp" 
-                            value="{{ old('whatsapp', $customer->whatsapp ?? $customer->phone ?? '') }}" 
-                            placeholder="+2250700000000" 
-                            class="w-full px-3.5 py-2.5 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF] focus:border-[#0066FF] transition-colors"
+                        <input
+                            type="tel"
+                            name="whatsapp"
+                            inputmode="tel"
+                            value="{{ old('whatsapp', $customer->whatsapp ?? $customer->phone ?? '') }}"
+                            placeholder="+225 07 08 09 10 11"
+                            class="w-full px-3.5 py-2.5 bg-white border rounded-lg text-sm text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF] focus:border-[#0066FF] transition-colors {{ $errors->has('whatsapp') ? 'border-rose-400' : 'border-[#E2E8F0]' }}"
                         >
+                        @error('whatsapp')
+                            <p class="mt-1 text-[11px] font-medium text-rose-600">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <!-- Email -->

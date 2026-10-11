@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Domain;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\PhoneNumberFormatter;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -59,16 +60,16 @@ class CustomerController extends Controller
             'company' => 'nullable|string|max:255',
             'nif' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'phone2' => 'nullable|string|max:20',
-            'whatsapp' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
+            'phone2' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
+            'whatsapp' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
             'address' => 'nullable|string',
             'city' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
             'loyalty_level' => 'nullable|in:BRONZE,SILVER,GOLD,PREMIUM',
             'status' => 'required|in:actif,inactif',
             'notes' => 'nullable|string',
-        ]);
+        ], ['phone.phone' => PhoneNumberFormatter::invalidMessage(), 'phone2.phone' => PhoneNumberFormatter::invalidMessage(), 'whatsapp.phone' => PhoneNumberFormatter::invalidMessage()], ['phone' => 'de téléphone', 'phone2' => 'de téléphone secondaire', 'whatsapp' => 'WhatsApp']);
 
         $validated['user_id'] = auth()->id();
         $customer = Customer::create($validated);
@@ -114,16 +115,16 @@ class CustomerController extends Controller
             'company' => 'nullable|string|max:255',
             'nif' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'phone2' => 'nullable|string|max:20',
-            'whatsapp' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
+            'phone2' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
+            'whatsapp' => ['nullable', 'string', 'max:30', PhoneNumberFormatter::rule()],
             'address' => 'nullable|string',
             'city' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
             'loyalty_level' => 'nullable|in:BRONZE,SILVER,GOLD,PREMIUM',
             'status' => 'required|in:actif,inactif',
             'notes' => 'nullable|string',
-        ]);
+        ], ['phone.phone' => PhoneNumberFormatter::invalidMessage(), 'phone2.phone' => PhoneNumberFormatter::invalidMessage(), 'whatsapp.phone' => PhoneNumberFormatter::invalidMessage()], ['phone' => 'de téléphone', 'phone2' => 'de téléphone secondaire', 'whatsapp' => 'WhatsApp']);
 
         $customer->update($validated);
 
