@@ -2,7 +2,7 @@
     <x-slot:title>Modification Groupée des Articles — Stocks & Logistique (WMS)</x-slot>
 
     @php
-        $initialRowsData = $products->map(function($p) {
+        $initialRowsData = $products->map(function ($p) use ($warehouses) {
             return [
                 'id' => $p->id,
                 'name' => $p->name,
@@ -14,19 +14,24 @@
                 'purchase_price' => (float) ($p->purchase_price ?? 0),
                 'selling_price' => (float) ($p->selling_price ?? 0),
                 'current_stock' => $p->current_stock,
+                'stocks' => $warehouses->mapWithKeys(fn ($w) => [$w->id => (int) ($p->warehouseStocks->firstWhere('warehouse_id', $w->id)?->physical_quantity ?? 0)]),
+                'original_stocks' => $warehouses->mapWithKeys(fn ($w) => [$w->id => (int) ($p->warehouseStocks->firstWhere('warehouse_id', $w->id)?->physical_quantity ?? 0)]),
             ];
         })->values();
+
+        $warehouseOptions = $warehouses->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'code' => $w->code])->values();
     @endphp
 
     <div 
         x-data="bulkEditManager({
-            initialProducts: {{ Js::from($initialRowsData) }}
+            initialProducts: {{ Js::from($initialRowsData) }},
+            warehouses: {{ Js::from($warehouseOptions) }}
         })" 
         class="max-w-7xl mx-auto space-y-6 pb-16 text-xs"
     >
         <x-page-header 
             title="Modification Groupée des Articles"
-            description="Mise à jour simultanée des photos/images, prix d'achat et prix de revente sur les articles sélectionnés du catalogue WMS"
+            description="Mise à jour simultanée des photos/images, prix d'achat, prix de revente et stock par entrepôt sur les articles sélectionnés du catalogue WMS"
         >
             <x-slot:breadcrumbs>
                 <x-breadcrumb :items="[
@@ -118,6 +123,41 @@
                         </div>
                     </div>
 
+                    {{-- Outil C: Stock par entrepôt --}}
+                    @if($warehouses->isNotEmpty())
+                        <div class="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4 lg:col-span-2 lg:order-last">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <span class="flex items-center gap-2 text-xs font-bold text-[#0B0F14]">
+                                    <span class="h-2 w-2 rounded-full bg-amber-500"></span>
+                                    Stock par entrepôt
+                                </span>
+                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800" x-show="stockChangesCount() > 0" x-cloak>
+                                    <span x-text="stockChangesCount()"></span> modification(s) de stock
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-600">
+                                Choisissez l'entrepôt, puis saisissez la quantité physique exacte de chaque article dans la colonne « Stock ». Chaque changement crée un mouvement d'ajustement tracé.
+                            </p>
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <select x-model.number="stockWarehouseId" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0B0F14] focus:border-[#0066FF] focus:outline-none sm:w-64">
+                                    <template x-for="wh in warehouses" :key="wh.id">
+                                        <option :value="wh.id" x-text="wh.name + (wh.code ? ' (' + wh.code + ')' : '')" :selected="wh.id === stockWarehouseId"></option>
+                                    </template>
+                                </select>
+                                <div class="flex flex-1 items-center gap-2">
+                                    <input type="number" min="0" step="1" x-model.number="bulkStockValue" placeholder="Quantité pour tous (ex : 10)"
+                                           class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-[#0B0F14] focus:border-[#0066FF] focus:outline-none">
+                                    <button type="button" @click="applyStockToAll()" class="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600">
+                                        Appliquer à tous
+                                    </button>
+                                    <button type="button" @click="resetStocks()" x-show="stockChangesCount() > 0" x-cloak class="shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-600 hover:text-[#0B0F14]">
+                                        Annuler
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Outil B: Visuel Commun pour Tous les Articles --}}
                     <div class="space-y-3 p-4 rounded-xl border border-slate-200 bg-slate-50/60">
                         <div class="flex items-center justify-between">
@@ -197,6 +237,12 @@
                                 <th class="min-w-[140px] px-3 py-3 text-right">Prix de Revente (FCFA) <span class="text-rose-500">*</span></th>
                                 <th class="min-w-[140px] px-3 py-3 text-right">Marge Brute (FCFA)</th>
                                 <th class="min-w-[110px] px-3 py-3 text-right">Taux Marge (%)</th>
+                                @if($warehouses->isNotEmpty())
+                                    <th class="min-w-[130px] px-3 py-3 text-right">
+                                        Stock
+                                        <span class="block text-[9px] font-medium normal-case tracking-normal text-amber-700" x-text="currentWarehouseLabel()"></span>
+                                    </th>
+                                @endif
                                 <th class="w-12 px-3 py-3 text-center">Retirer</th>
                             </tr>
                         </thead>
@@ -329,6 +375,26 @@
                                         ></span>
                                     </td>
 
+                                    @if($warehouses->isNotEmpty())
+                                        {{-- Stock de l'entrepôt sélectionné --}}
+                                        <td class="px-3 py-3 text-right">
+                                            <input type="number" min="0" step="1"
+                                                   :value="item.stocks[stockWarehouseId]"
+                                                   @input="item.stocks[stockWarehouseId] = $event.target.value === '' ? item.original_stocks[stockWarehouseId] : parseInt($event.target.value, 10)"
+                                                   :class="isStockChanged(item, stockWarehouseId) ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-300' : 'border-[#E2E8F0] bg-white'"
+                                                   class="w-full rounded-lg border px-2.5 py-1.5 text-right font-mono text-xs font-bold text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none">
+                                            <div class="mt-1 text-[10px]" x-show="isStockChanged(item, stockWarehouseId)" x-cloak>
+                                                <span class="text-slate-400 line-through" x-text="item.original_stocks[stockWarehouseId]"></span>
+                                                <span class="font-semibold" :class="item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? 'text-emerald-600' : 'text-rose-600'"
+                                                      x-text="(item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? '+' : '') + (item.stocks[stockWarehouseId] - item.original_stocks[stockWarehouseId])"></span>
+                                            </div>
+                                            {{-- N'envoie que les quantités modifiées, tous entrepôts confondus --}}
+                                            <template x-for="wh in warehouses" :key="wh.id">
+                                                <input type="hidden" :name="isStockChanged(item, wh.id) ? 'products[' + index + '][stocks][' + wh.id + ']' : null" :disabled="!isStockChanged(item, wh.id)" :value="item.stocks[wh.id]">
+                                            </template>
+                                        </td>
+                                    @endif
+
                                     {{-- Action : Retirer du lot --}}
                                     <td class="px-3 py-3 text-center">
                                         <button 
@@ -351,6 +417,7 @@
                 <div class="p-4 bg-slate-50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div class="text-xs text-slate-500">
                         Total des articles pris en compte : <strong class="text-[#0B0F14]" x-text="products.length"></strong>
+                        <span x-show="stockChangesCount() > 0" x-cloak> · <strong class="text-amber-700" x-text="stockChangesCount()"></strong> ajustement(s) de stock</span>
                     </div>
 
                     <div class="flex items-center gap-4 text-xs font-semibold">
@@ -389,6 +456,9 @@
         function bulkEditManager(config) {
             return {
                 products: config.initialProducts || [],
+                warehouses: config.warehouses || [],
+                stockWarehouseId: (config.warehouses && config.warehouses.length) ? config.warehouses[0].id : null,
+                bulkStockValue: null,
                 commonImagePreview: null,
                 applyCommonImageToAll: false,
                 customMarkupPercent: null,
@@ -472,6 +542,30 @@
 
                 totalMargin() {
                     return this.totalSellingPrice() - this.totalPurchasePrice();
+                },
+
+                currentWarehouseLabel() {
+                    const wh = this.warehouses.find(w => w.id === this.stockWarehouseId);
+                    return wh ? wh.name : '';
+                },
+
+                isStockChanged(item, warehouseId) {
+                    return item.stocks[warehouseId] !== item.original_stocks[warehouseId];
+                },
+
+                stockChangesCount() {
+                    return this.products.reduce((count, item) =>
+                        count + this.warehouses.filter(wh => this.isStockChanged(item, wh.id)).length, 0);
+                },
+
+                applyStockToAll() {
+                    const qty = parseInt(this.bulkStockValue, 10);
+                    if (isNaN(qty) || qty < 0 || !this.stockWarehouseId) return;
+                    this.products.forEach(p => { p.stocks[this.stockWarehouseId] = qty; });
+                },
+
+                resetStocks() {
+                    this.products.forEach(p => { p.stocks = { ...p.original_stocks }; });
                 },
 
                 formatNumber(val) {

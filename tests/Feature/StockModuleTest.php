@@ -288,3 +288,77 @@ test('authorized user can secure VIP replenishment for fast-selling product', fu
         ->and($pr->quantity)->toBe(60)
         ->and($pr->reference)->toStartWith('DA-VIP-');
 });
+
+test('bulk edit sets warehouse stock with a traced adjustment movement', function () {
+    $admin = User::where('email', 'admin@ivosphere.com')->first();
+    $warehouse = Warehouse::active()->first();
+    $product = Product::create([
+        'sku' => 'STK-BULK-'.rand(1000, 9999),
+        'name' => 'Article modification groupée',
+        'domain_id' => Domain::first()->id,
+        'purchase_price' => 1000,
+        'selling_price' => 1500,
+        'unit' => 'pièce',
+        'is_active' => true,
+    ]);
+    $stockBefore = StockService::getStock($product->id, $warehouse->id);
+    $targetStock = $stockBefore + 7;
+
+    $response = $this->actingAs($admin)->post(route('stock.products.bulk-update'), [
+        'products' => [
+            [
+                'id' => $product->id,
+                'purchase_price' => 1000,
+                'selling_price' => 1500,
+                'stocks' => [$warehouse->id => $targetStock],
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect(route('stock.index', ['tab' => 'disponibilite']));
+    $response->assertSessionHas('success');
+    expect(StockService::getStock($product->id, $warehouse->id))->toBe($targetStock);
+    expect(StockMovement::where('product_id', $product->id)
+        ->where('warehouse_id', $warehouse->id)
+        ->where('type', 'ajustement')
+        ->where('reason_motif', 'Modification groupée')
+        ->exists())->toBeTrue();
+});
+
+test('bulk edit does not create a stock movement when the quantity is unchanged', function () {
+    $admin = User::where('email', 'admin@ivosphere.com')->first();
+    $warehouse = Warehouse::active()->first();
+    $product = Product::create([
+        'sku' => 'STK-BULK-'.rand(1000, 9999),
+        'name' => 'Article modification groupée',
+        'domain_id' => Domain::first()->id,
+        'purchase_price' => 1000,
+        'selling_price' => 1500,
+        'unit' => 'pièce',
+        'is_active' => true,
+    ]);
+    $stockBefore = StockService::getStock($product->id, $warehouse->id);
+    $movementsBefore = StockMovement::count();
+
+    $this->actingAs($admin)->post(route('stock.products.bulk-update'), [
+        'products' => [
+            [
+                'id' => $product->id,
+                'selling_price' => 1500,
+                'stocks' => [$warehouse->id => $stockBefore],
+            ],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect(StockMovement::count())->toBe($movementsBefore);
+    expect(StockService::getStock($product->id, $warehouse->id))->toBe($stockBefore);
+});
+
+test('bulk edit page lists warehouses for stock editing', function () {
+    $admin = User::where('email', 'admin@ivosphere.com')->first();
+
+    $this->actingAs($admin)->get(route('stock.products.bulk-edit'))
+        ->assertOk()
+        ->assertSee('Stock par entrepôt')
+        ->assertSee(Warehouse::active()->first()->name);
+});

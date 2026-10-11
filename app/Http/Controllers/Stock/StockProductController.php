@@ -184,8 +184,9 @@ class StockProductController extends Controller
 
         $domains = Domain::active()->orderBy('name')->get();
         $categories = Category::orderBy('name')->get();
+        $warehouses = Warehouse::active()->orderBy('name')->get();
 
-        return view('stock.products.bulk_edit', compact('products', 'domains', 'categories'));
+        return view('stock.products.bulk_edit', compact('products', 'domains', 'categories', 'warehouses'));
     }
 
     public function bulkUpdate(Request $request)
@@ -199,7 +200,11 @@ class StockProductController extends Controller
             'products.*.selling_price' => 'required|numeric|min:0',
             'products.*.image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
             'products.*.delete_image' => 'nullable|boolean',
+            'products.*.stocks' => 'nullable|array',
+            'products.*.stocks.*' => 'nullable|integer|min:0',
         ]);
+
+        $activeWarehouseIds = Warehouse::active()->pluck('id')->all();
 
         $commonImagePath = null;
         if ($request->hasFile('common_image') && $request->boolean('apply_common_image_to_all')) {
@@ -207,8 +212,9 @@ class StockProductController extends Controller
         }
 
         $updatedCount = 0;
+        $stockAdjustmentsCount = 0;
 
-        DB::transaction(function () use ($request, $validated, $commonImagePath, &$updatedCount) {
+        DB::transaction(function () use ($request, $validated, $commonImagePath, $activeWarehouseIds, &$updatedCount, &$stockAdjustmentsCount) {
             foreach ($validated['products'] as $index => $itemData) {
                 $product = Product::find($itemData['id']);
                 if (! $product) {
@@ -239,13 +245,62 @@ class StockProductController extends Controller
 
                 $product->update($updateData);
                 $updatedCount++;
+
+                $stockAdjustmentsCount += $this->applyBulkStockTargets($product, $itemData['stocks'] ?? [], $activeWarehouseIds);
             }
         });
 
-        ActivityLogger::log('bulk_updated_stock_products', "Mise à jour groupée des prix et images de {$updatedCount} article(s)", null);
+        ActivityLogger::log('bulk_updated_stock_products', "Mise à jour groupée des prix, images et stocks de {$updatedCount} article(s) ({$stockAdjustmentsCount} ajustement(s) de stock)", null);
+
+        $stockMessage = $stockAdjustmentsCount > 0 ? " {$stockAdjustmentsCount} ajustement(s) de stock enregistré(s)." : '';
 
         return redirect()->route('stock.index', ['tab' => 'disponibilite'])
-            ->with('success', "Les informations (prix d'achat, prix de revente et images) de {$updatedCount} article(s) ont été mises à jour avec succès.");
+            ->with('success', "Les informations (prix d'achat, prix de revente et images) de {$updatedCount} article(s) ont été mises à jour avec succès.{$stockMessage}");
+    }
+
+    /**
+     * Aligne le stock physique d'un produit sur les quantités cibles saisies par entrepôt,
+     * via un mouvement d'ajustement tracé (uniquement si la quantité change).
+     *
+     * @param  array<int|string, int|string|null>  $stockTargets  Quantité cible indexée par ID d'entrepôt
+     * @param  list<int>  $activeWarehouseIds
+     */
+    private function applyBulkStockTargets(Product $product, array $stockTargets, array $activeWarehouseIds): int
+    {
+        $adjustments = 0;
+
+        foreach ($stockTargets as $warehouseId => $targetQuantity) {
+            $warehouseId = (int) $warehouseId;
+
+            if ($targetQuantity === null || $targetQuantity === '' || ! in_array($warehouseId, $activeWarehouseIds, true)) {
+                continue;
+            }
+
+            $targetQuantity = (int) $targetQuantity;
+            $currentQuantity = StockService::getStock($product->id, $warehouseId);
+
+            if ($targetQuantity === $currentQuantity) {
+                continue;
+            }
+
+            StockService::processMovement([
+                'warehouse_id' => $warehouseId,
+                'product_id' => $product->id,
+                'domain_id' => $product->domain_id,
+                'user_id' => auth()->id(),
+                'type' => 'ajustement',
+                'reason_motif' => 'Modification groupée',
+                'quantity' => $targetQuantity,
+                'unit_cost' => (float) ($product->purchase_price ?: ($product->selling_price * 0.7)),
+                'reference' => 'AJUST-'.strtoupper(Str::random(6)),
+                'notes' => "Ajustement groupé du stock de {$currentQuantity} à {$targetQuantity}",
+                'date' => now(),
+            ]);
+
+            $adjustments++;
+        }
+
+        return $adjustments;
     }
 
     public function store(Request $request)
