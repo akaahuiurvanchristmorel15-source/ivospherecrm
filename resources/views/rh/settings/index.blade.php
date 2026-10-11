@@ -35,7 +35,7 @@
                     <h1 class="text-2xl font-semibold tracking-tight text-[#0B0F14]">Paramètres RH</h1>
                     <p class="text-sm text-[#64748B]">Horaires, pointage par QR code, plannings et barème d'évaluation.</p>
                 </div>
-                <a href="{{ route('rh.attendance.poster') }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-medium text-[#0B0F14] transition hover:border-[#0066FF] hover:text-[#0066FF]">
+                <a href="{{ route('rh.attendance.poster') }}" class="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-medium text-[#0B0F14] transition hover:border-[#0066FF] hover:text-[#0066FF]">
                     <svg class="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     Affiche QR du mois
                 </a>

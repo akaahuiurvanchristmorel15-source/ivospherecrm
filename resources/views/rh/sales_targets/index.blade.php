@@ -1,362 +1,172 @@
-<x-layouts.app title="Objectifs des Ventes — IVOSPHERE RH">
-    <div class="space-y-6">
+@php
+    $n = fn ($value) => number_format((float) $value, 0, ',', ' ');
+    $averageAchievementRate = (float) $averageAchievementRate;
+    $rateRing = min(100, max(0, round($averageAchievementRate)));
+    $ringColor = $averageAchievementRate >= 100 ? '#10b981' : ($averageAchievementRate >= 60 ? '#3B8BFF' : '#f59e0b');
 
-        <!-- En-tête RH -->
-        <x-page-header 
-            title="Objectifs des Ventes & Performance Commerciale" 
-            description="Supervision RH des quotas de vente, suivi du réalisé, primes d'atteinte et commissions par collaborateur"
-        >
-            <x-slot:breadcrumbs>
-                <x-breadcrumb :items="[
-                    ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                    ['label' => 'Objectifs des Ventes']
-                ]" />
-            </x-slot:breadcrumbs>
+    $statusFilters = ['' => 'Tous', 'en_cours' => 'En cours', 'atteint' => 'Atteints', 'partiel' => 'Partiels', 'non_atteint' => 'Non atteints'];
+    $hasFilters = collect(request()->only(['employee_id', 'domain_id', 'status', 'period']))->filter()->isNotEmpty();
+    $select = 'h-10 rounded-xl border border-[#E2E8F0] bg-white px-3 text-xs font-medium text-[#0B0F14] focus:border-[#0066FF] focus:outline-none';
+@endphp
 
-            <x-slot:actions>
-                <x-button :href="route('rh.sales-targets.create')" variant="primary" size="md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>Nouvel Objectif</span>
-                </x-button>
-            </x-slot:actions>
-        </x-page-header>
+<x-layouts.app title="Objectifs des ventes — IVOSPHERE RH">
+    <div class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
 
-        <!-- 4 Stat Cards Consolidées -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            <div class="bg-white rounded-2xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-                <span class="text-xs font-medium text-[#64748B]">Objectifs Totaux Assignés</span>
-                <div class="text-2xl font-bold text-[#0B0F14] tracking-tight mt-1">
-                    {{ number_format($totalTargetAmount, 0, ',', ' ') }} <span class="text-xs font-normal text-[#64748B]">FCFA</span>
+        {{-- ───────── En-tête ───────── --}}
+        <header class="space-y-4">
+            <x-breadcrumb :items="[['label' => 'Ressources Humaines', 'url' => route('rh.index')], ['label' => 'Objectifs des ventes']]" />
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="space-y-1">
+                    <h1 class="text-2xl font-semibold tracking-tight text-[#0B0F14]">Objectifs des ventes</h1>
+                    <p class="text-sm text-[#64748B]">Quotas, chiffre réalisé et commissions par collaborateur.</p>
                 </div>
-                <div class="pt-3 mt-3 border-t border-[#E2E8F0] flex items-center justify-between text-[11px] text-[#64748B]">
-                    <span>Quotas actifs : <strong class="text-[#0B0F14]">{{ $activeCount }}</strong></span>
-                    <span>Atteints : <strong class="text-emerald-600">{{ $achievedCount }}</strong></span>
-                </div>
+                <a href="{{ route('rh.sales-targets.create') }}" class="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white transition hover:bg-[#0052cc]">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    Nouvel objectif
+                </a>
             </div>
+        </header>
 
-            <div class="bg-white rounded-2xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-                <span class="text-xs font-medium text-[#64748B]">Chiffre d'Affaires Réalisé</span>
-                <div class="text-2xl font-bold text-[#0066FF] tracking-tight mt-1">
-                    {{ number_format($totalAchievedAmount, 0, ',', ' ') }} <span class="text-xs font-normal text-[#64748B]">FCFA</span>
-                </div>
-                <div class="pt-3 mt-3 border-t border-[#E2E8F0] text-[11px] text-[#64748B]">
-                    Calculé en temps réel sur les flux
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-                <span class="text-xs font-medium text-[#64748B]">Taux Moyen d'Atteinte</span>
-                <div class="text-2xl font-bold {{ $averageAchievementRate >= 100 ? 'text-emerald-600' : ($averageAchievementRate >= 60 ? 'text-[#0B0F14]' : 'text-amber-600') }} tracking-tight mt-1">
-                    {{ $averageAchievementRate }} %
-                </div>
-                <div class="pt-3 mt-3 border-t border-[#E2E8F0]">
-                    <div class="w-full h-1.5 rounded-full bg-[#F5F7FA] border border-[#E2E8F0] overflow-hidden">
-                        <div class="h-full rounded-full bg-[#0066FF]" style="width: {{ min(100, $averageAchievementRate) }}%"></div>
+        {{-- ───────── Synthèse ───────── --}}
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-12" aria-label="Synthèse">
+            <article class="relative overflow-hidden rounded-3xl bg-[#0B0F14] p-5 text-white sm:p-6 lg:col-span-5">
+                <div class="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[#0066FF]/30 blur-3xl"></div>
+                <div class="relative flex items-center gap-5">
+                    <div class="relative h-24 w-24 shrink-0">
+                        <svg viewBox="0 0 36 36" class="h-full w-full -rotate-90">
+                            <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+                            @if($rateRing > 0)
+                                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="{{ $ringColor }}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{ $rateRing }} 100"/>
+                            @endif
+                        </svg>
+                        <span class="absolute inset-0 flex items-center justify-center text-xl font-semibold">{{ round($averageAchievementRate) }}%</span>
+                    </div>
+                    <div class="min-w-0 space-y-1">
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Taux moyen d'atteinte</p>
+                        <p class="text-2xl font-semibold tracking-tight">{{ $n($totalAchievedAmount) }} <span class="text-xs font-normal text-slate-400">FCFA réalisés</span></p>
+                        <p class="text-xs text-slate-400">sur {{ $n($totalTargetAmount) }} FCFA d'objectifs</p>
                     </div>
                 </div>
+            </article>
+
+            <div class="grid grid-cols-3 gap-3 sm:gap-4 lg:col-span-7">
+                @foreach([
+                    [$activeCount, 'Objectifs actifs', 'bg-blue-50 text-[#0066FF]', 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'],
+                    [$achievedCount, 'Objectifs atteints', 'bg-emerald-50 text-emerald-600', 'M5 13l4 4L19 7'],
+                    [$n($totalCommissions), 'Commissions (FCFA)', 'bg-amber-50 text-amber-600', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+                ] as [$value, $label, $tint, $icon])
+                    <article class="flex flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl {{ $tint }}">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
+                        </span>
+                        <div class="mt-3 min-w-0">
+                            <p class="truncate text-xl font-semibold text-[#0B0F14] sm:text-2xl">{{ $value }}</p>
+                            <p class="text-[11px] leading-tight text-[#64748B] sm:text-xs">{{ $label }}</p>
+                        </div>
+                    </article>
+                @endforeach
             </div>
+        </section>
 
-            <div class="bg-white rounded-2xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-                <span class="text-xs font-medium text-[#64748B]">Commissions & Primes Estimées</span>
-                <div class="text-2xl font-bold text-[#0B0F14] tracking-tight mt-1">
-                    {{ number_format($totalCommissions, 0, ',', ' ') }} <span class="text-xs font-normal text-[#64748B]">FCFA</span>
-                </div>
-                <div class="pt-3 mt-3 border-t border-[#E2E8F0] text-[11px] text-[#64748B]">
-                    Part variable sur performance
-                </div>
+        {{-- ───────── Filtres ───────── --}}
+        <form method="GET" action="{{ route('rh.sales-targets.index') }}" class="space-y-3">
+            <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                <label for="stEmployee" class="sr-only">Collaborateur</label>
+                <select id="stEmployee" name="employee_id" onchange="this.form.submit()" class="{{ $select }} col-span-2 sm:w-56">
+                    <option value="">Tous les collaborateurs</option>
+                    @foreach($employees as $emp)
+                        <option value="{{ $emp->id }}" @selected(request('employee_id') == $emp->id)>{{ $emp->full_name }}</option>
+                    @endforeach
+                </select>
+                <label for="stDomain" class="sr-only">Pôle</label>
+                <select id="stDomain" name="domain_id" onchange="this.form.submit()" class="{{ $select }} sm:w-48">
+                    <option value="">Tous les pôles</option>
+                    @foreach($domains as $dom)
+                        <option value="{{ $dom->id }}" @selected(request('domain_id') == $dom->id)>{{ $dom->name }}</option>
+                    @endforeach
+                </select>
+                <label for="stPeriod" class="sr-only">Périodicité</label>
+                <select id="stPeriod" name="period" onchange="this.form.submit()" class="{{ $select }} sm:w-44">
+                    <option value="">Toutes périodes</option>
+                    @foreach(['mensuel' => 'Mensuel', 'trimestriel' => 'Trimestriel', 'semestriel' => 'Semestriel', 'annuel' => 'Annuel'] as $value => $label)
+                        <option value="{{ $value }}" @selected(request('period') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <input type="hidden" name="status" value="{{ request('status') }}">
+                <noscript><button type="submit" class="h-10 rounded-xl bg-[#0B0F14] px-4 text-xs font-semibold text-white">Filtrer</button></noscript>
             </div>
-
-        </div>
-
-        <!-- Filtres Avancés Épurés -->
-        <div class="bg-white rounded-2xl p-4 border border-[#E2E8F0] shadow-xs">
-            <form method="GET" action="{{ route('rh.sales-targets.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-                
-                <div>
-                    <label class="block text-[#64748B] font-medium mb-1">Commercial / Employé</label>
-                    <select name="employee_id" class="w-full px-3 py-1.5 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
-                        <option value="">Tous les employés</option>
-                        @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
-                                {{ $emp->full_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-[#64748B] font-medium mb-1">Pôle d'Activité</label>
-                    <select name="domain_id" class="w-full px-3 py-1.5 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
-                        <option value="">Tous les pôles</option>
-                        @foreach($domains as $dom)
-                            <option value="{{ $dom->id }}" {{ request('domain_id') == $dom->id ? 'selected' : '' }}>
-                                {{ $dom->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-[#64748B] font-medium mb-1">Statut</label>
-                    <select name="status" class="w-full px-3 py-1.5 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
-                        <option value="">Tous les statuts</option>
-                        <option value="en_cours" {{ request('status') === 'en_cours' ? 'selected' : '' }}>En cours</option>
-                        <option value="atteint" {{ request('status') === 'atteint' ? 'selected' : '' }}>Atteint</option>
-                        <option value="partiel" {{ request('status') === 'partiel' ? 'selected' : '' }}>Partiel</option>
-                        <option value="non_atteint" {{ request('status') === 'non_atteint' ? 'selected' : '' }}>Non atteint</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-[#64748B] font-medium mb-1">Périodicité</label>
-                    <select name="period" class="w-full px-3 py-1.5 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
-                        <option value="">Toutes périodicités</option>
-                        <option value="mensuel" {{ request('period') === 'mensuel' ? 'selected' : '' }}>Mensuel</option>
-                        <option value="trimestriel" {{ request('period') === 'trimestriel' ? 'selected' : '' }}>Trimestriel</option>
-                        <option value="semestriel" {{ request('period') === 'semestriel' ? 'selected' : '' }}>Semestriel</option>
-                        <option value="annuel" {{ request('period') === 'annuel' ? 'selected' : '' }}>Annuel</option>
-                    </select>
-                </div>
-
-                <div class="flex items-end gap-2">
-                    <button type="submit" class="w-full py-1.5 rounded-lg bg-[#0066FF] text-white font-medium hover:bg-blue-600 transition-colors">
-                        Filtrer
-                    </button>
-                    @if(request()->hasAny(['employee_id', 'domain_id', 'status', 'period']))
-                        <a href="{{ route('rh.sales-targets.index') }}" class="px-3 py-1.5 rounded-lg bg-[#F5F7FA] hover:bg-slate-200 text-[#64748B] transition-colors" title="Réinitialiser">
-                            ✕
+            <div class="flex items-center gap-2">
+                <div class="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:px-0">
+                    @foreach($statusFilters as $value => $label)
+                        <a href="{{ route('rh.sales-targets.index', array_merge(request()->except('page'), ['status' => $value ?: null])) }}"
+                           class="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition {{ (string) request('status', '') === (string) $value ? 'bg-[#0B0F14] text-white' : 'border border-[#E2E8F0] bg-white text-[#64748B] hover:text-[#0B0F14]' }}">
+                            {{ $label }}
                         </a>
-                    @endif
+                    @endforeach
                 </div>
-
-            </form>
-        </div>
-
-        <!-- Tableau des Objectifs Commerciaux -->
-        <div class="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
-            <!-- Vue Table Desktop (>= md) -->
-            <div class="hidden md:block overflow-x-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-[#F5F7FA] border-b border-[#E2E8F0]">
-                        <tr>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B]">Collaborateur</th>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B]">Intitulé & Pôle</th>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B]">Période</th>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B] text-right">Cible (FCFA)</th>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B]">Progression Réalisée</th>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B] text-right">Commission / Prime</th>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B] text-center">Statut</th>
-                            <th class="py-3 px-4 font-semibold uppercase tracking-wider text-[#64748B] text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-[#E2E8F0]">
-                        @forelse($targets as $target)
-                            <tr class="hover:bg-[#F5F7FA]/60 transition-colors">
-                                
-                                <!-- Employé -->
-                                <td class="py-3.5 px-4">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-[#0066FF]/10 text-[#0066FF] font-bold flex items-center justify-center shrink-0 text-xs">
-                                            {{ substr($target->employee->first_name ?? 'E', 0, 1) }}{{ substr($target->employee->last_name ?? 'M', 0, 1) }}
-                                        </div>
-                                        <div>
-                                            <a href="{{ route('rh.employees.show', $target->employee) }}" class="font-semibold text-[#0B0F14] hover:text-[#0066FF] transition-colors block">
-                                                {{ $target->employee->full_name ?? 'Employé' }}
-                                            </a>
-                                            <span class="text-[11px] text-[#64748B]">{{ $target->employee->position ?? 'Commercial' }}</span>
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <!-- Titre & Pôle -->
-                                <td class="py-3.5 px-4">
-                                    <span class="font-semibold text-[#0B0F14] block">{{ $target->title }}</span>
-                                    <span class="text-[11px] text-[#64748B]">
-                                        {{ $target->domain->name ?? 'Tous les pôles' }}
-                                    </span>
-                                </td>
-
-                                <!-- Dates -->
-                                <td class="py-3.5 px-4">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 capitalize">
-                                        {{ $target->period }}
-                                    </span>
-                                    <span class="text-[11px] text-[#64748B] flex items-center gap-1 mt-0.5">
-                                        <span>{{ $target->start_date->format('d/m/y') }}</span>
-                                        <svg class="w-3 h-3 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                        <span>{{ $target->end_date->format('d/m/y') }}</span>
-                                    </span>
-                                </td>
-
-                                <!-- Cible -->
-                                <td class="py-3.5 px-4 text-right font-bold text-[#0B0F14]">
-                                    {{ number_format($target->target_amount, 0, ',', ' ') }}
-                                </td>
-
-                                <!-- Réalisé & Barre -->
-                                <td class="py-3.5 px-4 min-w-[180px]">
-                                    <div class="flex items-center justify-between text-[11px] mb-1">
-                                        <span class="font-bold text-[#0B0F14]">{{ number_format($target->achieved_amount, 0, ',', ' ') }} FCFA</span>
-                                        <span class="font-bold {{ $target->progress_percentage >= 100 ? 'text-emerald-600' : 'text-[#0066FF]' }}">
-                                            {{ $target->progress_percentage }}%
-                                        </span>
-                                    </div>
-                                    <div class="w-full h-1.5 rounded-full bg-[#F5F7FA] border border-[#E2E8F0] overflow-hidden">
-                                        <div 
-                                            class="h-full rounded-full {{ $target->progress_percentage >= 100 ? 'bg-emerald-500' : 'bg-[#0066FF]' }} transition-all" 
-                                            style="width: {{ min(100, $target->progress_percentage) }}%"
-                                        ></div>
-                                    </div>
-                                    @if($target->remaining_amount > 0)
-                                        <span class="text-[10px] text-[#64748B] block mt-0.5">Reste : {{ number_format($target->remaining_amount, 0, ',', ' ') }} FCFA</span>
-                                    @else
-                                        <span class="text-[10px] text-emerald-600 font-semibold block mt-0.5">Dépassé de {{ number_format(abs($target->target_amount - $target->achieved_amount), 0, ',', ' ') }} FCFA</span>
-                                    @endif
-                                </td>
-
-                                <!-- Commission & Bonus -->
-                                <td class="py-3.5 px-4 text-right">
-                                    <span class="font-bold text-[#0B0F14] block">
-                                        {{ number_format($target->estimated_commission, 0, ',', ' ') }} FCFA
-                                    </span>
-                                    <span class="text-[10px] text-[#64748B]">
-                                        {{ $target->commission_rate }}% 
-                                        @if($target->bonus_amount > 0)
-                                            + {{ number_format($target->bonus_amount, 0, ',', ' ') }} prime
-                                        @endif
-                                    </span>
-                                </td>
-
-                                <!-- Statut -->
-                                <td class="py-3.5 px-4 text-center">
-                                    @php $badge = $target->status_badge; @endphp
-                                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold border {{ $badge['class'] }}">
-                                        {{ $badge['label'] }}
-                                    </span>
-                                </td>
-
-                                <!-- Actions -->
-                                <td class="py-3.5 px-4 text-right">
-                                    <div class="inline-flex items-center gap-2">
-                                        <a href="{{ route('rh.sales-targets.show', $target) }}" class="text-[#0066FF] hover:underline font-semibold text-xs">
-                                            Détails
-                                        </a>
-                                        <a href="{{ route('rh.sales-targets.edit', $target) }}" class="text-[#64748B] hover:text-[#0B0F14] text-xs">
-                                            Modifier
-                                        </a>
-                                    </div>
-                                </td>
-
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="8" class="py-12 text-center text-[#64748B]">
-                                    <div class="max-w-sm mx-auto space-y-2">
-                                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-[#64748B]">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                                        </div>
-                                        <p class="font-semibold text-[#0B0F14]">Aucun objectif commercial défini</p>
-                                        <p class="text-xs">Attribuez des quotas de ventes aux collaborateurs pour suivre leur performance et calculer leurs commissions.</p>
-                                        <div class="pt-2">
-                                            <a href="{{ route('rh.sales-targets.create') }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0066FF] text-white text-xs font-semibold hover:bg-blue-600 transition-colors">
-                                                <span>Fixer un Objectif</span>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                @if($hasFilters)
+                    <a href="{{ route('rh.sales-targets.index') }}" class="ml-auto shrink-0 text-xs font-medium text-[#0066FF] hover:underline">Réinitialiser</a>
+                @endif
             </div>
+        </form>
 
-            <!-- Vue Cartes Mobile (< md) -->
-            <div class="block md:hidden p-3 sm:p-4 space-y-3">
-                @forelse($targets as $target)
-                    @php $badge = $target->status_badge; @endphp
-                    <div class="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs hover:border-[#0066FF]/30 transition-all flex flex-col gap-3">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-9 h-9 rounded-lg bg-[#0066FF]/10 text-[#0066FF] font-bold flex items-center justify-center shrink-0 text-xs">
-                                    {{ substr($target->employee->first_name ?? 'E', 0, 1) }}{{ substr($target->employee->last_name ?? 'M', 0, 1) }}
-                                </div>
-                                <div>
-                                    <a href="{{ route('rh.sales-targets.show', $target) }}" class="font-bold text-[#0B0F14] hover:text-[#0066FF] text-sm block">
-                                        {{ $target->title }}
-                                    </a>
-                                    <div class="text-[11px] text-[#64748B]">
-                                        {{ $target->employee->full_name ?? 'Employé' }} &bull; {{ $target->domain->name ?? 'Tous les pôles' }}
+        {{-- ───────── Objectifs ───────── --}}
+        @if($targets->isEmpty())
+            <div class="rounded-2xl border border-dashed border-[#E2E8F0] bg-white px-6 py-14 text-center">
+                <p class="text-sm font-medium text-[#0B0F14]">Aucun objectif commercial</p>
+                <p class="mt-1 text-xs text-[#64748B]">Fixez des quotas pour suivre la performance et calculer les commissions.</p>
+                <a href="{{ route('rh.sales-targets.create') }}" class="mt-4 inline-flex h-9 items-center rounded-xl bg-[#0066FF] px-4 text-xs font-semibold text-white hover:bg-[#0052cc]">Fixer un objectif</a>
+            </div>
+        @else
+            <ul class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                @foreach($targets as $target)
+                    @php
+                        $badge = $target->status_badge;
+                        $progress = (float) $target->progress_percentage;
+                        $isReached = $progress >= 100;
+                    @endphp
+                    <li class="group flex flex-col rounded-2xl border border-[#E2E8F0] bg-white transition hover:border-[#0066FF]/40">
+                        <a href="{{ route('rh.sales-targets.show', $target) }}" class="block p-4 sm:p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-center gap-3">
+                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xs font-semibold text-[#0066FF]">
+                                        {{ mb_substr($target->employee->first_name ?? 'E', 0, 1) }}{{ mb_substr($target->employee->last_name ?? 'M', 0, 1) }}
+                                    </span>
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-medium text-[#0B0F14] group-hover:text-[#0066FF]">{{ $target->title }}</p>
+                                        <p class="truncate text-[11px] text-[#64748B]">{{ $target->employee->full_name ?? 'Employé' }} · {{ $target->domain->name ?? 'Tous les pôles' }}</p>
                                     </div>
                                 </div>
+                                <span class="shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-medium {{ $badge['class'] }}">{{ $badge['label'] }}</span>
                             </div>
-                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold border shrink-0 {{ $badge['class'] }}">
-                                {{ $badge['label'] }}
+
+                            <div class="mt-4 space-y-1.5">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <p class="text-lg font-semibold text-[#0B0F14]">{{ $n($target->achieved_amount) }} <span class="text-xs font-normal text-[#64748B]">/ {{ $n($target->target_amount) }} FCFA</span></p>
+                                    <span class="text-sm font-semibold {{ $isReached ? 'text-emerald-600' : 'text-[#0066FF]' }}">{{ $target->progress_percentage }}%</span>
+                                </div>
+                                <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                                    <div class="h-full rounded-full {{ $isReached ? 'bg-emerald-500' : 'bg-[#0066FF]' }}" style="width: {{ min(100, $progress) }}%"></div>
+                                </div>
+                                <p class="text-[11px] {{ $target->remaining_amount > 0 ? 'text-[#64748B]' : 'font-medium text-emerald-600' }}">
+                                    {{ $target->remaining_amount > 0 ? 'Reste '.$n($target->remaining_amount).' FCFA' : 'Dépassé de '.$n(abs($target->target_amount - $target->achieved_amount)).' FCFA' }}
+                                </p>
+                            </div>
+                        </a>
+                        <div class="mt-auto flex items-center gap-3 border-t border-[#E2E8F0] px-4 py-2.5 text-[11px] text-[#64748B] sm:px-5">
+                            <span class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                                <span><span class="capitalize">{{ $target->period }}</span> · {{ $target->start_date->format('d/m/y') }} → {{ $target->end_date->format('d/m/y') }}</span>
+                                <span class="font-medium text-[#0B0F14]">{{ $n($target->estimated_commission) }} FCFA <span class="font-normal text-[#64748B]">({{ $target->commission_rate }}%{{ $target->bonus_amount > 0 ? ' + prime' : '' }})</span></span>
                             </span>
+                            <a href="{{ route('rh.sales-targets.edit', $target) }}" class="shrink-0 rounded-lg px-2.5 py-1.5 font-medium text-[#0B0F14] transition hover:bg-slate-100">Modifier</a>
                         </div>
-
-                        <!-- Progress Bar Container -->
-                        <div class="bg-[#F5F7FA] p-3 rounded-lg border border-[#E2E8F0] space-y-2">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-[#64748B] font-medium">Réalisé / Cible</span>
-                                <span class="font-bold {{ $target->progress_percentage >= 100 ? 'text-emerald-600' : 'text-[#0066FF]' }}">
-                                    {{ $target->progress_percentage }}%
-                                </span>
-                            </div>
-                            <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                                <div 
-                                    class="h-full rounded-full {{ $target->progress_percentage >= 100 ? 'bg-emerald-500' : 'bg-[#0066FF]' }} transition-all" 
-                                    style="width: {{ min(100, $target->progress_percentage) }}%"
-                                ></div>
-                            </div>
-                            <div class="flex items-center justify-between text-xs pt-1">
-                                <span class="font-bold text-[#0B0F14]">{{ number_format($target->achieved_amount, 0, ',', ' ') }} FCFA</span>
-                                <span class="text-[#64748B] font-mono text-[11px]">Objectif: {{ number_format($target->target_amount, 0, ',', ' ') }} FCFA</span>
-                            </div>
-                        </div>
-
-                        <!-- 2-col info grid -->
-                        <div class="grid grid-cols-2 gap-2 text-xs bg-[#F5F7FA]/70 p-2.5 rounded-lg border border-[#E2E8F0]">
-                            <div>
-                                <span class="text-[10px] uppercase font-bold text-[#64748B] block">Commission Est.</span>
-                                <span class="font-bold text-[#0B0F14] text-xs">{{ number_format($target->estimated_commission, 0, ',', ' ') }} FCFA</span>
-                                <span class="text-[10px] text-[#64748B]">Taux : {{ $target->commission_rate }}%</span>
-                            </div>
-                            <div>
-                                <span class="text-[10px] uppercase font-bold text-[#64748B] block">Période</span>
-                                <span class="font-semibold text-[#0B0F14] capitalize text-xs block">{{ $target->period }}</span>
-                                <span class="text-[10px] text-[#64748B] block">{{ $target->start_date->format('d/m/y') }} au {{ $target->end_date->format('d/m/y') }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Actions bar -->
-                        <div class="pt-2 border-t border-[#E2E8F0] flex items-center justify-between gap-2">
-                            <a href="{{ route('rh.sales-targets.show', $target) }}" class="flex-1 py-2 px-3 rounded-lg bg-[#0066FF] hover:bg-blue-600 text-white text-xs font-semibold text-center transition flex items-center justify-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                <span>Suivi détaillé</span>
-                            </a>
-                            <a href="{{ route('rh.sales-targets.edit', $target) }}" class="py-2 px-3 rounded-lg border border-[#E2E8F0] text-[#64748B] hover:text-[#0B0F14] hover:bg-[#F5F7FA] text-xs font-semibold transition flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                <span>Modifier</span>
-                            </a>
-                        </div>
-                    </div>
-                @empty
-                    <div class="py-8 text-center text-[#64748B]">
-                        <p class="font-semibold text-[#0B0F14] text-sm">Aucun objectif commercial défini</p>
-                        <a href="{{ route('rh.sales-targets.create') }}" class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0066FF] text-white text-xs font-semibold hover:bg-blue-600 transition-colors">
-                            <span>Fixer un Objectif</span>
-                        </a>
-                    </div>
-                @endforelse
-            </div>
+                    </li>
+                @endforeach
+            </ul>
 
             @if($targets->hasPages())
-                <div class="p-4 border-t border-[#E2E8F0]">
-                    {{ $targets->links() }}
-                </div>
+                <div>{{ $targets->links() }}</div>
             @endif
-        </div>
-
+        @endif
     </div>
 </x-layouts.app>
