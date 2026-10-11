@@ -14,6 +14,7 @@ use App\Services\SaleLifecycleService;
 use App\Services\StockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -108,10 +109,16 @@ class OrderController extends Controller
         $order->update(['subtotal' => $subtotal, 'tax_amount' => $tax_amount, 'discount' => $discount, 'total' => $subtotal + $tax_amount - $discount]);
 
         if ($order->status === Order::STATUS_VALIDATED) {
-            $order->update([
-                'validated_at' => now(),
-                'validated_by' => auth()->id(),
-            ]);
+            $valData = [];
+            if (Schema::hasColumn('orders', 'validated_at')) {
+                $valData['validated_at'] = now();
+            }
+            if (Schema::hasColumn('orders', 'validated_by')) {
+                $valData['validated_by'] = auth()->id();
+            }
+            if (! empty($valData)) {
+                $order->update($valData);
+            }
         }
 
         StockService::deductOrderStock($order);
