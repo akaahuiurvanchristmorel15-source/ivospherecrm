@@ -62,7 +62,7 @@ class HrSetting extends Model
             'work_end_time' => '20:00',
             'auto_checkout_enabled' => true,
             'auto_checkout_time' => '20:00',
-            'geofence_enabled' => true,
+            'geofence_enabled' => false,
             'office_latitude' => 5.3599520,
             'office_longitude' => -4.0082560,
             'geofence_radius_meters' => 100,

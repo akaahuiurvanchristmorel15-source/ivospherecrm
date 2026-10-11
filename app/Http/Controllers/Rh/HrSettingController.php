@@ -31,10 +31,6 @@ class HrSettingController extends Controller
             'work_end_time' => ['required', 'string', 'regex:/^(?:2[0-3]|[01][0-9]):[0-5][0-9]$/'],
             'auto_checkout_enabled' => ['nullable', 'boolean'],
             'auto_checkout_time' => ['required', 'string', 'regex:/^(?:2[0-3]|[01][0-9]):[0-5][0-9]$/'],
-            'geofence_enabled' => ['nullable', 'boolean'],
-            'office_latitude' => ['required', 'numeric', 'between:-90,90'],
-            'office_longitude' => ['required', 'numeric', 'between:-180,180'],
-            'geofence_radius_meters' => ['required', 'integer', 'min:10', 'max:5000'],
             'max_work_days_per_week' => ['required', 'integer', 'min:1', 'max:6'],
             'allow_custom_schedules' => ['nullable', 'boolean'],
             'evaluation_day_of_month' => ['required', 'integer', 'min:1', 'max:28'],
@@ -53,10 +49,7 @@ class HrSettingController extends Controller
             'work_end_time' => $validated['work_end_time'],
             'auto_checkout_enabled' => $request->boolean('auto_checkout_enabled'),
             'auto_checkout_time' => $validated['auto_checkout_time'],
-            'geofence_enabled' => $request->boolean('geofence_enabled'),
-            'office_latitude' => $validated['office_latitude'],
-            'office_longitude' => $validated['office_longitude'],
-            'geofence_radius_meters' => (int) $validated['geofence_radius_meters'],
+            'geofence_enabled' => false,
             'max_work_days_per_week' => (int) $validated['max_work_days_per_week'],
             'allow_custom_schedules' => $request->boolean('allow_custom_schedules'),
             'evaluation_day_of_month' => (int) $validated['evaluation_day_of_month'],
@@ -70,7 +63,7 @@ class HrSettingController extends Controller
 
         ActivityLogger::log(
             'modification_parametres_rh',
-            'Mise à jour des paramètres RH généraux (horaires, géolocalisation, barème évaluation)',
+            'Mise à jour des paramètres RH généraux (horaires, pointage, barème évaluation)',
             $settings
         );
 

@@ -123,7 +123,7 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Interface mobile de pointage (Caméra + GPS + Validation immédiate).
+     * Interface mobile de pointage (Caméra + Validation immédiate).
      */
     public function scanner(): View
     {
@@ -142,9 +142,6 @@ class AttendanceController extends Controller
     {
         $validated = $request->validate([
             'qr_payload' => ['required', 'string'],
-            'latitude' => ['nullable', 'numeric'],
-            'longitude' => ['nullable', 'numeric'],
-            'accuracy' => ['nullable', 'numeric'],
             'device_fingerprint' => ['nullable', 'string'],
             'device_info' => ['nullable', 'string'],
         ]);

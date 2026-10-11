@@ -51,7 +51,7 @@
                 </div>
                 <div>
                     <p class="font-medium">Pointage Présence</p>
-                    <p class="text-[11px] text-slate-400">Arrivée & Départ (QR & GPS)</p>
+                    <p class="text-[11px] text-slate-400">Arrivée & Départ (QR code)</p>
                 </div>
             </a>
 

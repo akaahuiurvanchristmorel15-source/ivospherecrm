@@ -16,7 +16,7 @@ class AttendanceService
     /**
      * Génère la charge utile signée et horodatée du QR code dynamique des locaux.
      *
-     * @return array{token: string, generated_at: int, expires_in: int, office_name: string, latitude: float, longitude: float}
+     * @return array{token: string, generated_at: int, expires_in: int, office_name: string}
      */
     public function generateDynamicQrPayload(): array
     {
@@ -34,9 +34,6 @@ class AttendanceService
             'generated_at' => $timestamp,
             'expires_in' => $refreshSec - ($timestamp % $refreshSec),
             'office_name' => 'Siège IVOSPHERE ERP',
-            'latitude' => (float) $settings->office_latitude,
-            'longitude' => (float) $settings->office_longitude,
-            'radius' => (int) $settings->geofence_radius_meters,
         ];
     }
 
@@ -66,7 +63,7 @@ class AttendanceService
      * Génère la charge utile du QR Code officiel imprimable des locaux,
      * renouvelé et réactualisé automatiquement chaque mois (valable 1 mois).
      *
-     * @return array{token: string, year: int, month: int, month_name: string, valid_from: string, valid_until: string, days_remaining: int, is_current: bool, office_name: string, latitude: float, longitude: float, radius: int}
+     * @return array{token: string, year: int, month: int, month_name: string, valid_from: string, valid_until: string, days_remaining: int, is_current: bool, office_name: string}
      */
     public function generateMonthlyQrPayload(?int $year = null, ?int $month = null): array
     {
@@ -99,9 +96,6 @@ class AttendanceService
             'days_remaining' => max(0, (int) now()->diffInDays($endDate, false)),
             'is_current' => (now()->year === $year && now()->month === $month),
             'office_name' => 'Siège Social IVOSPHERE',
-            'latitude' => (float) $settings->office_latitude,
-            'longitude' => (float) $settings->office_longitude,
-            'radius' => (int) $settings->geofence_radius_meters,
         ];
     }
 
@@ -139,10 +133,10 @@ class AttendanceService
 
     /**
      * Enregistre un pointage d'arrivée avec vérification simultanée :
-     * QR code + Utilisateur + GPS + Heure + Planning.
+     * QR code + Utilisateur + Heure + Planning (sans géolocalisation).
      *
-     * @param  array{qr_payload: string, latitude: float|null, longitude: float|null, accuracy: float|null, device_fingerprint: string|null, device_info: string|null}  $data
-     * @return array{success: bool, message: string, error?: string, attendance?: Attendance, delay_minutes?: int, punctuality_score?: float, distance?: float}
+     * @param  array{qr_payload: string, device_fingerprint: string|null, device_info: string|null}  $data
+     * @return array{success: bool, message: string, error?: string, attendance?: Attendance, delay_minutes?: int, punctuality_score?: float}
      */
     public function checkIn(User $user, array $data): array
     {
@@ -189,35 +183,9 @@ class AttendanceService
             ];
         }
 
-        // 3. Restriction géographique (Géofencing)
-        $lat = isset($data['latitude']) ? (float) $data['latitude'] : null;
-        $lng = isset($data['longitude']) ? (float) $data['longitude'] : null;
-        $accuracy = isset($data['accuracy']) ? (float) $data['accuracy'] : null;
-        $distance = null;
-
-        if ($settings->geofence_enabled) {
-            if ($lat === null || $lng === null) {
-                return [
-                    'success' => false,
-                    'error' => 'gps_required',
-                    'message' => 'La localisation GPS est requise pour valider le pointage. Veuillez autoriser la géolocalisation sur votre smartphone.',
-                ];
-            }
-
-            $distance = $settings->calculateDistanceMeters($lat, $lng);
-            if ($distance > (float) $settings->geofence_radius_meters) {
-                return [
-                    'success' => false,
-                    'error' => 'outside_geofence',
-                    'message' => "Pointage refusé. Vous êtes en dehors de la zone de pointage autorisée (distance constatée : {$distance} m, rayon autorisé : {$settings->geofence_radius_meters} m).",
-                    'distance' => $distance,
-                ];
-            }
-        }
-
         $today = today();
 
-        // 4. Vérification du planning de l'employé
+        // 3. Vérification du planning de l'employé
         $schedule = $employee->currentWeekSchedule();
         $scheduleDay = $schedule ? $schedule->getDayForDate($today) : null;
 
@@ -231,7 +199,7 @@ class AttendanceService
 
         $scheduledStartTime = $scheduleDay?->start_time ?: $settings->work_start_time ?: '08:00';
 
-        // 5. Vérification si déjà pointé aujourd'hui
+        // 4. Vérification si déjà pointé aujourd'hui
         $attendance = Attendance::where('employee_id', $employee->id)->whereDate('date', $today)->first();
         if ($attendance && $attendance->isCheckedIn()) {
             $timeDisplay = $attendance->check_in_at ? $attendance->check_in_at->format('H:i') : substr($attendance->check_in, 0, 5);
@@ -244,7 +212,7 @@ class AttendanceService
             ];
         }
 
-        // 6. Calcul de ponctualité
+        // 5. Calcul de ponctualité
         $now = now();
         $scheduledStartCarbon = Carbon::parse($today->toDateString().' '.$scheduledStartTime);
         $delayMinutes = 0;
@@ -254,17 +222,17 @@ class AttendanceService
 
         $punctuality = $settings->evaluatePunctuality($delayMinutes);
 
-        // 7. Enregistrement de la présence
+        // 6. Enregistrement de la présence
         $attendance = Attendance::updateOrCreate(
             ['employee_id' => $employee->id, 'date' => $today],
             [
                 'check_in' => $now->format('H:i:s'),
                 'check_in_at' => $now,
-                'latitude' => $lat,
-                'longitude' => $lng,
-                'accuracy_meters' => $accuracy,
-                'distance_meters' => $distance,
-                'location_verified' => true,
+                'latitude' => null,
+                'longitude' => null,
+                'accuracy_meters' => null,
+                'distance_meters' => null,
+                'location_verified' => false,
                 'qr_type' => $qrType,
                 'device_fingerprint' => $data['device_fingerprint'] ?? null,
                 'device_info' => $data['device_info'] ?? Request::userAgent(),
@@ -302,7 +270,6 @@ class AttendanceService
             'attendance' => $attendance,
             'delay_minutes' => $delayMinutes,
             'punctuality_score' => (float) $punctuality['score'],
-            'distance' => $distance,
             'status' => $punctuality['status'],
         ];
     }

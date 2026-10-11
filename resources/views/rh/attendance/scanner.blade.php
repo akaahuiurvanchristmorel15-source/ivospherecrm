@@ -14,33 +14,21 @@
             </a>
         </div>
 
-        <!-- Composant Alpine de Pointage avec Caméra et GPS -->
+        <!-- Composant Alpine de Pointage par QR code (caméra) -->
         <div 
             x-data="{
                 hasCamera: false,
                 cameraActive: false,
-                geoLoaded: false,
-                latitude: null,
-                longitude: null,
-                accuracy: null,
-                distanceMeters: null,
-                isWithinGeofence: false,
-                geoError: null,
                 submitting: false,
                 manualCode: '',
                 manualModalOpen: false,
                 resultMessage: '',
                 resultType: '', // 'success' | 'error'
-                officeLat: {{ (float) $settings->office_latitude }},
-                officeLng: {{ (float) $settings->office_longitude }},
-                maxRadius: {{ (int) $settings->geofence_radius_meters }},
-                geofenceEnabled: {{ $settings->geofence_enabled ? 'true' : 'false' }},
                 videoStream: null,
                 barcodeDetector: null,
                 scanInterval: null,
 
                 init() {
-                    this.initGeo();
                     if ('BarcodeDetector' in window) {
                         try {
                             this.barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -50,44 +38,7 @@
                     }
                 },
 
-                // 1. Capture continue de la position GPS
-                initGeo() {
-                    if (!navigator.geolocation) {
-                        this.geoError = 'La géolocalisation n\'est pas disponible sur cet appareil.';
-                        return;
-                    }
-                    navigator.geolocation.watchPosition(
-                        (pos) => {
-                            this.latitude = pos.coords.latitude;
-                            this.longitude = pos.coords.longitude;
-                            this.accuracy = Math.round(pos.coords.accuracy);
-                            this.geoLoaded = true;
-                            this.geoError = null;
-                            this.calculateDistance();
-                        },
-                        (err) => {
-                            this.geoLoaded = false;
-                            this.geoError = 'Signal GPS non disponible. Veuillez autoriser l\'accès à votre position dans le navigateur.';
-                        },
-                        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-                    );
-                },
-
-                // 2. Calcul Haversine côté client pour retour instantané
-                calculateDistance() {
-                    if (this.latitude === null || this.longitude === null) return;
-                    const R = 6371000;
-                    const dLat = (this.latitude - this.officeLat) * Math.PI / 180;
-                    const dLon = (this.longitude - this.officeLng) * Math.PI / 180;
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                              Math.cos(this.officeLat * Math.PI / 180) * Math.cos(this.latitude * Math.PI / 180) *
-                              Math.sin(dLon/2) * Math.sin(dLon/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    this.distanceMeters = Math.round(R * c);
-                    this.isWithinGeofence = !this.geofenceEnabled || (this.distanceMeters <= this.maxRadius);
-                },
-
-                // 3. Activation Caméra pour scan QR
+                // 1. Activation Caméra pour scan QR
                 async startCamera() {
                     this.resultMessage = '';
                     try {
@@ -139,7 +90,7 @@
                     }, 400);
                 },
 
-                // 4. Soumission du pointage d'arrivée
+                // 2. Soumission du pointage d'arrivée
                 async submitCheckIn(qrPayload) {
                     if (!qrPayload) return;
                     this.submitting = true;
@@ -155,9 +106,6 @@
                             },
                             body: JSON.stringify({
                                 qr_payload: qrPayload,
-                                latitude: this.latitude,
-                                longitude: this.longitude,
-                                accuracy: this.accuracy,
                                 device_fingerprint: navigator.userAgent
                             })
                         });
@@ -182,7 +130,7 @@
                     }
                 },
 
-                // 5. Pointage de départ
+                // 3. Pointage de départ
                 async submitCheckOut() {
                     if (!confirm('Confirmez-vous l\'enregistrement de votre départ maintenant ?')) return;
                     this.submitting = true;
@@ -219,42 +167,6 @@
             }"
             class="space-y-4"
         >
-
-            <!-- 1. Indicateur GPS Temps Réel (GEOFENCING 100m) -->
-            <div class="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-[#0B0F14] flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        Localisation GPS
-                    </span>
-                    <template x-if="geoLoaded && isWithinGeofence">
-                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Dans la zone autorisée
-                        </span>
-                    </template>
-                    <template x-if="geoLoaded && !isWithinGeofence">
-                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">
-                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                            Hors zone
-                        </span>
-                    </template>
-                    <template x-if="!geoLoaded && !geoError">
-                        <span class="text-[10px] text-slate-400 font-semibold animate-pulse">Recherche signal...</span>
-                    </template>
-                </div>
-
-                <template x-if="geoLoaded">
-                    <div class="text-[11px] text-slate-500 flex items-center justify-between">
-                        <span>Distance au siège : <strong class="text-[#0B0F14]" x-text="distanceMeters + ' m'"></strong> (Max : {{ $settings->geofence_radius_meters }}m)</span>
-                        <span class="text-slate-400" x-text="'±' + accuracy + 'm'"></span>
-                    </div>
-                </template>
-
-                <template x-if="geoError">
-                    <div class="text-[11px] font-semibold text-rose-600 bg-rose-50 p-2 rounded-xl border border-rose-100" x-text="geoError"></div>
-                </template>
-            </div>
 
             <!-- 2. Statut du Jour de l'Employé -->
             <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">

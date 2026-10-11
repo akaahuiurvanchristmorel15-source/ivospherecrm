@@ -1,418 +1,251 @@
+@php
+    $sections = [
+        ['horaires', 'Horaires', 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
+        ['pointage', 'Pointage QR', 'M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z'],
+        ['plannings', 'Plannings', 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
+        ['evaluation', 'Évaluation', 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'],
+    ];
+
+    $input = 'w-full rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-2.5 text-sm text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15';
+    $label = 'mb-1.5 block text-xs font-medium text-[#0B0F14]';
+    $hint = 'mt-1.5 text-[11px] text-[#64748B]';
+    $card = 'scroll-mt-24 rounded-2xl border border-[#E2E8F0] bg-white';
+@endphp
+
 <x-layouts.app>
     <x-slot:title>Paramètres RH — IVOSPHERE ERP</x-slot>
 
-    <x-page-header 
-        title="Paramètres Ressources Humaines" 
-        description="Configuration des règles de pointage, géofencing, plannings et barèmes d'évaluation"
-        :breadcrumbs="[['label' => 'RH', 'url' => route('rh.index')], ['label' => 'Paramètres']]"
-    >
-        <x-slot:actions>
-            <div class="flex items-center gap-2">
-                <x-button :href="route('rh.attendance.poster')" variant="secondary" size="md">
-                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    <span>Affiche QR Mensuelle (A4)</span>
-                </x-button>
-                <x-button :href="route('rh.index')" variant="secondary" size="md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                    <span>Retour RH</span>
-                </x-button>
+    <div class="space-y-6"
+         x-data="{
+            active: 'horaires',
+            punctuality: {{ (float) old('weight_punctuality', $settings->weight_punctuality) }},
+            tasks: {{ (float) old('weight_tasks', $settings->weight_tasks) }},
+            teamwork: {{ (float) old('weight_teamwork', $settings->weight_teamwork) }},
+            autoCheckout: {{ old('auto_checkout_enabled', $settings->auto_checkout_enabled) ? 'true' : 'false' }},
+            customSchedules: {{ old('allow_custom_schedules', $settings->allow_custom_schedules) ? 'true' : 'false' }},
+            get dailyMax() { return (Number(this.punctuality) || 0) + (Number(this.tasks) || 0) + (Number(this.teamwork) || 0); },
+            share(value) { return this.dailyMax > 0 ? Math.round((Number(value) || 0) / this.dailyMax * 100) : 0; },
+         }">
+
+        {{-- ───────── En-tête ───────── --}}
+        <header class="space-y-4">
+            <x-breadcrumb :items="[['label' => 'Ressources Humaines', 'url' => route('rh.index')], ['label' => 'Paramètres']]" />
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="space-y-1">
+                    <h1 class="text-2xl font-semibold tracking-tight text-[#0B0F14]">Paramètres RH</h1>
+                    <p class="text-sm text-[#64748B]">Horaires, pointage par QR code, plannings et barème d'évaluation.</p>
+                </div>
+                <a href="{{ route('rh.attendance.poster') }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-medium text-[#0B0F14] transition hover:border-[#0066FF] hover:text-[#0066FF]">
+                    <svg class="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    Affiche QR du mois
+                </a>
             </div>
-        </x-slot:actions>
-    </x-page-header>
+        </header>
 
-    <form method="POST" action="{{ route('rh.settings.update') }}" class="space-y-6 max-w-5xl" x-data="{
-        punctuality: {{ (float) old('weight_punctuality', $settings->weight_punctuality) }},
-        tasks: {{ (float) old('weight_tasks', $settings->weight_tasks) }},
-        teamwork: {{ (float) old('weight_teamwork', $settings->weight_teamwork) }},
-        geoLoading: false,
-        geoMessage: '',
-        getCurrentPosition() {
-            if (!navigator.geolocation) {
-                alert('La géolocalisation n\'est pas supportée par votre navigateur.');
-                return;
-            }
-            this.geoLoading = true;
-            this.geoMessage = 'Capture des coordonnées GPS en cours...';
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    document.getElementById('office_latitude').value = pos.coords.latitude.toFixed(7);
-                    document.getElementById('office_longitude').value = pos.coords.longitude.toFixed(7);
-                    this.geoLoading = false;
-                    this.geoMessage = 'Coordonnées capturées avec succès (Précision : ±' + Math.round(pos.coords.accuracy) + 'm)';
-                },
-                (err) => {
-                    this.geoLoading = false;
-                    this.geoMessage = 'Erreur : ' + err.message;
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        }
-    }">
-        @csrf
-        @method('PUT')
-
-        <!-- 1. Horaires & Clôture Automatique -->
-        <x-card title="1. Horaires de Travail & Pointage" subtitle="Heures de référence pour l'entreprise et départ automatique">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="work_start_time">
-                        Heure début standard
-                    </label>
-                    <input 
-                        type="time" 
-                        id="work_start_time" 
-                        name="work_start_time" 
-                        value="{{ old('work_start_time', $settings->work_start_time) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Heure prévue d'arrivée des collaborateurs</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="work_end_time">
-                        Heure fin standard
-                    </label>
-                    <input 
-                        type="time" 
-                        id="work_end_time" 
-                        name="work_end_time" 
-                        value="{{ old('work_end_time', $settings->work_end_time) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Heure habituelle de fin de journée</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="auto_checkout_time">
-                        Heure de départ automatique
-                    </label>
-                    <input 
-                        type="time" 
-                        id="auto_checkout_time" 
-                        name="auto_checkout_time" 
-                        value="{{ old('auto_checkout_time', $settings->auto_checkout_time) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Clôture automatique si non pointé manuellement</p>
-                </div>
+        @if($errors->any())
+            <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">
+                <p class="font-semibold">Veuillez corriger les champs suivants :</p>
+                <ul class="mt-1.5 list-inside list-disc space-y-0.5">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
+        @endif
 
-            <div class="mt-4 pt-4 border-t border-slate-100 flex items-start gap-3">
-                <input 
-                    type="checkbox" 
-                    id="auto_checkout_enabled" 
-                    name="auto_checkout_enabled" 
-                    value="1" 
-                    {{ old('auto_checkout_enabled', $settings->auto_checkout_enabled) ? 'checked' : '' }}
-                    class="h-4 w-4 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF] mt-0.5"
-                >
-                <label for="auto_checkout_enabled" class="cursor-pointer">
-                    <span class="text-xs font-bold text-[#0B0F14] block">Activer le départ automatique à l'heure configurée</span>
-                    <span class="text-[11px] text-slate-500">
-                        Si un employé n'a pas scanné sa sortie avant cette heure, le système enregistre automatiquement son départ en marquant <code class="text-amber-700 font-mono bg-amber-50 px-1 py-0.5 rounded">check_out_type = automatic</code>.
-                    </span>
-                </label>
-            </div>
-        </x-card>
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[13rem_1fr]">
+            {{-- ───────── Navigation des sections ───────── --}}
+            <nav aria-label="Sections des paramètres" class="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 sm:-mx-6 sm:px-6 lg:sticky lg:top-6 lg:mx-0 lg:flex-col lg:self-start lg:overflow-visible lg:px-0">
+                @foreach($sections as [$id, $title, $icon])
+                    <a href="#{{ $id }}" @click="active = '{{ $id }}'"
+                       :class="active === '{{ $id }}' ? 'bg-[#0B0F14] text-white lg:bg-white lg:text-[#0066FF] lg:ring-1 lg:ring-[#E2E8F0]' : 'bg-white text-[#64748B] ring-1 ring-[#E2E8F0] hover:text-[#0B0F14] lg:bg-transparent lg:ring-0 lg:hover:bg-white'"
+                       class="inline-flex shrink-0 items-center gap-2.5 rounded-full px-3.5 py-2 text-xs font-medium transition lg:rounded-xl lg:py-2.5">
+                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
+                        {{ $title }}
+                    </a>
+                @endforeach
+            </nav>
 
-        <!-- 2. Restriction Géographique & Géofencing -->
-        <x-card title="2. Restriction Géographique (Géofencing)" subtitle="Empêche les collaborateurs de pointer en dehors des locaux d'IVOSPHERE">
-            <div class="flex items-start gap-3 pb-4 mb-4 border-b border-slate-100">
-                <input 
-                    type="checkbox" 
-                    id="geofence_enabled" 
-                    name="geofence_enabled" 
-                    value="1" 
-                    {{ old('geofence_enabled', $settings->geofence_enabled) ? 'checked' : '' }}
-                    class="h-4 w-4 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF] mt-0.5"
-                >
-                <label for="geofence_enabled" class="cursor-pointer">
-                    <span class="text-xs font-bold text-[#0B0F14] block">Activer la restriction géographique</span>
-                    <span class="text-[11px] text-slate-500">
-                        Vérifie la position GPS du smartphone lors du scan. Si l'employé est en dehors du rayon, le pointage est bloqué.
-                    </span>
-                </label>
-            </div>
+            <form method="POST" action="{{ route('rh.settings.update') }}" class="min-w-0 space-y-5 md:pb-24">
+                @csrf
+                @method('PUT')
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="office_latitude">
-                        Latitude du siège
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.0000001" 
-                        id="office_latitude" 
-                        name="office_latitude" 
-                        value="{{ old('office_latitude', $settings->office_latitude) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Exemple : 5.3599520 (Abidjan)</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="office_longitude">
-                        Longitude du siège
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.0000001" 
-                        id="office_longitude" 
-                        name="office_longitude" 
-                        value="{{ old('office_longitude', $settings->office_longitude) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Exemple : -4.0082560</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="geofence_radius_meters">
-                        Rayon autorisé (mètres)
-                    </label>
-                    <div class="relative">
-                        <input 
-                            type="number" 
-                            id="geofence_radius_meters" 
-                            name="geofence_radius_meters" 
-                            value="{{ old('geofence_radius_meters', $settings->geofence_radius_meters) }}"
-                            class="w-full rounded-xl border border-slate-200 px-3 py-2 pr-12 text-sm font-bold text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                            min="10" 
-                            max="5000"
-                            required
-                        >
-                        <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-slate-400 font-semibold pointer-events-none">mètres</span>
+                {{-- ───────── 1. Horaires ───────── --}}
+                <section id="horaires" class="{{ $card }}">
+                    <div class="border-b border-[#E2E8F0] px-5 py-4 sm:px-6">
+                        <h2 class="text-sm font-semibold text-[#0B0F14]">Horaires de travail</h2>
+                        <p class="text-xs text-[#64748B]">Heures de référence de l'entreprise et clôture automatique des journées.</p>
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-1">Recommandé : 100 mètres</p>
-                </div>
-            </div>
+                    <div class="space-y-5 p-5 sm:p-6">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div>
+                                <label class="{{ $label }}" for="work_start_time">Début de journée</label>
+                                <input type="time" id="work_start_time" name="work_start_time" value="{{ old('work_start_time', $settings->work_start_time) }}" class="{{ $input }}" required>
+                                <p class="{{ $hint }}">Heure d'arrivée prévue</p>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}" for="work_end_time">Fin de journée</label>
+                                <input type="time" id="work_end_time" name="work_end_time" value="{{ old('work_end_time', $settings->work_end_time) }}" class="{{ $input }}" required>
+                                <p class="{{ $hint }}">Heure de départ habituelle</p>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}" for="auto_checkout_time">Départ automatique</label>
+                                <input type="time" id="auto_checkout_time" name="auto_checkout_time" value="{{ old('auto_checkout_time', $settings->auto_checkout_time) }}" class="{{ $input }}" :class="autoCheckout ? '' : 'opacity-50'" required>
+                                <p class="{{ $hint }}">Si aucun départ n'est scanné</p>
+                            </div>
+                        </div>
 
-            <!-- Aide & Détection GPS en 1 clic -->
-            <div class="mt-4 flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
-                <button 
-                    type="button" 
-                    @click="getCurrentPosition()" 
-                    :disabled="geoLoading"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:border-[#0066FF] hover:text-[#0066FF] shadow-2xs transition disabled:opacity-50"
-                >
-                    <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span x-text="geoLoading ? 'Localisation...' : 'Détecter les coordonnées actuelles du bureau'"></span>
-                </button>
-                <span x-show="geoMessage" x-text="geoMessage" class="text-xs text-slate-500 font-medium"></span>
-            </div>
-
-            <!-- Affiche Murale Mensuelle A4 -->
-            <div class="mt-4 p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0 mt-0.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-bold text-emerald-950">Affiche Murale Mensuelle de Pointage (Format A4)</h4>
-                        <p class="text-[11px] text-emerald-800/80 mt-0.5">
-                            Le QR code officiel à imprimer pour les locaux se renouvelle automatiquement chaque 1er du mois. Une tolérance de transition de 2 jours est accordée pour le remplacement physique de l'affiche.
-                        </p>
-                    </div>
-                </div>
-                <x-button :href="route('rh.attendance.poster')" variant="secondary" size="sm" class="shrink-0 bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300">
-                    <span>Ouvrir l'Affiche A4</span>
-                    <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                </x-button>
-            </div>
-        </x-card>
-
-        <!-- 3. Règles de Planning -->
-        <x-card title="3. Plannings & Jours de Travail" subtitle="Garde-fous légaux et organisation du travail">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="max_work_days_per_week">
-                        Nombre maximum de jours / semaine
-                    </label>
-                    <input 
-                        type="number" 
-                        id="max_work_days_per_week" 
-                        name="max_work_days_per_week" 
-                        value="{{ old('max_work_days_per_week', $settings->max_work_days_per_week) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        min="1" 
-                        max="6"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Maximum légal obligatoire (1 à 6 jours). Le 7e jour est impérativement un jour de repos.</p>
-                </div>
-
-                <div class="flex items-center pt-4 sm:pt-6">
-                    <div class="flex items-start gap-3">
-                        <input 
-                            type="checkbox" 
-                            id="allow_custom_schedules" 
-                            name="allow_custom_schedules" 
-                            value="1" 
-                            {{ old('allow_custom_schedules', $settings->allow_custom_schedules) ? 'checked' : '' }}
-                            class="h-4 w-4 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF] mt-0.5"
-                        >
-                        <label for="allow_custom_schedules" class="cursor-pointer">
-                            <span class="text-xs font-bold text-[#0B0F14] block">Autoriser les horaires personnalisés par employé</span>
-                            <span class="text-[11px] text-slate-500">Permet au responsable d'ajuster les heures de début/fin pour des postes spécifiques (ex: gardiennage, astreinte).</span>
+                        <label class="flex cursor-pointer items-start justify-between gap-4 rounded-xl bg-[#F5F7FA] p-4">
+                            <span>
+                                <span class="block text-sm font-medium text-[#0B0F14]">Clôture automatique des journées</span>
+                                <span class="mt-0.5 block text-xs text-[#64748B]">Enregistre le départ à l'heure configurée pour les collaborateurs qui n'ont pas scanné leur sortie.</span>
+                            </span>
+                            <input type="checkbox" name="auto_checkout_enabled" value="1" x-model="autoCheckout" class="peer sr-only">
+                            <span class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full bg-slate-300 transition peer-checked:bg-[#0066FF] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0066FF]/40 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-5"></span>
                         </label>
                     </div>
-                </div>
-            </div>
-        </x-card>
+                </section>
 
-        <!-- 4. Barème d'Évaluation Mensuelle & Formule Normalisée /30 -->
-        <x-card title="4. Moteur d'Évaluation Mensuelle" subtitle="Coefficients journaliers et normalisation équitable sur 30 points">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="evaluation_day_of_month">
-                        Jour d'évaluation dans le mois
-                    </label>
-                    <input 
-                        type="number" 
-                        id="evaluation_day_of_month" 
-                        name="evaluation_day_of_month" 
-                        value="{{ old('evaluation_day_of_month', $settings->evaluation_day_of_month) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        min="1" 
-                        max="28"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Exemple : Le 5 de chaque mois</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="max_evaluation_score">
-                        Note finale maximale
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.5" 
-                        id="max_evaluation_score" 
-                        name="max_evaluation_score" 
-                        value="{{ old('max_evaluation_score', $settings->max_evaluation_score) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-[#0066FF] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Note de référence (30/30)</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="punctuality_grace_minutes">
-                        Tolérance ponctualité (minutes)
-                    </label>
-                    <input 
-                        type="number" 
-                        id="punctuality_grace_minutes" 
-                        name="punctuality_grace_minutes" 
-                        value="{{ old('punctuality_grace_minutes', $settings->punctuality_grace_minutes) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        min="0" 
-                        max="60"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Arrivée considérée à l'heure (ex: 5 min)</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-[#0B0F14] mb-1.5" for="late_threshold_minutes">
-                        Seuil retard important (minutes)
-                    </label>
-                    <input 
-                        type="number" 
-                        id="late_threshold_minutes" 
-                        name="late_threshold_minutes" 
-                        value="{{ old('late_threshold_minutes', $settings->late_threshold_minutes) }}"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
-                        min="1" 
-                        max="120"
-                        required
-                    >
-                    <p class="text-[11px] text-slate-400 mt-1">Note = 0 au-delà (ex: >15 min)</p>
-                </div>
-            </div>
-
-            <!-- Les 3 Piliers de notation journalière -->
-            <div class="mt-6 pt-5 border-t border-slate-100">
-                <h4 class="text-xs font-bold text-[#0B0F14] uppercase tracking-wider mb-3">Coefficients des 3 Piliers Journaliers</h4>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                    <div class="bg-blue-50/60 p-3.5 rounded-xl border border-blue-100">
-                        <label class="block text-xs font-bold text-blue-900 mb-1" for="weight_punctuality">
-                            1. Ponctualité (pt/jour)
-                        </label>
-                        <input 
-                            type="number" 
-                            step="0.01" 
-                            id="weight_punctuality" 
-                            name="weight_punctuality" 
-                            x-model.number="punctuality"
-                            class="w-full rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-sm font-bold text-[#0B0F14] focus:border-[#0066FF] outline-none"
-                            required
-                        >
-                        <p class="text-[10px] text-blue-700/80 mt-1">Arrivée à l'heure ou dans la tolérance</p>
+                {{-- ───────── 2. Pointage QR ───────── --}}
+                <section id="pointage" class="{{ $card }}">
+                    <div class="border-b border-[#E2E8F0] px-5 py-4 sm:px-6">
+                        <h2 class="text-sm font-semibold text-[#0B0F14]">Pointage par QR code</h2>
+                        <p class="text-xs text-[#64748B]">Les collaborateurs pointent en scannant le QR code des locaux, sans géolocalisation.</p>
                     </div>
-
-                    <div class="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-100">
-                        <label class="block text-xs font-bold text-emerald-900 mb-1" for="weight_tasks">
-                            2. Tâches Validées (pt/jour)
-                        </label>
-                        <input 
-                            type="number" 
-                            step="0.01" 
-                            id="weight_tasks" 
-                            name="weight_tasks" 
-                            x-model.number="tasks"
-                            class="w-full rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-sm font-bold text-[#0B0F14] focus:border-[#0066FF] outline-none"
-                            required
-                        >
-                        <p class="text-[10px] text-emerald-700/80 mt-1">Pondéré par le taux de tâches validées</p>
-                    </div>
-
-                    <div class="bg-amber-50/60 p-3.5 rounded-xl border border-amber-100">
-                        <label class="block text-xs font-bold text-amber-900 mb-1" for="weight_teamwork">
-                            3. Esprit d'Équipe (pt/jour)
-                        </label>
-                        <input 
-                            type="number" 
-                            step="0.01" 
-                            id="weight_teamwork" 
-                            name="weight_teamwork" 
-                            x-model.number="teamwork"
-                            class="w-full rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm font-bold text-[#0B0F14] focus:border-[#0066FF] outline-none"
-                            required
-                        >
-                        <p class="text-[10px] text-amber-700/80 mt-1">Attribution managériale avec commentaire</p>
-                    </div>
-                </div>
-
-                <!-- Récapitulatif dynamique de la formule -->
-                <div class="mt-4 p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div>
-                        <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Plafond Théorique Journalier</span>
-                        <div class="text-sm font-bold flex items-center gap-1.5 mt-0.5">
-                            <span x-text="punctuality.toFixed(2)"></span> (Ponctualité) +
-                            <span x-text="tasks.toFixed(2)"></span> (Tâches) +
-                            <span x-text="teamwork.toFixed(2)"></span> (Équipe) =
-                            <span class="text-[#0066FF] text-base" x-text="(punctuality + tasks + teamwork).toFixed(2) + ' pt/jour'"></span>
+                    <div class="grid grid-cols-1 gap-3 p-5 sm:grid-cols-3 sm:p-6">
+                        <a href="{{ route('rh.attendance.poster') }}" class="group rounded-xl border border-[#E2E8F0] p-4 transition hover:border-emerald-300">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            </span>
+                            <p class="mt-3 text-sm font-medium text-[#0B0F14] group-hover:text-emerald-700">Affiche mensuelle A4</p>
+                            <p class="mt-0.5 text-[11px] text-[#64748B]">Renouvelée chaque 1er du mois, 2 jours de tolérance pour la remplacer.</p>
+                        </a>
+                        <a href="{{ route('rh.attendance.terminal') }}" target="_blank" class="group rounded-xl border border-[#E2E8F0] p-4 transition hover:border-[#0066FF]/40">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[#0066FF]">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            </span>
+                            <p class="mt-3 text-sm font-medium text-[#0B0F14] group-hover:text-[#0066FF]">Borne à écran</p>
+                            <p class="mt-0.5 text-[11px] text-[#64748B]">QR dynamique renouvelé toutes les {{ $settings->dynamic_qr_refresh_seconds }} s.</p>
+                        </a>
+                        <div class="rounded-xl border border-[#E2E8F0] p-4">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            </span>
+                            <p class="mt-3 text-sm font-medium text-[#0B0F14]">Clé secrète</p>
+                            <p class="mt-0.5 text-[11px] text-[#64748B]">Invalide les QR codes en circulation en cas de fuite.</p>
+                            <button type="submit" form="regenerateQrForm" class="mt-2 text-xs font-medium text-amber-700 hover:underline">Régénérer la clé</button>
                         </div>
                     </div>
-                    <div class="text-right sm:border-l sm:border-slate-800 sm:pl-4">
-                        <span class="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">Formule de Normalisation</span>
-                        <p class="text-xs font-mono text-slate-300">Note / 30 = (Score obtenu / (Jours × Max/jour)) × 30</p>
-                    </div>
-                </div>
-            </div>
-        </x-card>
+                </section>
 
-        <!-- Actions de soumission -->
-        <div class="flex items-center justify-end gap-3 pt-2">
-            <x-button type="submit" variant="primary" size="lg">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <span>Enregistrer les paramètres RH</span>
-            </x-button>
+                {{-- ───────── 3. Plannings ───────── --}}
+                <section id="plannings" class="{{ $card }}">
+                    <div class="border-b border-[#E2E8F0] px-5 py-4 sm:px-6">
+                        <h2 class="text-sm font-semibold text-[#0B0F14]">Plannings & jours de travail</h2>
+                        <p class="text-xs text-[#64748B]">Garde-fous légaux et organisation des semaines.</p>
+                    </div>
+                    <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 sm:p-6">
+                        <div>
+                            <label class="{{ $label }}" for="max_work_days_per_week">Jours travaillés max. par semaine</label>
+                            <input type="number" id="max_work_days_per_week" name="max_work_days_per_week" value="{{ old('max_work_days_per_week', $settings->max_work_days_per_week) }}" min="1" max="6" class="{{ $input }}" required>
+                            <p class="{{ $hint }}">De 1 à 6 jours — le 7e jour est toujours un jour de repos.</p>
+                        </div>
+                        <label class="flex cursor-pointer items-start justify-between gap-4 rounded-xl bg-[#F5F7FA] p-4">
+                            <span>
+                                <span class="block text-sm font-medium text-[#0B0F14]">Horaires personnalisés</span>
+                                <span class="mt-0.5 block text-xs text-[#64748B]">Le responsable peut ajuster début et fin pour certains postes (gardiennage, astreinte…).</span>
+                            </span>
+                            <input type="checkbox" name="allow_custom_schedules" value="1" x-model="customSchedules" class="peer sr-only">
+                            <span class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full bg-slate-300 transition peer-checked:bg-[#0066FF] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0066FF]/40 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-5"></span>
+                        </label>
+                    </div>
+                </section>
+
+                {{-- ───────── 4. Évaluation ───────── --}}
+                <section id="evaluation" class="{{ $card }}">
+                    <div class="border-b border-[#E2E8F0] px-5 py-4 sm:px-6">
+                        <h2 class="text-sm font-semibold text-[#0B0F14]">Moteur d'évaluation mensuelle</h2>
+                        <p class="text-xs text-[#64748B]">Coefficients journaliers et normalisation de la note finale.</p>
+                    </div>
+                    <div class="space-y-6 p-5 sm:p-6">
+                        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                            <div>
+                                <label class="{{ $label }}" for="evaluation_day_of_month">Jour d'évaluation</label>
+                                <input type="number" id="evaluation_day_of_month" name="evaluation_day_of_month" value="{{ old('evaluation_day_of_month', $settings->evaluation_day_of_month) }}" min="1" max="28" class="{{ $input }}" required>
+                                <p class="{{ $hint }}">Du 1 au 28 du mois</p>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}" for="max_evaluation_score">Note maximale</label>
+                                <input type="number" step="0.5" id="max_evaluation_score" name="max_evaluation_score" value="{{ old('max_evaluation_score', $settings->max_evaluation_score) }}" class="{{ $input }} font-semibold" required>
+                                <p class="{{ $hint }}">Référence (ex. 30)</p>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}" for="punctuality_grace_minutes">Tolérance (min)</label>
+                                <input type="number" id="punctuality_grace_minutes" name="punctuality_grace_minutes" value="{{ old('punctuality_grace_minutes', $settings->punctuality_grace_minutes) }}" min="0" max="60" class="{{ $input }}" required>
+                                <p class="{{ $hint }}">Considéré à l'heure</p>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}" for="late_threshold_minutes">Retard important (min)</label>
+                                <input type="number" id="late_threshold_minutes" name="late_threshold_minutes" value="{{ old('late_threshold_minutes', $settings->late_threshold_minutes) }}" min="1" max="120" class="{{ $input }}" required>
+                                <p class="{{ $hint }}">Ponctualité à 0 au-delà</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-[#64748B]">Points par jour travaillé</h3>
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                @foreach([
+                                    ['weight_punctuality', 'punctuality', 'Ponctualité', 'Arrivée à l\'heure ou dans la tolérance', 'bg-[#0066FF]'],
+                                    ['weight_tasks', 'tasks', 'Tâches validées', 'Au prorata des tâches validées', 'bg-emerald-500'],
+                                    ['weight_teamwork', 'teamwork', 'Esprit d\'équipe', 'Attribué par le manager', 'bg-amber-500'],
+                                ] as [$field, $model, $title, $description, $color])
+                                    <div class="rounded-xl border border-[#E2E8F0] p-4">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <label for="{{ $field }}" class="flex items-center gap-2 text-sm font-medium text-[#0B0F14]">
+                                                <span class="h-2 w-2 rounded-full {{ $color }}"></span>{{ $title }}
+                                            </label>
+                                            <span class="text-[11px] font-medium text-[#64748B]" x-text="share({{ $model }}) + ' %'"></span>
+                                        </div>
+                                        <input type="number" step="0.01" min="0" max="1" id="{{ $field }}" name="{{ $field }}" x-model.number="{{ $model }}" class="{{ $input }} mt-3 font-semibold" required>
+                                        <p class="{{ $hint }}">{{ $description }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- Répartition visuelle + formule --}}
+                            <div class="mt-4 rounded-2xl bg-[#0B0F14] p-5 text-white">
+                                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                    <span class="text-xs text-slate-400">Maximum par jour</span>
+                                    <span class="text-2xl font-semibold" x-text="dailyMax.toFixed(2) + ' pt'"></span>
+                                </div>
+                                <div class="mt-3 flex h-2 overflow-hidden rounded-full bg-white/10">
+                                    <div class="h-full bg-[#0066FF] transition-all" :style="'width:' + share(punctuality) + '%'"></div>
+                                    <div class="h-full bg-emerald-500 transition-all" :style="'width:' + share(tasks) + '%'"></div>
+                                    <div class="h-full bg-amber-500 transition-all" :style="'width:' + share(teamwork) + '%'"></div>
+                                </div>
+                                <p class="mt-4 border-t border-white/10 pt-3 font-mono text-[11px] text-slate-300">
+                                    Note finale = (score obtenu ÷ (jours travaillés × maximum par jour)) × note maximale
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {{-- ───────── Barre d'enregistrement ───────── --}}
+                <div class="z-10 flex md:sticky md:bottom-4 items-center justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-white/95 p-3 pl-5 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] backdrop-blur">
+                    <p class="hidden text-xs text-[#64748B] sm:block">Les modifications s'appliquent aux prochains pointages et évaluations.</p>
+                    <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-5 text-sm font-semibold text-white transition hover:bg-[#0052cc] sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
+
+        {{-- Formulaire séparé (les formulaires ne peuvent pas être imbriqués) --}}
+        <form id="regenerateQrForm" method="POST" action="{{ route('rh.settings.regenerate-qr') }}" class="hidden"
+              onsubmit="return confirm('Régénérer la clé secrète ? Les QR codes déjà affichés ou imprimés ne fonctionneront plus.');">
+            @csrf
+        </form>
+    </div>
 </x-layouts.app>

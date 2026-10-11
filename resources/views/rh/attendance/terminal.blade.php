@@ -45,10 +45,10 @@
     <!-- Zone Centrale : QR Code Dynamique + Instruction -->
     <main class="flex-1 flex flex-col items-center justify-center my-8 text-center max-w-2xl mx-auto w-full">
         
-        <!-- Badge Localisation & Géofence -->
+        <!-- Badge QR dynamique -->
         <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300 mb-6 shadow-sm">
-            <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span>Zone autorisée : <strong>{{ $settings->geofence_radius_meters }} mètres</strong> autour du siège</span>
+            <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>QR code renouvelé toutes les <strong>{{ $settings->dynamic_qr_refresh_seconds }} secondes</strong></span>
         </div>
 
         <!-- Cadre QR Code Dynamique -->
@@ -73,7 +73,7 @@
             <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
                 <div class="w-6 h-6 rounded-lg bg-[#0066FF]/20 text-[#0066FF] flex items-center justify-center font-bold text-xs mb-2">2</div>
                 <h4 class="text-xs font-bold text-white">Scannez le code</h4>
-                <p class="text-[11px] text-slate-400 mt-0.5 leading-snug">Visez l'écran en autorisant la géolocalisation GPS.</p>
+                <p class="text-[11px] text-slate-400 mt-0.5 leading-snug">Visez le QR code affiché sur cet écran.</p>
             </div>
             <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
                 <div class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs mb-2">3</div>

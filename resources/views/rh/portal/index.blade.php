@@ -90,7 +90,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h2 class="text-sm font-semibold text-[#0B0F14]">Présence du jour</h2>
-                            <p class="text-[11px] text-[#64748B] mt-0.5">Zone GPS {{ $settings->geofence_radius_meters }} m · clôture auto 20:00</p>
+                            <p class="text-[11px] text-[#64748B] mt-0.5">Scan du QR code · clôture auto 20:00</p>
                         </div>
                         @if(! $todayAttendance)
                             <span class="inline-flex items-center gap-1.5 text-[11px] text-amber-600 shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Non pointé</span>
