@@ -49,7 +49,7 @@
 
     $card = 'rounded-2xl border border-[#E2E8F0] bg-white';
     $pill = 'shrink-0 snap-start rounded-full px-3.5 py-2 text-xs font-medium whitespace-nowrap transition-colors md:rounded-xl md:px-3 md:py-2 md:text-center';
-    $pillIdle = 'bg-white text-[#64748B] ring-1 ring-[#E2E8F0] hover:text-[#0B0F14] md:bg-[#F5F7FA] md:ring-0 md:hover:bg-slate-200/60';
+    $pillIdle = 'bg-white text-[#64748B] ring-1 ring-[#E2E8F0] hover:text-[#0B0F14] md:bg-[#F5F7FA] md:ring-0 md:hover:bg-slate-200/60 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10 dark:hover:text-white md:dark:bg-white/5 md:dark:hover:bg-white/10';
 @endphp
 
 <x-layouts.app title="Tableau de bord — IVOSPHERE ERP">
@@ -83,7 +83,7 @@
         </header>
 
         {{-- 2. Filtres : chips défilantes sur mobile, grilles sur desktop --}}
-        <section class="-mx-3.5 space-y-2.5 sm:-mx-6 md:mx-0 md:space-y-0 md:divide-y md:divide-[#E2E8F0] md:rounded-2xl md:border md:border-[#E2E8F0] md:bg-white"
+        <section class="-mx-3.5 space-y-2.5 sm:-mx-6 md:mx-0 md:space-y-0 md:divide-y md:divide-[#E2E8F0] md:rounded-2xl md:border md:border-[#E2E8F0] md:bg-white md:dark:divide-[#263244] md:dark:border-[#263244] md:dark:bg-[#111827]"
                  x-data="{ custom: {{ $period === 'custom' ? 'true' : 'false' }} }" aria-label="Filtres">
             <div class="md:space-y-2 md:p-4">
                 <span class="hidden text-[11px] font-medium uppercase tracking-wider text-[#64748B] md:block">Domaines</span>
@@ -91,7 +91,7 @@
                     @foreach($domainFilters as $f)
                         <a href="{{ route('dashboard', array_merge(request()->query(), ['domain' => $f['value']])) }}"
                            @if($f['active']) aria-current="true" @endif
-                           class="{{ $pill }} md:truncate {{ $f['active'] ? 'bg-[#0B0F14] text-white shadow-xs' : $pillIdle }}">
+                           class="{{ $pill }} md:truncate {{ $f['active'] ? 'bg-slate-950 text-white shadow-xs dark:bg-slate-100 dark:text-slate-900' : $pillIdle }}">
                             {{ $f['label'] }}
                         </a>
                     @endforeach
@@ -127,7 +127,7 @@
             </div>
 
             <form x-show="custom" x-cloak method="GET" action="{{ route('dashboard') }}"
-                  class="mx-3.5 grid grid-cols-2 gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-3 text-xs sm:mx-6 md:mx-0 md:flex md:flex-wrap md:items-end md:rounded-none md:border-0 md:px-4">
+                  class="mx-3.5 grid grid-cols-2 gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-3 text-xs sm:mx-6 md:mx-0 md:flex md:flex-wrap md:items-end md:rounded-none md:border-0 md:px-4 md:dark:bg-transparent">
                 @if(request('domain')) <input type="hidden" name="domain" value="{{ request('domain') }}"> @endif
                 <input type="hidden" name="period" value="custom">
                 <label class="flex flex-col gap-1 text-[#64748B]">Du
@@ -177,7 +177,7 @@
                 {{-- Raccourcis (mobile) --}}
                 <nav aria-label="Actions rapides" class="grid grid-cols-4 gap-2 sm:col-span-2 md:hidden">
                     @foreach($quickActions as [$routeName, $label, $tint, $icon])
-                        <a href="{{ route($routeName) }}" class="flex flex-col items-center gap-1.5 rounded-2xl py-2 active:bg-white">
+                        <a href="{{ route($routeName) }}" class="flex flex-col items-center gap-1.5 rounded-2xl py-2 active:bg-white dark:active:bg-white/5">
                             <span class="flex h-12 w-12 items-center justify-center rounded-2xl {{ $tint }}">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
                             </span>
@@ -289,7 +289,7 @@
         <section class="{{ $card }} overflow-hidden" x-data="{ tab: 'orders' }">
             <div class="flex flex-col gap-2 border-b border-[#E2E8F0] bg-[#F5F7FA]/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 {{-- Contrôle segmenté pleine largeur sur mobile --}}
-                <div class="grid grid-cols-3 gap-1 rounded-xl bg-slate-200/60 p-1 sm:flex sm:bg-transparent sm:p-0" role="tablist">
+                <div class="grid grid-cols-3 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/5 sm:flex sm:bg-transparent sm:p-0 sm:dark:bg-transparent" role="tablist">
                     @foreach($tabs as $key => $t)
                         <button type="button" role="tab" @click="tab = '{{ $key }}'" :aria-selected="tab === '{{ $key }}'"
                                 :class="tab === '{{ $key }}' ? 'bg-white text-[#0066FF] font-semibold shadow-xs sm:border-[#E2E8F0]' : 'border-transparent text-[#64748B] hover:text-[#0B0F14]'"
