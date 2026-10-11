@@ -28,6 +28,14 @@
     --color-status-warning: #D97706;
     --color-status-danger: #DC2626;
     --color-status-info: #0066FF;
+
+    /* Laser du viseur scanner POS */
+    --animate-scan-laser: scan-laser 2.2s ease-in-out infinite;
+
+    @keyframes scan-laser {
+        0%, 100% { top: 8%; }
+        50% { top: 92%; }
+    }
 }
 
 /* Tabular figures for financial and KPI data alignment */

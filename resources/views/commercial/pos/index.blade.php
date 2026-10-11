@@ -943,80 +943,121 @@
 
         {{-- ===================== SCANNER ===================== --}}
         <div x-show="scannerOpen" x-cloak
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
              @keydown.escape.window="if (scannerOpen) closeScanner()"
-             class="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/75 sm:items-center sm:p-4">
-            <div class="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-w-md sm:rounded-2xl">
+             role="dialog" aria-modal="true" aria-labelledby="posScannerTitle"
+             class="fixed inset-0 z-[70] flex items-stretch justify-center bg-slate-950/80 backdrop-blur-sm sm:items-center sm:p-6">
+            <div class="relative flex h-dvh w-full flex-col overflow-hidden bg-slate-950 text-white sm:h-auto sm:max-h-[92dvh] sm:max-w-lg sm:rounded-3xl sm:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] sm:ring-1 sm:ring-white/10">
 
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                    <div class="flex items-center gap-2">
-                        <span class="h-2.5 w-2.5 rounded-full" :class="cameraActive ? 'bg-emerald-500 animate-pulse' : (scannerError ? 'bg-rose-500' : 'bg-amber-500')"></span>
-                        <h3 class="text-sm font-bold text-slate-900">Scanner un code</h3>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <button type="button" x-show="hasTorch" @click="toggleTorch()"
-                                :class="torchOn ? 'bg-amber-100 text-amber-800' : 'text-slate-500 hover:bg-slate-100'"
-                                class="rounded-lg p-2 text-xs font-semibold transition" title="Torche">⚡</button>
-                        <button type="button" x-show="camerasList.length > 1" @click="switchCamera()"
-                                class="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="Changer de caméra">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        </button>
-                        <button type="button" @click="closeScanner()" class="-mr-2 rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Fermer le scanner">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-                </div>
-
-                {{-- Viseur --}}
-                <div class="relative flex aspect-[4/3] max-h-[35vh] items-center justify-center overflow-hidden bg-black sm:max-h-[42vh]">
+                {{-- Viseur caméra (plein écran sur mobile) --}}
+                <div class="relative min-h-0 flex-1 overflow-hidden bg-black sm:aspect-[4/3] sm:flex-none">
                     <video x-ref="scannerVideo" id="posScannerVideo" class="absolute inset-0 h-full w-full object-cover" playsinline muted autoplay></video>
 
-                    <div x-show="!scannerError" class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div class="relative h-2/5 w-4/5 rounded-xl border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
-                            <div class="absolute inset-x-2 top-1/2 h-0.5 animate-pulse bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
+                    {{-- Barre supérieure flottante --}}
+                    <div class="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 bg-linear-to-b from-black/70 to-transparent px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-8">
+                        <button type="button" @click="closeScanner()" aria-label="Fermer le scanner"
+                                class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25 active:scale-95">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+
+                        <div class="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-md">
+                            <span class="h-2 w-2 shrink-0 rounded-full" :class="cameraActive ? 'bg-emerald-400 animate-pulse' : (scannerError ? 'bg-rose-500' : 'bg-amber-400')"></span>
+                            <h3 id="posScannerTitle" class="truncate text-xs font-semibold tracking-wide">Scanner un article</h3>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button type="button" x-show="hasTorch" @click="toggleTorch()" title="Torche" :aria-pressed="torchOn"
+                                    :class="torchOn ? 'bg-amber-400 text-slate-950' : 'bg-white/15 text-white hover:bg-white/25'"
+                                    class="inline-flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition active:scale-95">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </button>
+                            <button type="button" x-show="camerasList.length > 1" @click="switchCamera()" title="Changer de caméra"
+                                    class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25 active:scale-95">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
                         </div>
                     </div>
 
-                    <div x-show="scannerStatus && !scannerError" class="pointer-events-none absolute inset-x-0 bottom-3 text-center">
-                        <span class="inline-block rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white" x-text="scannerStatus"></span>
+                    {{-- Cadre de visée : coins + laser, vire au vert/rouge selon le résultat --}}
+                    <div x-show="!scannerError" class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                        <div class="relative aspect-[16/10] w-[78%] max-w-sm rounded-2xl shadow-[0_0_0_9999px_rgba(2,6,23,0.55)] transition-colors duration-200"
+                             :class="scanFeedback?.type === 'success' ? 'bg-emerald-400/15' : (scanFeedback?.type === 'error' ? 'bg-rose-500/15' : 'bg-transparent')">
+                            <template x-for="corner in ['top-0 left-0 border-t-4 border-l-4 rounded-tl-2xl', 'top-0 right-0 border-t-4 border-r-4 rounded-tr-2xl', 'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-2xl', 'bottom-0 right-0 border-b-4 border-r-4 rounded-br-2xl']">
+                                <span class="absolute h-8 w-8 transition-colors duration-200" :class="[corner, scanFeedback?.type === 'success' ? 'border-emerald-400' : (scanFeedback?.type === 'error' ? 'border-rose-500' : 'border-white')]"></span>
+                            </template>
+                            <span x-show="cameraActive" class="absolute inset-x-4 h-0.5 animate-scan-laser rounded-full bg-[#3B8BFF] shadow-[0_0_12px_2px_rgba(59,139,255,0.8)]"></span>
+                        </div>
                     </div>
 
-                    <div x-show="scannerError" x-cloak class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 p-6 text-center text-white">
-                        <p class="text-sm font-bold">Caméra indisponible</p>
-                        <p class="mt-1 max-w-xs text-xs leading-relaxed text-slate-300" x-text="scannerError"></p>
-                        <div class="mt-4 flex flex-wrap justify-center gap-2">
-                            <button type="button" @click="openScanner()" class="rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-slate-700">Réessayer</button>
-                            <button type="button" @click="$refs.photoScanInput.click()" class="rounded-xl bg-[#0066FF] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#0052cc]">Prendre une photo</button>
+                    {{-- Statut --}}
+                    <div x-show="scannerStatus && !scannerError" class="pointer-events-none absolute inset-x-0 bottom-8 z-10 text-center sm:bottom-5">
+                        <span class="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-1.5 text-xs font-medium text-white backdrop-blur-md" x-text="scannerStatus"></span>
+                    </div>
+
+                    {{-- Caméra indisponible --}}
+                    <div x-show="scannerError" x-cloak class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950 p-8 text-center">
+                        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-400">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 3l18 18M5 7H4a1 1 0 00-1 1v8a2 2 0 002 2h9"/></svg>
+                        </div>
+                        <p class="text-base font-semibold">Caméra indisponible</p>
+                        <p class="mt-1.5 max-w-xs text-xs leading-relaxed text-slate-400" x-text="scannerError"></p>
+                        <div class="mt-5 flex flex-wrap justify-center gap-2">
+                            <button type="button" @click="openScanner()" class="h-10 rounded-full bg-white/10 px-5 text-xs font-semibold transition hover:bg-white/20">Réessayer</button>
+                            <button type="button" @click="$refs.photoScanInput.click()" class="h-10 rounded-full bg-[#0066FF] px-5 text-xs font-semibold transition hover:bg-[#0052cc]">Prendre une photo</button>
                         </div>
                     </div>
                 </div>
 
-                {{-- Corps --}}
-                <div class="space-y-3 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+                {{-- Panneau de contrôle --}}
+                <div class="relative z-20 -mt-5 shrink-0 space-y-4 rounded-t-3xl bg-slate-900 px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] ring-1 ring-white/5 sm:mt-0 sm:rounded-none">
                     <input type="file" accept="image/*" capture="environment" x-ref="photoScanInput" class="hidden"
                            @change="if ($event.target.files.length) { scanImageFile($event.target.files[0]); $event.target.value = ''; }">
 
-                    <div class="flex items-center gap-2">
-                        <button type="button" @click="$refs.photoScanInput.click()"
-                                class="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-100">
-                            <svg class="h-4 w-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            Photo
-                        </button>
-                        <label class="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs">
-                            <input type="checkbox" x-model="continuousScan" class="h-4 w-4 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
-                            <span class="font-medium text-slate-700">Scan continu</span>
-                        </label>
+                    {{-- Dernier article scanné --}}
+                    <div class="flex items-center gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                             :class="lastScannedCode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/10 text-slate-400'">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6v12M7 6v12M10 6v12M14 6v12M17 6v12M20 6v12"/></svg>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-semibold" x-text="lastScannedCode ? (findProductByCode(lastScannedCode)?.name ?? 'Code inconnu') : 'Aucun article scanné'"></p>
+                            <p class="truncate font-mono text-[11px] text-slate-400" x-text="lastScannedCode || 'EAN, code-barres ou QR code'"></p>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <p class="text-[10px] font-medium uppercase tracking-wider text-slate-400">Panier</p>
+                            <p class="text-lg font-bold leading-none text-[#3B8BFF] tabular-nums" x-text="cartCount"></p>
+                        </div>
                     </div>
 
+                    {{-- Saisie manuelle --}}
                     <form @submit.prevent="if (manualCode.trim()) { handleScannedCode(manualCode); manualCode = ''; }" class="flex gap-2">
-                        <input type="text" x-model="manualCode" inputmode="text" placeholder="Code / EAN / SKU…"
-                               class="h-11 flex-1 rounded-xl border border-slate-200 px-3.5 font-mono text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
-                        <button type="submit" class="h-11 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white transition-colors hover:bg-[#0066FF]">Ajouter</button>
+                        <label for="posManualCode" class="sr-only">Saisie manuelle du code</label>
+                        <input id="posManualCode" type="text" x-model="manualCode" inputmode="text" autocomplete="off" placeholder="Saisir un code / EAN / SKU…"
+                               class="h-12 min-w-0 flex-1 rounded-2xl border-0 bg-white/10 px-4 font-mono text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-[#0066FF]">
+                        <button type="submit" class="h-12 shrink-0 rounded-2xl bg-[#0066FF] px-5 text-sm font-semibold transition hover:bg-[#0052cc] active:scale-[0.98]">Ajouter</button>
                     </form>
 
-                    <div class="flex items-center justify-between text-xs text-slate-500">
-                        <span>Dernier code : <span class="font-mono font-bold text-slate-900" x-text="lastScannedCode || '—'"></span></span>
-                        <span>Panier : <span class="font-bold text-[#0066FF]" x-text="cartCount"></span></span>
+                    {{-- Options --}}
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="$refs.photoScanInput.click()"
+                                class="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-white/5 text-xs font-semibold ring-1 ring-white/10 transition hover:bg-white/10 active:scale-[0.98]">
+                            <svg class="h-4 w-4 text-[#3B8BFF]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Depuis une photo
+                        </button>
+                        <button type="button" role="switch" :aria-checked="continuousScan" @click="continuousScan = !continuousScan"
+                                class="inline-flex h-11 flex-1 items-center justify-center gap-2.5 rounded-2xl bg-white/5 text-xs font-semibold ring-1 ring-white/10 transition hover:bg-white/10">
+                            <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors" :class="continuousScan ? 'bg-[#0066FF]' : 'bg-white/20'">
+                                <span class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform" :class="continuousScan ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </span>
+                            Scan continu
+                        </button>
                     </div>
+
+                    <button type="button" @click="closeScanner()"
+                            class="h-12 w-full rounded-2xl bg-[#ffffff] text-sm font-bold text-[#020617] transition hover:bg-slate-100 active:scale-[0.99] sm:hidden">
+                        Terminer
+                    </button>
                 </div>
             </div>
         </div>
