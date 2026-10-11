@@ -5,6 +5,8 @@
         showActions: false,
         search: '',
         filterStatus: 'all',
+        filterWarehouse: {{ Js::from((string) request('warehouse_id', '')) }},
+        warehouseProductCounts: {{ Js::from($warehouses->mapWithKeys(fn ($wh) => [$wh->id => $wh->warehouseStocks->where('physical_quantity', '>', 0)->count()])) }},
         selectedProductIds: [],
         allProductIds: {{ Js::from($products->pluck('id')->values()) }},
         get isAllSelected() {
@@ -13,13 +15,14 @@
         toggleSelectAll() {
             this.selectedProductIds = this.isAllSelected ? [] : [...this.allProductIds];
         },
-        matches(text, avail, min) {
+        matches(text, avail, min, warehouseIds = []) {
             const okSearch = this.search === '' || text.includes(this.search.toLowerCase());
+            const okWarehouse = this.filterWarehouse === '' || warehouseIds.includes(Number(this.filterWarehouse));
             const okStatus = this.filterStatus === 'all'
                 || (this.filterStatus === 'in_stock' && avail > min)
                 || (this.filterStatus === 'low_stock' && avail > 0 && avail <= min)
                 || (this.filterStatus === 'out_of_stock' && avail <= 0);
-            return okSearch && okStatus;
+            return okSearch && okStatus && okWarehouse;
         }
     }" class="mx-auto max-w-7xl space-y-5 pb-12">
 
@@ -507,7 +510,9 @@
                             <p class="text-[11px] text-[#64748B]">Disponible = Physique − Réservé</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 text-xs font-medium">
-                            <a href="{{ route('stock.products.print-catalog', request()->query()) }}" target="_blank" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Imprimer PDF</a>
+                            <a href="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}"
+                               :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
+                               data-base="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}" target="_blank" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Imprimer PDF</a>
                             <a href="{{ route('stock.products.bulk-edit') }}" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Prix & images</a>
                             <a href="{{ route('stock.products.bulk-create') }}" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Ajout groupé</a>
                         </div>
@@ -527,6 +532,29 @@
                             <button type="button" @click="filterStatus = 'out_of_stock'" :class="filterStatus === 'out_of_stock' ? 'bg-rose-600 text-white' : 'bg-[#F5F7FA] text-slate-600'" class="whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium">Rupture ({{ $outOfStockCount }})</button>
                         </div>
                     </div>
+
+                    {{-- Filtre par entrepôt --}}
+                    @if($warehouses->isNotEmpty())
+                        <div class="flex items-start gap-2">
+                            <span class="hidden shrink-0 py-1.5 text-[11px] font-medium text-[#64748B] sm:inline">Entrepôt</span>
+                            <div class="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 text-[11px] sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filtrer par entrepôt">
+                                <button type="button" @click="filterWarehouse = ''" :aria-pressed="filterWarehouse === ''"
+                                        :class="filterWarehouse === '' ? 'bg-[#0B0F14] text-white' : 'bg-[#F5F7FA] text-slate-600 hover:text-[#0B0F14]'"
+                                        class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>
+                                    Tous les entrepôts
+                                </button>
+                                @foreach($warehouses as $wh)
+                                    <button type="button" @click="filterWarehouse = '{{ $wh->id }}'" :aria-pressed="filterWarehouse === '{{ $wh->id }}'"
+                                            :class="filterWarehouse === '{{ $wh->id }}' ? 'bg-[#0066FF] text-white' : 'bg-[#F5F7FA] text-slate-600 hover:text-[#0B0F14]'"
+                                            class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium" title="{{ $wh->name }}">
+                                        {{ $wh->name }}
+                                        <span class="rounded-full bg-black/10 px-1.5 text-[10px] font-semibold">{{ $wh->warehouseStocks->where('physical_quantity', '>', 0)->count() }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Barre de sélection --}}
@@ -556,6 +584,12 @@
                     <div class="col-span-1 text-right text-[#0066FF]">Dispo</div>
                     <div class="col-span-2 text-right">Prix</div>
                     <div class="col-span-2 text-right">Actions</div>
+                </div>
+
+                {{-- Aucun produit dans l'entrepôt filtré --}}
+                <div x-show="filterWarehouse !== '' && !warehouseProductCounts[filterWarehouse]" x-cloak class="px-4 py-10 text-center">
+                    <p class="text-sm font-medium text-[#0B0F14]">Aucun produit en stock dans cet entrepôt</p>
+                    <button type="button" @click="filterWarehouse = ''" class="mt-2 text-xs font-medium text-[#0066FF] hover:underline">Voir tous les entrepôts</button>
                 </div>
 
                 {{-- Liste produits (responsive : cartes mobile / lignes desktop) --}}
@@ -604,7 +638,7 @@
                             ];
                         @endphp
 
-                        <div x-show="matches({{ Js::from($searchString) }}, {{ $avail }}, {{ $minVal }})"
+                        <div x-show="matches({{ Js::from($searchString) }}, {{ $avail }}, {{ $minVal }}, {{ Js::from($product->warehouseStocks->where('physical_quantity', '>', 0)->pluck('warehouse_id')->values()) }})"
                              :class="{ 'bg-blue-50/40': selectedProductIds.includes({{ $product->id }}) }"
                              class="px-4 py-3 transition-colors hover:bg-slate-50/60 md:grid md:grid-cols-12 md:items-center md:gap-3">
 
@@ -659,8 +693,9 @@
                                         <div class="mt-1 flex flex-wrap gap-1 md:justify-end">
                                             @foreach($product->warehouseStocks as $ws)
                                                 @if($ws->physical_quantity > 0)
-                                                    <span class="rounded bg-slate-100 px-1.5 text-[10px] text-slate-600" title="{{ $ws->warehouse?->name }}">
-                                                        {{ $ws->warehouse?->code ?: Str::limit($ws->warehouse?->name, 8) }}: <strong class="text-[#0B0F14]">{{ $ws->physical_quantity }}</strong>
+                                                    <span class="rounded px-1.5 text-[10px] transition-colors" title="{{ $ws->warehouse?->name }}"
+                                                          :class="filterWarehouse === '{{ $ws->warehouse_id }}' ? 'bg-[#0066FF] text-white ring-1 ring-[#0066FF]' : 'bg-slate-100 text-slate-600'">
+                                                        {{ $ws->warehouse?->code ?: Str::limit($ws->warehouse?->name, 8) }}: <strong :class="filterWarehouse === '{{ $ws->warehouse_id }}' ? 'text-white' : 'text-[#0B0F14]'" class="text-[#0B0F14]">{{ $ws->physical_quantity }}</strong>
                                                     </span>
                                                 @endif
                                             @endforeach

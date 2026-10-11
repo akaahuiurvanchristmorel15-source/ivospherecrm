@@ -530,6 +530,13 @@ class StockProductController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
+        if ($request->filled('warehouse_id')) {
+            $query->whereHas('warehouseStocks', function ($q) use ($request) {
+                $q->where('warehouse_id', $request->integer('warehouse_id'))
+                    ->where('physical_quantity', '>', 0);
+            });
+        }
+
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(function ($q) use ($s) {
