@@ -11,6 +11,8 @@ use App\Models\Product;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Spatie\Browsershot\Browsershot;
+use Symfony\Component\HttpFoundation\Response;
 
 class InvoiceController extends Controller
 {
@@ -118,6 +120,29 @@ class InvoiceController extends Controller
         $invoice->load(['items.product', 'customer', 'user', 'payments', 'domain']);
 
         return view('commercial.invoices.print', compact('invoice'));
+    }
+
+    /**
+     * Télécharge la facture au format PDF A4 (rendu identique à la page d'impression).
+     */
+    public function download(Invoice $invoice): Response
+    {
+        $invoice->load(['items.product', 'customer', 'user', 'payments', 'domain']);
+
+        $html = view('commercial.invoices.print', ['invoice' => $invoice, 'isPdf' => true])->render();
+
+        $pdf = Browsershot::html($html)
+            ->format('A4')
+            ->margins(14, 14, 14, 14)
+            ->showBackground()
+            ->emulateMedia('print')
+            ->waitUntilNetworkIdle()
+            ->pdf();
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="Facture-'.$invoice->reference.'.pdf"',
+        ]);
     }
 
     public function quickPayment(Request $request, Invoice $invoice)

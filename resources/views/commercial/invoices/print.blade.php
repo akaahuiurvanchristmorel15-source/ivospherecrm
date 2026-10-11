@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Facture {{ $invoice->reference }} — IVOSPHERE ERP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         @page { size: A4; margin: 14mm; }
 
@@ -26,7 +29,8 @@
             padding: 24px 16px 40px;
             background: #f1f5f9;
             color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-feature-settings: 'cv11', 'ss01';
             font-size: 13px;
             line-height: 1.5;
             -webkit-print-color-adjust: exact;
@@ -108,7 +112,7 @@
 
         .doc-title { text-align: right; flex-shrink: 0; }
         .doc-title h2 { margin: 0; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -.3px; }
-        .doc-title .ref { margin-top: 2px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; color: var(--muted); }
+        .doc-title .ref { margin-top: 2px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; color: var(--muted); }
         .status-badge {
             display: inline-block;
             margin-top: 10px;
@@ -181,13 +185,21 @@
         /* ---------- Historique ---------- */
         .payments { margin-top: 32px; }
         .payments h4 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
-        .mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; }
+        .mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; }
 
         /* ---------- Signatures ---------- */
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 36px; break-inside: avoid; }
         .signature-box { height: 96px; padding: 12px 14px; border: 1px dashed #cbd5e1; border-radius: 8px; }
         .signature-box .sign-title { font-weight: 600; color: var(--ink); font-size: 12px; }
         .signature-box .sign-hint { margin-top: 6px; font-size: 11px; color: var(--muted); }
+
+        /* ---------- Mise en page multi-pages (en-tête / pied répétés) ---------- */
+        table.page-layout { width: 100%; table-layout: fixed; border-collapse: collapse; }
+        table.page-layout > thead > tr > td,
+        table.page-layout > tbody > tr > td,
+        table.page-layout > tfoot > tr > td { padding: 0; border: 0; }
+        table.page-layout > tbody > tr > td { padding-bottom: 8px; }
+        .page-footer { break-inside: avoid; }
 
         /* ---------- Mobile ---------- */
         @media (max-width: 640px) {
@@ -222,8 +234,14 @@
             body { background: #fff; padding: 0; font-size: 12px; }
             .action-bar { display: none !important; }
             .invoice-box { max-width: none; padding: 0; border: 0; border-radius: 0; }
-            .watermark { opacity: .06; }
-            tr, .totals-section, .signatures { break-inside: avoid; }
+            .watermark { position: fixed; opacity: .06; }
+            table.page-layout > thead { display: table-header-group; }
+            table.page-layout > tfoot { display: table-footer-group; }
+            table.page-layout > thead > tr > td { padding-bottom: 4px; }
+            .page-footer { padding-top: 12px; }
+            .page-footer .payments { margin-top: 0; }
+            .page-footer .payments td, .page-footer .payments th { padding-top: 4px; padding-bottom: 4px; }
+            .stack tr, .totals-section, .signatures { break-inside: avoid; }
         }
     </style>
 </head>
@@ -235,7 +253,10 @@
                 <a href="{{ route('commercial.pos.index') }}" class="btn">Nouvelle vente</a>
             @endif
         </div>
-        <button onclick="window.print()" class="btn btn-primary">Imprimer / Enregistrer en PDF</button>
+        <div class="action-group">
+            <a href="{{ route('commercial.invoices.download', $invoice) }}" class="btn">Télécharger PDF</a>
+            <button onclick="window.print()" class="btn btn-primary">Imprimer</button>
+        </div>
     </div>
 
     @php
@@ -269,7 +290,9 @@
             <div class="watermark" style="color: #b91c1c;">À PAYER</div>
         @endif
 
-        {{-- En-tête --}}
+        <table class="page-layout">
+        <thead><tr><td>
+        {{-- En-tête (répété sur chaque page) --}}
         <div class="header">
             <div class="company">
                 @if($companyLogo && \Illuminate\Support\Facades\Storage::disk('public')->exists($companyLogo))
@@ -288,17 +311,13 @@
                             <span style="font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase;">{{ $companyLegalForm }}</span>
                         @endif
                     </h1>
-                    @if($companyTagline)
-                        <p style="font-size: 11px; color: var(--muted); font-style: italic; margin-top: 1px;">{{ $companyTagline }}</p>
-                    @endif
-                    <p class="pole" style="font-weight: 600; color: var(--brand);">{{ $invoice->domain?->name ?? 'Commercial & Multiservices' }}</p>
                     @if($companyAddress)
-                        <p>{{ $companyAddress }}@if($companyPostalBox) • {{ $companyPostalBox }}@endif</p>
+                        <p>{{ $companyAddress }}@if($companyPostalBox) | {{ $companyPostalBox }}@endif</p>
                     @endif
                     @if($companyPhone || $companyEmail)
                         <p>
                             @if($companyPhone)Tél : {{ $companyPhone }}@endif
-                            @if($companyPhone && $companyEmail) • @endif
+                            @if($companyPhone && $companyEmail) | @endif
                             @if($companyEmail)Email : {{ $companyEmail }}@endif
                         </p>
                     @endif
@@ -306,8 +325,6 @@
                         $fiscalBadges = array_filter([
                             $companyRccm ? 'RCCM : ' . $companyRccm : null,
                             $companyCc ? 'CC / NIF : ' . $companyCc : null,
-                            $companyTaxRegime ? 'Régime : ' . $companyTaxRegime : null,
-                            $companyTaxCenter ? 'Centre : ' . $companyTaxCenter : null,
                         ]);
                     @endphp
                     @if(count($fiscalBadges))
@@ -331,6 +348,9 @@
             </div>
         </div>
 
+        </td></tr></thead>
+
+        <tbody><tr><td>
         {{-- Infos facture / client --}}
         <div class="meta-grid">
             <div class="meta-col">
@@ -389,20 +409,6 @@
         {{-- Règlement & totaux --}}
         <div class="totals-section">
             <div class="payment-info">
-                <h4>Règlement & Coordonnées Bancaires</h4>
-                @if($companyBankName)
-                    <p><strong>Banque :</strong> {{ $companyBankName }}</p>
-                @endif
-                @if($companyBankRib)
-                    <p><strong>RIB / IBAN :</strong> <span class="mono">{{ $companyBankRib }}</span></p>
-                @endif
-                @if($companyMobileMoney)
-                    <p><strong>Mobile Money :</strong> {{ $companyMobileMoney }}</p>
-                @elseif($companyPhone)
-                    <p><strong>Mobile Money / Tél :</strong> {{ $companyPhone }}</p>
-                @endif
-                <p><strong>Titulaire :</strong> {{ $companyName }} @if($companyLegalForm){{ $companyLegalForm }}@endif @if($companyCapital)(au capital de {{ $companyCapital }})@endif</p>
-                <p class="hint">Indiquez la référence <strong>{{ $invoice->reference }}</strong> dans le libellé de votre paiement.</p>
             </div>
 
             <table class="totals-table">
@@ -435,7 +441,23 @@
             </table>
         </div>
 
-        {{-- Historique des paiements --}}
+        {{-- Signatures --}}
+        <div class="signatures">
+            <div class="signature-box">
+                <div class="sign-title">Pour {{ $companyName }} @if($companyLegalForm){{ $companyLegalForm }}@endif</div>
+                <div class="sign-hint">Direction financière et comptable (cachet et signature)</div>
+            </div>
+            <div class="signature-box">
+                <div class="sign-title">Réception client</div>
+                <div class="sign-hint">Date, nom et signature client</div>
+            </div>
+        </div>
+
+        </td></tr></tbody>
+
+        <tfoot><tr><td>
+        <div class="page-footer">
+        {{-- Historique des paiements (répété sur chaque page) --}}
         @if($invoice->payments->count() > 0)
         <div class="payments">
             <h4>Paiements reçus</h4>
@@ -462,18 +484,6 @@
         </div>
         @endif
 
-        {{-- Signatures --}}
-        <div class="signatures">
-            <div class="signature-box">
-                <div class="sign-title">Pour {{ $companyName }} @if($companyLegalForm){{ $companyLegalForm }}@endif</div>
-                <div class="sign-hint">Direction financière et comptable (cachet et signature)</div>
-            </div>
-            <div class="signature-box">
-                <div class="sign-title">Réception client</div>
-                <div class="sign-hint">Date, nom et signature client</div>
-            </div>
-        </div>
-
         {{-- Pied de page officiel avec mentions légales complètes enregistrées en paramètres --}}
         <div style="margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 10px; color: var(--muted); text-align: center; line-height: 1.5; break-inside: avoid;">
             <p style="margin: 0; font-weight: 600; color: var(--ink);">
@@ -498,6 +508,9 @@
                 <p style="margin: 3px 0 0 0;">{{ implode(' • ', $footerLegal) }}</p>
             @endif
         </div>
+        </div>
+        </td></tr></tfoot>
+        </table>
     </div>
 </body>
 </html>

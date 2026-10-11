@@ -20,6 +20,19 @@
         : ['route' => 'rh.portal.index',      'label' => 'Mon Espace RH', 'desc' => 'Pointage, tâches',    'tint' => 'text-[#0066FF]', 'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'];
 
     $initials = strtoupper(substr(auth()->user()->name ?? 'IV', 0, 2));
+
+    $navigation = app(\App\Services\NavigationService::class);
+    $currentModuleKey = $navigation->currentModuleKey();
+    $currentModule = $currentModuleKey ? $navigation->module($currentModuleKey) : null;
+
+    // Rattache chaque pôle à ses sous-pages (config/navigation.php) pour le menu mobile
+    $poles = array_map(function (array $p) use ($navigation, $currentModuleKey): array {
+        $key = strstr($p['route'], '.', true);
+        $p['children'] = $navigation->module($key)['items'] ?? [];
+        $p['current'] = $key === $currentModuleKey;
+
+        return $p;
+    }, $poles);
 @endphp
 
 <header
@@ -54,10 +67,11 @@
             <button
                 type="button"
                 @click="menuOpen = !menuOpen"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors {{ request()->routeIs('menu.*') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors {{ request()->routeIs('menu.*') ? 'bg-slate-900 text-white' : ($currentModule ? 'bg-blue-50/70 text-[#0066FF] hover:bg-blue-50' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900') }}"
+                :aria-expanded="menuOpen"
                 aria-label="Pôles et modules"
             >
-                <span>Menu</span>
+                <span class="max-w-40 truncate">{{ $currentModule['label'] ?? 'Menu' }}</span>
                 <svg class="w-3 h-3 transition-transform duration-150" :class="menuOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
             </button>
 
@@ -74,7 +88,7 @@
             >
                 <div class="grid grid-cols-2">
                     @foreach($poles as $p)
-                        <a href="{{ route($p['route']) }}" class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                        <a href="{{ route($p['route']) }}" @if($p['current']) aria-current="true" @endif class="flex items-center gap-3 p-2.5 rounded-xl transition-colors {{ $p['current'] ? 'bg-blue-50/70' : 'hover:bg-slate-50' }}">
                             <svg class="w-[18px] h-[18px] shrink-0 {{ $p['tint'] }}" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $p['icon'] }}"/></svg>
                             <div class="min-w-0">
                                 <p class="text-xs font-medium text-slate-900 truncate">{{ $p['label'] }}</p>
@@ -99,7 +113,7 @@
                 $links[] = ['analytics.index', 'Analytics', request()->routeIs('analytics.*')];
             @endphp
             @foreach($links as [$r, $label, $active])
-                <a href="{{ route($r) }}" class="px-3 py-1.5 rounded-full transition-colors {{ $active ? 'text-[#0066FF] bg-blue-50/70' : 'hover:text-slate-900 hover:bg-slate-100' }}">{{ $label }}</a>
+                <a href="{{ route($r) }}" class="px-3 py-1.5 rounded-full whitespace-nowrap transition-colors {{ $active ? 'text-[#0066FF] bg-blue-50/70' : 'hover:text-slate-900 hover:bg-slate-100' }}">{{ $label }}</a>
             @endforeach
         </nav>
 
@@ -306,10 +320,10 @@
         x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
-        class="md:hidden fixed inset-x-0 top-14 bottom-0 bg-white z-40 overflow-y-auto overscroll-contain"
+        class="md:hidden fixed inset-x-0 top-14 h-[calc(100dvh-3.5rem)] bg-white z-40 overflow-y-auto overscroll-contain"
         style="display:none"
     >
-        <div class="px-4 pt-4 pb-10 space-y-6">
+        <div class="px-4 pt-4 pb-28 space-y-6">
             <button
                 type="button"
                 @click="mobileMenu = false; $dispatch('open-spotlight')"
@@ -323,15 +337,46 @@
                 <p class="px-2 mb-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">Pôles</p>
                 <ul class="divide-y divide-slate-100">
                     @foreach($poles as $p)
-                        <li>
-                            <a href="{{ route($p['route']) }}" class="flex items-center gap-4 px-2 py-3.5 active:bg-slate-50 transition-colors">
-                                <svg class="w-5 h-5 shrink-0 {{ $p['tint'] }}" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $p['icon'] }}"/></svg>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-medium text-slate-900">{{ $p['label'] }}</p>
-                                    <p class="text-xs text-slate-400">{{ $p['desc'] }}</p>
+                        <li x-data="{ expanded: @js($p['current']) }">
+                            <div class="flex items-center">
+                                <a href="{{ route($p['route']) }}" class="flex items-center gap-4 flex-1 min-w-0 px-2 py-3.5 active:bg-slate-50 transition-colors">
+                                    <svg class="w-5 h-5 shrink-0 {{ $p['tint'] }}" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $p['icon'] }}"/></svg>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm font-medium {{ $p['current'] ? 'text-[#0066FF]' : 'text-slate-900' }}">{{ $p['label'] }}</p>
+                                        <p class="text-xs text-slate-400">{{ $p['desc'] }}</p>
+                                    </div>
+                                    @if(empty($p['children']))
+                                        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                    @endif
+                                </a>
+                                @if(!empty($p['children']))
+                                    <button
+                                        type="button"
+                                        @click="expanded = !expanded"
+                                        class="p-3 -mr-1 rounded-full text-slate-400 active:bg-slate-100 transition-colors"
+                                        :aria-expanded="expanded"
+                                        aria-label="Afficher les pages {{ $p['label'] }}"
+                                    >
+                                        <svg class="w-4 h-4 transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                    </button>
+                                @endif
+                            </div>
+                            @if(!empty($p['children']))
+                                <div
+                                    x-show="expanded"
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    class="pb-3 pl-11 pr-2"
+                                    @if(!$p['current']) style="display:none" @endif
+                                >
+                                    <div class="grid grid-cols-2 gap-1.5">
+                                        @foreach($p['children'] as $child)
+                                            <a href="{{ $child['url'] }}" @if($child['active']) aria-current="page" @endif class="px-3 py-2.5 rounded-xl text-xs truncate transition-colors {{ $child['active'] ? 'bg-[#0066FF] text-white font-semibold' : 'bg-slate-50 text-slate-700 font-medium active:bg-slate-100' }}">{{ $child['label'] }}</a>
+                                        @endforeach
+                                    </div>
                                 </div>
-                                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                            </a>
+                            @endif
                         </li>
                     @endforeach
                 </ul>

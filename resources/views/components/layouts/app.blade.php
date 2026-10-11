@@ -17,27 +17,16 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full antialiased font-sans text-[#0B0F14] bg-[#F5F7FA] flex flex-col md:flex-row overflow-hidden selection:bg-[#0066FF] selection:text-white" x-data="{ sidebarOpen: false }">
-
-    <!-- Mobile sidebar backdrop -->
-    <div 
-        x-show="sidebarOpen" 
-        x-transition:enter="ease-out duration-300"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="ease-in duration-200"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        @click="sidebarOpen = false" 
-        class="fixed inset-0 bg-[#0B0F14]/70 backdrop-blur-xs z-40 md:hidden"
-        style="display: none;"
-    ></div>
+<body class="h-full antialiased font-sans text-[#0B0F14] bg-[#F5F7FA] flex flex-col md:flex-row overflow-hidden selection:bg-[#0066FF] selection:text-white">
 
     <!-- 2. MAIN WORKSPACE (TOPBAR + CONTENT + MOBILE BOTTOM BAR) -->
     <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
         
         <!-- Topbar (#FFFFFF) -->
         <x-topbar />
+
+        <!-- Navigation contextuelle du pôle courant (onglets desktop / chips défilants mobile) -->
+        <x-module-nav />
 
         <!-- Scrollable Content Area (#F5F7FA with safe bottom padding for mobile tab bar) -->
         <main class="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 bg-[#F5F7FA]">

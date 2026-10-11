@@ -261,6 +261,7 @@ Route::middleware('auth')->group(function () {
 
         // Factures & Règlements
         Route::get('invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
+        Route::get('invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('invoices.download');
         Route::post('invoices/{invoice}/payment', [InvoiceController::class, 'quickPayment'])->name('invoices.payment');
         Route::resource('invoices', InvoiceController::class)->except(['edit', 'update', 'destroy']);
         Route::resource('payments', PaymentController::class)->only(['index', 'store']);
