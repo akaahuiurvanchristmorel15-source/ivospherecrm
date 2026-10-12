@@ -39,6 +39,9 @@
     $chartMax = max(1, collect($monthlyData)->max(fn ($m) => max($m['revenue'], $m['expense'])));
 @endphp
 
+@php
+    $accountTypes = ['caisse' => 'Caisse', 'banque' => 'Banque', 'mobile_money' => 'Mobile Money', 'autre' => 'Autre'];
+@endphp
 <x-layouts.app title="Finance & Trésorerie">
     <div x-data="{
         activeTab: 'comptes',
@@ -790,11 +793,13 @@
 
         {{-- Virement --}}
         <x-finance.modal show="transferModal" close="transferModal = false" title="Virement entre comptes">
-            <form action="{{ route('finance.transfers.store') }}" method="POST" class="space-y-4">
+            <form action="{{ route('finance.transfers.store') }}" method="POST" class="space-y-4" x-data="{ from: '', to: '' }">
                 @csrf
+                <p class="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-600">Déplace de l'argent d'une caisse ou d'un compte vers un autre. Le montant <strong>plus les frais</strong> sort du compte source ; seul le montant arrive sur le compte de destination.</p>
                 <div>
                     <label for="from_account_id" class="{{ $label }}">Compte source (débit)</label>
-                    <select id="from_account_id" name="from_account_id" required class="{{ $input }}">
+                    <select id="from_account_id" name="from_account_id" x-model="from" required class="{{ $input }}">
+                        <option value="" disabled>Choisir le compte qui envoie</option>
                         @foreach($financialAccounts as $acc)
                             <option value="{{ $acc->id }}">{{ $acc->name }} — {{ number_format($acc->balance, 0, ',', ' ') }} FCFA</option>
                         @endforeach
@@ -802,7 +807,8 @@
                 </div>
                 <div>
                     <label for="to_account_id" class="{{ $label }}">Compte destination (crédit)</label>
-                    <select id="to_account_id" name="to_account_id" required class="{{ $input }}">
+                    <select id="to_account_id" name="to_account_id" x-model="to" required class="{{ $input }}">
+                        <option value="" disabled>Choisir le compte qui reçoit</option>
                         @foreach($financialAccounts->reverse() as $acc)
                             <option value="{{ $acc->id }}">{{ $acc->name }} — {{ number_format($acc->balance, 0, ',', ' ') }} FCFA</option>
                         @endforeach
@@ -818,21 +824,26 @@
                         <input id="transfer_fee" type="number" inputmode="numeric" name="fee" min="0" value="0" class="{{ $input }}">
                     </div>
                 </div>
+                <p x-show="from && from === to" x-cloak class="text-xs font-medium text-rose-600">Le compte source et le compte de destination doivent être différents.</p>
                 <div>
                     <label for="transfer_reason" class="{{ $label }}">Motif</label>
                     <input id="transfer_reason" type="text" name="reason" placeholder="Ex. : alimentation de la caisse principale" class="{{ $input }}">
                 </div>
                 <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <button type="button" @click="transferModal = false" class="{{ $btnSec }} w-full sm:w-auto">Annuler</button>
-                    <button type="submit" class="{{ $btnPri }} w-full sm:w-auto">Valider le virement</button>
+                    <button type="submit" :disabled="from && from === to" class="{{ $btnPri }} w-full sm:w-auto disabled:opacity-50">Valider le virement</button>
                 </div>
             </form>
         </x-finance.modal>
 
         {{-- Règlement client --}}
         <x-finance.modal show="paymentModal" close="paymentModal = false" title="Enregistrer un règlement client">
+            @if($clientInvoices->isEmpty())
+                <p class="rounded-xl bg-emerald-50 px-4 py-6 text-center text-sm text-emerald-800">Aucune facture client en attente de paiement.</p>
+            @else
             <form action="{{ route('finance.payments.store') }}" method="POST" class="space-y-4">
                 @csrf
+                <p class="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-600">La facture est marquée payée (ou partiellement payée), l'argent est ajouté au compte choisi et une recette est créée automatiquement. Le montant ne peut pas dépasser le reste à payer.</p>
                 <div>
                     <label for="invoice_id" class="{{ $label }}">Facture client</label>
                     <select id="invoice_id" name="invoice_id" required class="{{ $input }}">
@@ -842,10 +853,10 @@
                     </select>
                 </div>
                 <div>
-                    <label for="financial_account_id" class="{{ $label }}">Compte récepteur</label>
+                    <label for="financial_account_id" class="{{ $label }}">Où arrive l'argent ?</label>
                     <select id="financial_account_id" name="financial_account_id" required class="{{ $input }}">
                         @foreach($financialAccounts as $acc)
-                            <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->type }})</option>
+                            <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $accountTypes[$acc->type] ?? ucfirst($acc->type) }})</option>
                         @endforeach
                     </select>
                 </div>
@@ -874,12 +885,14 @@
                     <button type="submit" class="{{ $btnPri }} w-full sm:w-auto">Encaisser</button>
                 </div>
             </form>
+            @endif
         </x-finance.modal>
 
         {{-- Facture fournisseur --}}
         <x-finance.modal show="supplierInvoiceModal" close="supplierInvoiceModal = false" title="Facture fournisseur">
             <form action="{{ route('finance.supplier-invoices.store') }}" method="POST" class="space-y-4">
                 @csrf
+                <p class="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-600">Enregistre une <strong>dette</strong> envers un fournisseur : aucun argent ne sort pour l'instant. Elle apparaît dans « Dettes fournisseurs » jusqu'à son paiement.</p>
                 <div>
                     <label for="supplier_id" class="{{ $label }}">Fournisseur</label>
                     <select id="supplier_id" name="supplier_id" required class="{{ $input }}">
@@ -927,16 +940,20 @@
             <form action="{{ route('finance.closings.store') }}" method="POST" class="space-y-4">
                 @csrf
                 <div class="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
-                    Une fois clôturée, la période ne peut plus être modifiée sans procédure de réouverture.
+                    Clôturer un mois le <strong>verrouille</strong> : plus aucun paiement ni opération ne pourra être enregistré à une date de ce mois. À faire une fois les caisses comptées et les factures vérifiées.
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label for="closing_year" class="{{ $label }}">Année</label>
-                        <input id="closing_year" type="number" name="year" value="{{ now()->year }}" required class="{{ $input }}">
+                        <input id="closing_year" type="number" name="year" value="{{ now()->subMonthNoOverflow()->year }}" required class="{{ $input }}">
                     </div>
                     <div>
-                        <label for="closing_month" class="{{ $label }}">Mois (1 à 12)</label>
-                        <input id="closing_month" type="number" name="month" value="{{ now()->month }}" min="1" max="12" required class="{{ $input }}">
+                        <label for="closing_month" class="{{ $label }}">Mois</label>
+                        <select id="closing_month" name="month" required class="{{ $input }}">
+                            @foreach(range(1, 12) as $monthNumber)
+                                <option value="{{ $monthNumber }}" @selected($monthNumber === now()->subMonthNoOverflow()->month)>{{ ucfirst(\Carbon\Carbon::create(null, $monthNumber, 1)->translatedFormat('F')) }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
                 <div>
@@ -952,19 +969,22 @@
 
         {{-- Ouverture de caisse --}}
         <x-finance.modal show="sessionOpenModal" close="sessionOpenModal = false" title="Ouvrir la caisse du jour">
-            <form action="{{ route('finance.sessions.open') }}" method="POST" class="space-y-4">
+            <form action="{{ route('finance.sessions.open') }}" method="POST" class="space-y-4"
+                  x-data="{ balances: {{ Js::from($financialAccounts->where('type', 'caisse')->mapWithKeys(fn ($c) => [$c->id => (float) $c->balance])) }}, account: '{{ $financialAccounts->where('type', 'caisse')->first()?->id }}', opening: {{ (float) ($financialAccounts->where('type', 'caisse')->first()?->balance ?? 0) }} }">
                 @csrf
+                <p class="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-600">Ouvre la journée de caisse. Comptez l'argent présent dans le tiroir et indiquez-le comme fond de caisse : le soir, l'application calculera combien vous devriez avoir.</p>
                 <div>
                     <label for="open_account" class="{{ $label }}">Caisse</label>
-                    <select id="open_account" name="financial_account_id" required class="{{ $input }}">
+                    <select id="open_account" name="financial_account_id" x-model="account" @change="opening = balances[account] ?? 0" required class="{{ $input }}">
                         @foreach($financialAccounts->where('type', 'caisse') as $c)
                             <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }})</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
-                    <label for="opening_balance" class="{{ $label }}">Fond de caisse initial (FCFA)</label>
-                    <input id="opening_balance" type="number" inputmode="numeric" name="opening_balance" min="0" value="500000" required class="{{ $input }}">
+                    <label for="opening_balance" class="{{ $label }}">Fond de caisse compté (FCFA)</label>
+                    <input id="opening_balance" type="number" inputmode="numeric" name="opening_balance" min="0" x-model.number="opening" required class="{{ $input }}">
+                    <p class="mt-1 text-xs text-slate-500">Pré-rempli avec le solde enregistré de la caisse : corrigez-le si le comptage est différent.</p>
                 </div>
                 <div>
                     <label for="open_notes" class="{{ $label }}">Observations</label>
@@ -981,14 +1001,21 @@
         @foreach($openSessions as $openSession)
             <x-finance.modal :show="'sessionCloseModal === '.$openSession->id" close="sessionCloseModal = false"
                              :title="'Fermer la caisse — '.($openSession->account?->name ?? $openSession->reference)">
-                <form action="{{ route('finance.sessions.close', $openSession) }}" method="POST" class="space-y-4">
+                <form action="{{ route('finance.sessions.close', $openSession) }}" method="POST" class="space-y-4"
+                      x-data="{ expected: {{ (float) $openSession->totals['expected'] }}, counted: '' }">
                     @csrf
-                    <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                        Fond initial : <span class="font-semibold text-slate-900 tabular-nums">{{ number_format($openSession->opening_balance, 0, ',', ' ') }} FCFA</span>
-                    </div>
+                    <dl class="space-y-1.5 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                        <div class="flex justify-between text-slate-600"><dt>Fond de caisse à l'ouverture</dt><dd class="tabular-nums">{{ number_format($openSession->opening_balance, 0, ',', ' ') }} FCFA</dd></div>
+                        <div class="flex justify-between text-emerald-700"><dt>+ Entrées depuis l'ouverture</dt><dd class="tabular-nums">{{ number_format($openSession->totals['inflows'], 0, ',', ' ') }} FCFA</dd></div>
+                        <div class="flex justify-between text-rose-700"><dt>− Sorties depuis l'ouverture</dt><dd class="tabular-nums">{{ number_format($openSession->totals['outflows'], 0, ',', ' ') }} FCFA</dd></div>
+                        <div class="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900"><dt>Vous devriez avoir</dt><dd class="tabular-nums">{{ number_format($openSession->totals['expected'], 0, ',', ' ') }} FCFA</dd></div>
+                    </dl>
                     <div>
                         <label for="real_balance_{{ $openSession->id }}" class="{{ $label }}">Solde réel compté (FCFA)</label>
-                        <input id="real_balance_{{ $openSession->id }}" type="number" inputmode="numeric" name="real_balance" min="0" required class="{{ $input }}">
+                        <input id="real_balance_{{ $openSession->id }}" type="number" inputmode="numeric" name="real_balance" min="0" x-model.number="counted" required class="{{ $input }}">
+                        <p x-show="counted !== ''" x-cloak class="mt-1.5 text-xs font-semibold"
+                           :class="Math.abs(counted - expected) < 1 ? 'text-emerald-700' : 'text-amber-700'"
+                           x-text="Math.abs(counted - expected) < 1 ? 'Aucun écart : la caisse est juste.' : 'Écart de ' + Math.round(counted - expected).toLocaleString('fr-FR') + ' FCFA : une justification est obligatoire.'"></p>
                     </div>
                     <div>
                         <label for="discrepancy_{{ $openSession->id }}" class="{{ $label }}">Justification de l'écart</label>

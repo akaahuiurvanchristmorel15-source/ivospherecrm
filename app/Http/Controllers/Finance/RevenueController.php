@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
 use App\Models\Domain;
 use App\Models\Revenue;
-use App\Models\Transaction;
 use App\Services\ActivityLogger;
+use App\Services\TreasuryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class RevenueController extends Controller
 {
@@ -59,25 +60,17 @@ class RevenueController extends Controller
         $validated['user_id'] = Auth::id();
         $validated['reference'] = 'REC-'.date('Ymd').'-'.rand(1000, 9999);
 
-        $revenue = Revenue::create($validated);
+        $revenue = DB::transaction(function () use ($validated) {
+            $revenue = Revenue::create($validated);
 
-        // Add to cash register
-        $caisse = CashRegister::findOrFail($validated['cash_register_id']);
+            TreasuryService::move(CashRegister::findOrFail($validated['cash_register_id']), 'encaissement', (float) $revenue->amount, [
+                'domain_id' => $revenue->domain_id,
+                'description' => 'Encaissement recette : '.$revenue->reference,
+                'date' => $revenue->date,
+            ]);
 
-        Transaction::create([
-            'cash_register_id' => $caisse->id,
-            'domain_id' => $revenue->domain_id,
-            'user_id' => Auth::id(),
-            'type' => 'encaissement',
-            'amount' => $revenue->amount,
-            'balance_before' => $caisse->balance,
-            'balance_after' => $caisse->balance + $revenue->amount,
-            'description' => 'Encaissement recette : '.$revenue->reference,
-            'reference' => 'TRX-'.time(),
-            'date' => $revenue->date,
-        ]);
-
-        $caisse->increment('balance', $revenue->amount);
+            return $revenue;
+        });
 
         ActivityLogger::log('creation_recette', 'Enregistrement d\'une recette', $revenue);
 
@@ -110,14 +103,17 @@ class RevenueController extends Controller
 
     public function destroy(Revenue $revenue)
     {
-        // Revert balance
-        $caisse = $revenue->cashRegister;
-        if ($caisse) {
-            $caisse->decrement('balance', $revenue->amount);
-            // We could also record a reverse transaction, but simple deduction works for now
-        }
+        // Annule l'encaissement : l'argent ressort de la caisse, avec une transaction de contre-passation
+        DB::transaction(function () use ($revenue) {
+            if ($revenue->cashRegister && (float) $revenue->amount > 0) {
+                TreasuryService::move($revenue->cashRegister, 'retrait', (float) $revenue->amount, [
+                    'domain_id' => $revenue->domain_id,
+                    'description' => 'Annulation recette : '.$revenue->reference,
+                ], allowNegative: true);
+            }
 
-        $revenue->delete();
+            $revenue->delete();
+        });
         ActivityLogger::log('suppression_recette', 'Suppression d\'une recette', $revenue);
 
         return redirect()->route('finance.revenues.index')->with('success', 'Recette supprimée.');

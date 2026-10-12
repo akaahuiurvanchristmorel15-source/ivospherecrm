@@ -186,7 +186,8 @@ class FinanceDashboardController extends Controller
         // Sessions de caisse ouvertes
         $openSessions = CashRegisterSession::with(['account', 'user'])
             ->where('status', 'ouverte')
-            ->get();
+            ->get()
+            ->each(fn (CashRegisterSession $session) => $session->setAttribute('totals', FinanceService::sessionTotals($session)));
 
         // 4. Rentabilité par Domaine (PRINT, SPORT, TECH, MEDIA, ASSURANCE)
         $domainProfitability = $domains->map(function ($domain) use ($startDate, $endDate, $getRevenueForRange) {
@@ -366,7 +367,7 @@ class FinanceDashboardController extends Controller
                 accountId: (int) $validated['financial_account_id'],
                 openingBalance: (float) $validated['opening_balance'],
                 user: auth()->user(),
-                notes: $validated['notes']
+                notes: $validated['notes'] ?? null
             );
 
             return back()->with('success', "Caisse ouverte avec succès ({$session->reference}). Solde initial : ".number_format($session->opening_balance, 0, ',', ' ').' FCFA.');
@@ -494,7 +495,7 @@ class FinanceDashboardController extends Controller
             'system_balance' => $account->balance,
             'discrepancy' => $diff,
             'status' => abs($diff) < 0.01 ? 'rapproche' : 'ecart',
-            'notes' => $validated['notes'],
+            'notes' => $validated['notes'] ?? null,
         ]);
 
         return back()->with('success', "Rapprochement bancaire {$rec->reference} enregistré (Écart : ".number_format($diff, 0, ',', ' ').' FCFA).');
@@ -516,7 +517,7 @@ class FinanceDashboardController extends Controller
                 year: (int) $validated['year'],
                 month: (int) $validated['month'],
                 user: auth()->user(),
-                notes: $validated['notes']
+                notes: $validated['notes'] ?? null
             );
 
             return back()->with('success', "Période {$closing->period_label} clôturée et verrouillée avec succès 🔒.");
