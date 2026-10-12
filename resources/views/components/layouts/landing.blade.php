@@ -22,6 +22,7 @@
         [x-cloak] { display: none !important; }
         html { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     </style>
+    @livewireStyles
 </head>
 <body class="min-h-full antialiased font-sans text-[#0B0F14] bg-[#F5F7FA] selection:bg-[#0066FF] selection:text-white"
       x-data="{ 
@@ -178,5 +179,6 @@
             </div>
         </div>
     </div>
+    @livewireScriptConfig
 </body>
 </html>

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\AccountTransfer;
-use App\Models\CashRegister;
 use App\Models\CashRegisterSession;
 use App\Models\Domain;
 use App\Models\Expense;
@@ -144,26 +143,15 @@ class FinanceService
             $invoice->status = $newPaid >= (float) $invoice->total ? 'payee' : 'partielle';
             $invoice->save();
 
-            // Credit Financial Account
+            // Crédite le compte choisi et sa caisse liée
+            $linkedRegister = null;
             if ($account) {
-                $balanceBefore = (float) $account->balance;
-                $balanceAfter = $balanceBefore + $amount;
-                $account->increment('balance', $amount);
-
-                // Create Transaction
-                Transaction::create([
-                    'financial_account_id' => $account->id,
-                    'cash_register_id' => CashRegister::first()?->id,
-                    'domain_id' => $invoice->domain_id,
+                $linkedRegister = TreasuryService::move($account, 'encaissement', $amount, [
                     'user_id' => $user->id,
-                    'type' => 'encaissement',
-                    'amount' => $amount,
-                    'balance_before' => $balanceBefore,
-                    'balance_after' => $balanceAfter,
+                    'domain_id' => $invoice->domain_id,
                     'description' => "Encaissement paiement {$payment->reference} (Facture {$invoice->reference})",
-                    'reference' => 'TRX-'.time().'-'.rand(10, 99),
                     'date' => $payment->date,
-                ]);
+                ])->cashRegister;
             }
 
             // Sync Revenue
@@ -171,11 +159,11 @@ class FinanceService
                 'reference' => 'REC-'.now()->format('Ymd').'-'.Str::upper(Str::random(6)),
                 'domain_id' => $invoice->domain_id,
                 'user_id' => $user->id,
-                'cash_register_id' => CashRegister::first()?->id,
+                'cash_register_id' => $linkedRegister?->id,
                 'financial_account_id' => $account?->id,
                 'payment_id' => $payment->id,
                 'source' => 'Paiement Facture Client',
-                'description' => "Règlement {$invoice->reference} par client {$invoice->customer?->company_name}",
+                'description' => "Règlement {$invoice->reference} par client {$invoice->customer?->name}",
                 'amount' => $amount,
                 'date' => $payment->date,
                 'payment_method' => $payment->method,
@@ -218,25 +206,25 @@ class FinanceService
                 throw new Exception('Le montant du transfert doit être supérieur à zéro.');
             }
 
-            $from = FinancialAccount::lockForUpdate()->findOrFail($fromAccountId);
-            $to = FinancialAccount::lockForUpdate()->findOrFail($toAccountId);
+            $from = FinancialAccount::findOrFail($fromAccountId);
+            $to = FinancialAccount::findOrFail($toAccountId);
 
             $totalDebit = $amount + $fee;
-            if ($from->balance < $totalDebit) {
-                throw new Exception("Solde insuffisant sur le compte '{$from->name}' ({$from->balance} FCFA disponibles, requis: {$totalDebit} FCFA).");
-            }
+            $ref = 'TRF-'.now()->format('Y').'-'.str_pad((string) (AccountTransfer::count() + 1), 4, '0', STR_PAD_LEFT).'-'.Str::upper(Str::random(3));
 
-            $ref = 'TRF-'.now()->format('Y').'-'.str_pad((string) (AccountTransfer::count() + 1), 4, '0', STR_PAD_LEFT);
-
-            // Deduct from source
-            $fromBefore = (float) $from->balance;
-            $fromAfter = $fromBefore - $totalDebit;
-            $from->decrement('balance', $totalDebit);
-
-            // Add to destination
-            $toBefore = (float) $to->balance;
-            $toAfter = $toBefore + $amount;
-            $to->increment('balance', $amount);
+            // Sortie puis entrée : chaque compte et sa caisse liée sont mis à jour
+            $outgoing = TreasuryService::move($from, 'retrait', $totalDebit, [
+                'user_id' => $user->id,
+                'description' => "Transfert sortant {$ref} vers {$to->name}".($fee > 0 ? " (dont frais {$fee} FCFA)" : ''),
+                'reference' => $ref.'-OUT',
+            ]);
+            TreasuryService::move($to, 'depot', $amount, [
+                'user_id' => $user->id,
+                'description' => "Transfert entrant {$ref} depuis {$from->name}",
+                'reference' => $ref.'-IN',
+            ]);
+            $fromBefore = (float) $outgoing->balance_before;
+            $fromAfter = (float) $outgoing->balance_after;
 
             $transfer = AccountTransfer::create([
                 'reference' => $ref,
@@ -248,34 +236,6 @@ class FinanceService
                 'date' => now()->toDateString(),
                 'status' => 'valide',
                 'notes' => $reason,
-            ]);
-
-            // Transaction Out
-            Transaction::create([
-                'financial_account_id' => $from->id,
-                'cash_register_id' => CashRegister::first()?->id,
-                'user_id' => $user->id,
-                'type' => 'retrait',
-                'amount' => $totalDebit,
-                'balance_before' => $fromBefore,
-                'balance_after' => $fromAfter,
-                'description' => "Transfert sortant {$ref} vers {$to->name}".($fee > 0 ? " (dont frais {$fee} FCFA)" : ''),
-                'reference' => $ref.'-OUT',
-                'date' => now()->toDateString(),
-            ]);
-
-            // Transaction In
-            Transaction::create([
-                'financial_account_id' => $to->id,
-                'cash_register_id' => CashRegister::first()?->id,
-                'user_id' => $user->id,
-                'type' => 'depot',
-                'amount' => $amount,
-                'balance_before' => $toBefore,
-                'balance_after' => $toAfter,
-                'description' => "Transfert entrant {$ref} depuis {$from->name}",
-                'reference' => $ref.'-IN',
-                'date' => now()->toDateString(),
             ]);
 
             self::logAudit(
@@ -338,6 +298,26 @@ class FinanceService
     }
 
     /**
+     * Entrées, sorties et solde attendu d'une session de caisse depuis son ouverture.
+     *
+     * @return array{inflows: float, outflows: float, expected: float}
+     */
+    public static function sessionTotals(CashRegisterSession $session): array
+    {
+        $movements = Transaction::where('financial_account_id', $session->financial_account_id)
+            ->where('created_at', '>=', $session->opened_at);
+
+        $inflows = (float) (clone $movements)->whereIn('type', TreasuryService::CREDIT_TYPES)->sum('amount');
+        $outflows = (float) (clone $movements)->where('type', 'retrait')->sum('amount');
+
+        return [
+            'inflows' => $inflows,
+            'outflows' => $outflows,
+            'expected' => (float) $session->opening_balance + $inflows - $outflows,
+        ];
+    }
+
+    /**
      * Fermer une session de caisse avec contrôle d'écart obligatoire.
      */
     public static function closeCashSession(
@@ -351,18 +331,7 @@ class FinanceService
                 throw new Exception('Cette session de caisse est déjà clôturée.');
             }
 
-            // Calculate movements during session
-            $inflows = (float) Transaction::where('financial_account_id', $session->financial_account_id)
-                ->whereIn('type', ['encaissement', 'depot'])
-                ->where('created_at', '>=', $session->opened_at)
-                ->sum('amount');
-
-            $outflows = (float) Transaction::where('financial_account_id', $session->financial_account_id)
-                ->whereIn('type', ['retrait'])
-                ->where('created_at', '>=', $session->opened_at)
-                ->sum('amount');
-
-            $theoretical = (float) $session->opening_balance + $inflows - $outflows;
+            ['inflows' => $inflows, 'outflows' => $outflows, 'expected' => $theoretical] = self::sessionTotals($session);
             $diff = $realBalance - $theoretical;
 
             if (abs($diff) > 0.01 && empty($reason)) {
@@ -406,42 +375,14 @@ class FinanceService
                 throw new Exception('Cette dépense a déjà été validée.');
             }
 
-            // Find financial account or cash register
-            $account = $expense->financialAccount
-                ?: ($expense->cash_register_id ? FinancialAccount::where('code', 'CP-01')->first() : null)
-                ?: FinancialAccount::first();
-
-            if ($account && (float) $account->balance < (float) $expense->amount) {
-                throw new Exception("Solde insuffisant sur le compte '{$account->name}' ({$account->balance} FCFA disponibles, requis: {$expense->amount} FCFA).");
-            }
-
-            if ($account) {
-                $before = (float) $account->balance;
-                $after = $before - (float) $expense->amount;
-                $account->decrement('balance', $expense->amount);
-
-                // Transaction
-                Transaction::create([
-                    'financial_account_id' => $account->id,
-                    'cash_register_id' => $expense->cash_register_id,
-                    'domain_id' => $expense->domain_id,
+            // Retire l'argent de la caisse choisie sur la dépense (ou de son compte), les deux soldes ensemble
+            $source = $expense->cashRegister ?? $expense->financialAccount;
+            if ($source) {
+                TreasuryService::move($source, 'retrait', (float) $expense->amount, [
                     'user_id' => $user->id,
-                    'type' => 'retrait',
-                    'amount' => $expense->amount,
-                    'balance_before' => $before,
-                    'balance_after' => $after,
+                    'domain_id' => $expense->domain_id,
                     'description' => "Paiement dépense {$expense->reference} : {$expense->description}",
-                    'reference' => 'TRX-EXP-'.time(),
-                    'date' => now()->toDateString(),
                 ]);
-            }
-
-            // Update legacy cash register if exists
-            if ($expense->cash_register_id) {
-                $caisse = $expense->cashRegister;
-                if ($caisse && $caisse->balance >= $expense->amount) {
-                    $caisse->decrement('balance', $expense->amount);
-                }
             }
 
             $expense->update([

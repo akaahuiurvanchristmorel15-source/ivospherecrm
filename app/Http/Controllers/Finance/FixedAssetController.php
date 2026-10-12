@@ -173,7 +173,7 @@ class FixedAssetController extends Controller
             'maintenances.user',
         ]);
 
-        $customers = Customer::orderBy('company_name')->get();
+        $customers = Customer::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
 
         return view('finance.assets.show', compact('asset', 'customers', 'suppliers'));

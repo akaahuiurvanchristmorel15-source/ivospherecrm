@@ -12,6 +12,7 @@
         "php": "^8.3",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
+        "livewire/livewire": "^4.4",
         "propaganistas/laravel-phone": "^6.0",
         "spatie/browsershot": "^5.4"
     },

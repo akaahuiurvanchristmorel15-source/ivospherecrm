@@ -15,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="h-full antialiased font-sans text-[#0B0F14] bg-[#F5F7FA] flex flex-col md:flex-row overflow-hidden selection:bg-[#0066FF] selection:text-white" x-data="{ sidebarOpen: false }">
 
@@ -79,5 +80,6 @@
     <x-spotlight-search />
 
     @stack('scripts')
+    @livewireScriptConfig
 </body>
 </html>

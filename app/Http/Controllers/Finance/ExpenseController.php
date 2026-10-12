@@ -7,8 +7,9 @@ use App\Models\CashRegister;
 use App\Models\Domain;
 use App\Models\Expense;
 use App\Models\Supplier;
-use App\Models\Transaction;
 use App\Services\ActivityLogger;
+use App\Services\FinanceService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -132,40 +133,16 @@ class ExpenseController extends Controller
 
     public function approve(Expense $expense)
     {
-        if ($expense->status === 'validee') {
-            return back()->with('error', 'Dépense déjà validée.');
+        try {
+            FinanceService::approveExpense($expense, Auth::user());
+        } catch (Exception $exception) {
+            return back()->with('error', $exception->getMessage());
         }
-
-        if ($expense->cash_register_id) {
-            $caisse = $expense->cashRegister;
-            if ($caisse->balance < $expense->amount) {
-                return back()->with('error', 'Solde insuffisant dans la caisse.');
-            }
-
-            // Create transaction
-            Transaction::create([
-                'cash_register_id' => $caisse->id,
-                'domain_id' => $expense->domain_id,
-                'user_id' => Auth::id(),
-                'type' => 'retrait',
-                'amount' => $expense->amount,
-                'balance_before' => $caisse->balance,
-                'balance_after' => $caisse->balance - $expense->amount,
-                'description' => 'Paiement dépense : '.$expense->reference,
-                'reference' => 'TRX-'.time(),
-                'date' => now(),
-            ]);
-
-            $caisse->decrement('balance', $expense->amount);
-        }
-
-        $expense->update([
-            'status' => 'validee',
-            'approved_by' => Auth::id(),
-        ]);
 
         ActivityLogger::log('validation_depense', 'Validation d\'une dépense', $expense);
 
-        return back()->with('success', 'Dépense validée et déduite de la caisse.');
+        return back()->with('success', $expense->cash_register_id
+            ? 'Dépense validée : le montant a été retiré de la caisse '.$expense->cashRegister->name.'.'
+            : 'Dépense validée (aucune caisse choisie : aucun solde modifié).');
     }
 }

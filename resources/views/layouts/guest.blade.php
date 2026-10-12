@@ -15,10 +15,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="min-h-screen antialiased font-sans text-[#0B0F14] bg-[#F5F7FA] flex items-center justify-center p-4">
     <div class="w-full max-w-md">
         {{ $slot }}
     </div>
+    @livewireScriptConfig
 </body>
 </html>

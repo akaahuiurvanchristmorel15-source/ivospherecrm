@@ -16,6 +16,7 @@
     </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="h-full antialiased font-sans text-[#0B0F14] bg-[#F5F7FA] flex flex-col md:flex-row overflow-hidden selection:bg-[#0066FF] selection:text-white">
 
@@ -86,5 +87,6 @@
     <x-product-qr-modal />
 
     @stack('scripts')
+    @livewireScriptConfig
 </body>
 </html>

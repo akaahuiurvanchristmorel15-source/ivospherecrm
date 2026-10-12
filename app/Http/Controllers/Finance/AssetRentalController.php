@@ -41,7 +41,7 @@ class AssetRentalController extends Controller
         $totalDepositsHeld = (float) $allRentals->where('deposit_returned', false)->where('status', '!=', 'annule')->sum('deposit_amount');
 
         $eligibleAssets = FixedAsset::rentalEligible()->whereIn('status', ['disponible', 'en_service'])->orderBy('name')->get();
-        $customers = Customer::orderBy('company_name')->get();
+        $customers = Customer::orderBy('name')->get();
 
         return view('finance.assets.rentals.index', compact(
             'rentals',
