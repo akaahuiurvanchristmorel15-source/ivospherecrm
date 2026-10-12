@@ -20,6 +20,7 @@ use App\Http\Controllers\Calendar\CalendarController;
 use App\Http\Controllers\ClientPortal\ClientPortalController;
 use App\Http\Controllers\Commercial\CommercialAppointmentController;
 use App\Http\Controllers\Commercial\CustomerController;
+use App\Http\Controllers\Commercial\CyberController;
 use App\Http\Controllers\Commercial\DeliveryController;
 use App\Http\Controllers\Commercial\InvoiceController;
 use App\Http\Controllers\Commercial\OrderController;
@@ -223,6 +224,13 @@ Route::middleware('auth')->group(function () {
         // Vente Comptoir / POS
         Route::get('pos', [PosController::class, 'index'])->name('pos.index');
         Route::post('pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
+
+        // Cyber : prestations (impression, photo minute…) avec facture automatique
+        Route::get('cyber', [CyberController::class, 'index'])->name('cyber.index');
+        Route::post('cyber/checkout', [CyberController::class, 'checkout'])->name('cyber.checkout');
+        Route::post('cyber/services', [CyberController::class, 'storeService'])->name('cyber.services.store');
+        Route::put('cyber/services/{cyberService}', [CyberController::class, 'updateService'])->name('cyber.services.update');
+        Route::delete('cyber/services/{cyberService}', [CyberController::class, 'destroyService'])->name('cyber.services.destroy');
 
         // Clients
         Route::resource('customers', CustomerController::class);

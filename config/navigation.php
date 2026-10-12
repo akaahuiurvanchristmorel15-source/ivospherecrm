@@ -19,6 +19,7 @@ return [
             'items' => [
                 ['route' => 'commercial.index', 'label' => 'Vue d\'ensemble', 'active' => 'commercial.index'],
                 ['route' => 'commercial.pos.index', 'label' => 'Caisse', 'active' => 'commercial.pos.*'],
+                ['route' => 'commercial.cyber.index', 'label' => 'Cyber', 'active' => 'commercial.cyber.*'],
                 ['route' => 'commercial.quotations.index', 'label' => 'Devis', 'active' => 'commercial.quotations.*'],
                 ['route' => 'commercial.orders.index', 'label' => 'Commandes', 'active' => 'commercial.orders.*'],
                 ['route' => 'commercial.invoices.index', 'label' => 'Factures', 'active' => 'commercial.invoices.*'],
