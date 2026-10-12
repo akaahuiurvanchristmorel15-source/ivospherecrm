@@ -59,7 +59,7 @@ test('user can explore GED folders, archive a document and access the vault', fu
     // Digital Vault
     $vaultResponse = $this->actingAs($user)->get('/ged/vault');
     $vaultResponse->assertStatus(200);
-    $vaultResponse->assertSee('Coffre-Fort Numérique IVOSPHERE');
+    $vaultResponse->assertSeeLivewire('ged-explorer');
 
     // Archive vault document
     $vaultDocResponse = $this->actingAs($user)->post('/ged/documents', [

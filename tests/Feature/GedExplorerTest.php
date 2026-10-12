@@ -8,6 +8,7 @@ use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -108,3 +109,32 @@ test('a document can be opened or downloaded, and a missing file gives a 404', f
 
     $this->get(route('ged.documents.open', gedDocument('Perdu', null, 'introuvable.pdf')))->assertNotFound();
 });
+
+test('vault files are stored privately and kept apart from the GED', function () {
+    Storage::fake('local');
+    gedDocument('Plaquette publique', null);
+
+    $this->get(route('ged.vault'))->assertOk()->assertSee('Coffre-fort');
+
+    Livewire::test('ged-explorer', ['vault' => true])
+        ->assertDontSee('Plaquette publique')
+        ->set('uploads', [UploadedFile::fake()->create('bilan_2025.pdf', 200)])
+        ->assertHasNoErrors()
+        ->assertSee('Bilan 2025');
+
+    $secret = Document::where('file_name', 'bilan_2025.pdf')->firstOrFail();
+
+    expect($secret->is_vault)->toBeTrue()
+        ->and($secret->storageDisk())->toBe('local');
+    Storage::disk('local')->assertExists($secret->file_path);
+    Storage::disk('public')->assertMissing($secret->file_path);
+
+    $this->get(route('ged.documents.open', $secret))->assertOk();
+
+    Livewire::test('ged-explorer')->assertDontSee('Bilan 2025');
+});
+
+test('the vault mode cannot be switched off from the browser', function () {
+    Livewire::test('ged-explorer', ['vault' => true])
+        ->set('vault', false);
+})->throws(CannotUpdateLockedPropertyException::class);

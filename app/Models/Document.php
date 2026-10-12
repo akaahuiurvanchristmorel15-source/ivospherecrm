@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class Document extends Model
 {
@@ -49,6 +50,15 @@ class Document extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Disque du fichier : les documents du coffre-fort sont privés (non accessibles par une URL publique).
+     * Les anciens documents du coffre déposés avant ce changement restent sur le disque public.
+     */
+    public function storageDisk(): string
+    {
+        return $this->is_vault && $this->file_path && Storage::disk('local')->exists($this->file_path) ? 'local' : 'public';
     }
 
     public function getFormattedSizeAttribute(): string
