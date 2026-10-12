@@ -487,6 +487,7 @@
                             <a href="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}"
                                :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
                                data-base="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}" target="_blank" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Imprimer PDF</a>
+                            <a href="{{ route('stock.products.print-catalog', array_merge(request()->except('warehouse_id'), ['per_warehouse' => 1])) }}" target="_blank" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">PDF par entrepôt</a>
                             <a href="{{ route('stock.products.bulk-edit') }}" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Prix & images</a>
                             <a href="{{ route('stock.products.bulk-create') }}" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Ajout groupé</a>
                         </div>
