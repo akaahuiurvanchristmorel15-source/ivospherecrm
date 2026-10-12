@@ -15,6 +15,7 @@ use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class PosController extends Controller
 {
@@ -38,7 +39,20 @@ class PosController extends Controller
         $products = $productsQuery->orderBy('name')->get();
         $customers = Customer::active()->orderBy('name')->get();
         $domains = Domain::active()->get();
-        $activePromotions = Promotion::active()->get();
+        $activePromotions = Promotion::active()
+            ->with('customers:id')
+            ->get()
+            ->map(fn (Promotion $promotion) => [
+                'code' => $promotion->code,
+                'type' => $promotion->type,
+                'value' => $promotion->value,
+                'min_amount' => $promotion->min_amount,
+                'restricted' => $promotion->customers->isNotEmpty(),
+                'customer_ids' => $promotion->customers
+                    ->filter(fn (Customer $customer) => $customer->pivot->used_at === null)
+                    ->pluck('id')
+                    ->values(),
+            ]);
 
         return view('commercial.pos.index', compact('products', 'customers', 'domains', 'activePromotions'));
     }
@@ -73,6 +87,16 @@ class PosController extends Controller
 
             if ($totalRequestedQty > $availableStock) {
                 return back()->withInput()->with('error', "Validation impossible : la quantité commandée pour l'article \"{$product->name}\" ({$totalRequestedQty}) est supérieure au stock disponible ({$availableStock}).");
+            }
+        }
+
+        // Code promo réservé : seul un client attribué, qui ne l'a pas encore utilisé, peut en bénéficier
+        if ($request->filled('promo_code')) {
+            $promo = Promotion::where('code', $request->promo_code)->first();
+            $selectedCustomer = $request->filled('customer_id') ? Customer::find($request->customer_id) : null;
+
+            if ($promo && ! $promo->canBeUsedBy($selectedCustomer)) {
+                return back()->withInput()->with('error', "Le code promo \"{$promo->code}\" est réservé à certains clients ou a déjà été utilisé par ce client.");
             }
         }
 
@@ -123,10 +147,12 @@ class PosController extends Controller
 
             // Coupon / promo discount
             $globalDiscount = 0;
+            $appliedPromo = null;
             if ($request->filled('promo_code')) {
                 $promo = Promotion::where('code', $request->promo_code)->first();
                 if ($promo && $promo->isValid($subtotal)) {
                     $globalDiscount = $promo->calculateDiscount($subtotal);
+                    $appliedPromo = $promo;
                 }
             }
 
@@ -151,6 +177,13 @@ class PosController extends Controller
 
             foreach ($itemsData as $itemRow) {
                 $order->items()->create($itemRow);
+            }
+
+            // Code réservé : une seule utilisation par client
+            if ($appliedPromo && $appliedPromo->isRestricted() && ! $appliedPromo->markAsUsedBy($customer, $order)) {
+                throw ValidationException::withMessages([
+                    'promo_code' => "Le code promo \"{$appliedPromo->code}\" a déjà été utilisé par ce client.",
+                ]);
             }
 
             // 2. Create Invoice

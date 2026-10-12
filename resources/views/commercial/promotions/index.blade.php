@@ -1,7 +1,26 @@
 <x-layouts.app>
     <x-slot:title>Codes Promo & Remises — IVOSPHERE ERP</x-slot>
 
-    <div class="space-y-6" x-data="{ showModal: false }">
+    <div class="space-y-6" x-data="{
+        showModal: false,
+        assignModal: false,
+        assignCode: '',
+        assignAction: '',
+        assignSearch: '',
+        assignedIds: [],
+        customers: {{ Js::from($customers) }},
+        openAssign(code, action, ids) {
+            this.assignCode = code;
+            this.assignAction = action;
+            this.assignedIds = ids.map(String);
+            this.assignSearch = '';
+            this.assignModal = true;
+        },
+        get filteredCustomers() {
+            const q = this.assignSearch.toLowerCase().trim();
+            return q ? this.customers.filter(c => c.name.toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q)) : this.customers;
+        }
+    }">
         <x-page-header 
             title="Codes Promo & Remises" 
             description="Gestion des campagnes promotionnelles, remises en pourcentage ou montant fixe utilisables en caisse"
@@ -56,6 +75,7 @@
                             <th class="py-3 px-4">Type de Remise</th>
                             <th class="py-3 px-4">Valeur</th>
                             <th class="py-3 px-4">Conditions</th>
+                            <th class="py-3 px-4">Clients</th>
                             <th class="py-3 px-4">Statut</th>
                             <th class="py-3 px-4 text-right">Actions</th>
                         </tr>
@@ -93,6 +113,19 @@
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4">
+                                    <button type="button"
+                                            @click="openAssign(@js($promo->code), @js(route('commercial.promotions.customers', $promo)), @js($promo->customers->pluck('id')))"
+                                            class="text-left group">
+                                        @if($promo->customers_count > 0)
+                                            <span class="block font-semibold text-[#0B0F14] group-hover:text-[#0066FF]">{{ $promo->customers_count }} client(s) réservé(s)</span>
+                                            <span class="block text-[10px] text-[#64748B]">{{ $promo->used_customers_count }} utilisé(s)</span>
+                                        @else
+                                            <span class="block text-[#64748B] group-hover:text-[#0066FF]">Tous les clients</span>
+                                        @endif
+                                        <span class="block text-[10px] font-semibold text-[#0066FF] group-hover:underline">Attribuer</span>
+                                    </button>
+                                </td>
+                                <td class="py-3.5 px-4">
                                     <form action="{{ route('commercial.promotions.toggle', $promo) }}" method="POST">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="px-2.5 py-1 rounded-full text-[10px] font-semibold transition border {{ $promo->is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-[#64748B] border-[#E2E8F0] hover:bg-slate-200' }}">
@@ -111,7 +144,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="py-12">
+                                <td colspan="7" class="py-12">
                                     <x-empty-state 
                                         title="Aucun code promo créé"
                                         description="Créez des remises promotionnelles pour fidéliser vos clients et animer vos ventes."
@@ -179,7 +212,15 @@
                             </div>
                         @endif
 
-                        <div class="pt-2 border-t border-[#E2E8F0] flex items-center justify-end">
+                        <div class="pt-2 border-t border-[#E2E8F0] flex items-center justify-between gap-2">
+                            <button type="button"
+                                    @click="openAssign(@js($promo->code), @js(route('commercial.promotions.customers', $promo)), @js($promo->customers->pluck('id')))"
+                                    class="text-left text-[11px]">
+                                <span class="block font-semibold text-[#0B0F14]">
+                                    {{ $promo->customers_count > 0 ? $promo->customers_count.' client(s) réservé(s) • '.$promo->used_customers_count.' utilisé(s)' : 'Tous les clients' }}
+                                </span>
+                                <span class="block font-semibold text-[#0066FF]">Attribuer à des clients</span>
+                            </button>
                             <form action="{{ route('commercial.promotions.destroy', $promo) }}" method="POST" class="inline-block" onsubmit="return confirm('Supprimer ce code promo ?');">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="p-1.5 rounded-lg border border-[#E2E8F0] text-[#64748B] hover:text-rose-600 hover:bg-rose-50 transition" title="Supprimer">
@@ -266,6 +307,60 @@
                     <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
                         <x-button variant="secondary" type="button" @click="showModal = false">Annuler</x-button>
                         <x-button variant="primary" type="submit">Créer le Code</x-button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- Modal Attribution aux clients -->
+        <div
+            x-show="assignModal"
+            x-transition
+            class="fixed inset-0 z-50 bg-[#0B0F14]/50 flex items-center justify-center p-4"
+            style="display: none;"
+        >
+            <div @click.outside="assignModal = false" class="bg-white border border-[#E2E8F0] rounded-xl max-w-lg w-full p-6 shadow-xl space-y-4">
+                <div class="flex justify-between items-center border-b border-[#E2E8F0] pb-3">
+                    <h3 class="text-base font-bold text-[#0B0F14]">
+                        Attribuer le code <span class="font-mono text-[#0066FF]" x-text="assignCode"></span>
+                    </h3>
+                    <button type="button" @click="assignModal = false" class="text-[#64748B] hover:text-[#0B0F14]">✕</button>
+                </div>
+
+                <p class="text-xs text-[#64748B]">
+                    Seuls les clients cochés pourront utiliser ce code en caisse, une seule fois chacun. Si aucun client n'est coché, tous les clients peuvent l'utiliser.
+                </p>
+
+                <form :action="assignAction" method="POST" class="space-y-3 text-xs">
+                    @csrf @method('PUT')
+
+                    <div class="flex items-center gap-2">
+                        <input type="search" x-model="assignSearch" placeholder="Rechercher un client (nom ou code)…" class="flex-1 px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-[#0B0F14] focus:outline-none focus:border-[#0066FF] text-xs transition">
+                        <button type="button" @click="assignedIds = []" class="shrink-0 text-[11px] font-semibold text-[#64748B] hover:text-rose-600">Tout décocher</button>
+                    </div>
+
+                    <div class="max-h-72 overflow-y-auto rounded-lg border border-[#E2E8F0] divide-y divide-[#E2E8F0]">
+                        <template x-for="customer in filteredCustomers" :key="customer.id">
+                            <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#F5F7FA]">
+                                <input type="checkbox" :value="String(customer.id)" x-model="assignedIds" class="rounded border-[#E2E8F0] text-[#0066FF] focus:ring-[#0066FF]">
+                                <span class="flex-1 min-w-0">
+                                    <span class="block font-medium text-[#0B0F14] truncate" x-text="customer.name"></span>
+                                    <span class="block text-[10px] text-[#64748B] font-mono" x-text="customer.code"></span>
+                                </span>
+                            </label>
+                        </template>
+                        <p x-show="filteredCustomers.length === 0" class="px-3 py-6 text-center text-[#64748B]">Aucun client trouvé.</p>
+                    </div>
+
+                    <template x-for="id in assignedIds" :key="id">
+                        <input type="hidden" name="customer_ids[]" :value="id">
+                    </template>
+
+                    <div class="flex items-center justify-between gap-2 pt-3 border-t border-[#E2E8F0]">
+                        <span class="text-[11px] text-[#64748B]"><strong class="text-[#0B0F14]" x-text="assignedIds.length"></strong> client(s) sélectionné(s)</span>
+                        <div class="flex gap-2">
+                            <x-button variant="secondary" type="button" @click="assignModal = false">Annuler</x-button>
+                            <x-button variant="primary" type="submit">Enregistrer</x-button>
+                        </div>
                     </div>
                 </form>
             </div>

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Commercial;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Promotion;
 use App\Services\ActivityLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class PromotionController extends Controller
@@ -25,9 +27,40 @@ class PromotionController extends Controller
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        $promotions = $query->latest()->paginate(15);
+        $promotions = $query->withCount([
+            'customers',
+            'customers as used_customers_count' => fn ($q) => $q->whereNotNull('customer_promotion.used_at'),
+        ])->with('customers:id')->latest()->paginate(15);
 
-        return view('commercial.promotions.index', compact('promotions'));
+        $customers = Customer::active()->orderBy('name')->get(['id', 'name', 'code']);
+
+        return view('commercial.promotions.index', compact('promotions', 'customers'));
+    }
+
+    /**
+     * Réserve le code promo aux clients sélectionnés (aucun client = code utilisable par tous).
+     */
+    public function assignCustomers(Request $request, Promotion $promotion): RedirectResponse
+    {
+        $validated = $request->validate([
+            'customer_ids' => 'nullable|array',
+            'customer_ids.*' => 'integer|exists:customers,id',
+        ]);
+
+        $customerIds = $validated['customer_ids'] ?? [];
+
+        // sync conserve la date d'utilisation des clients déjà attribués
+        $promotion->customers()->sync($customerIds);
+
+        ActivityLogger::log(
+            'assigned_promotion',
+            'Attribution du code promo '.$promotion->code.' à '.count($customerIds).' client(s)',
+            $promotion
+        );
+
+        return back()->with('success', count($customerIds) > 0
+            ? 'Code promo '.$promotion->code.' attribué à '.count($customerIds).' client(s).'
+            : 'Code promo '.$promotion->code.' de nouveau utilisable par tous les clients.');
     }
 
     public function store(Request $request)

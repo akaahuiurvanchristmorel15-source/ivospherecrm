@@ -268,6 +268,7 @@ Route::middleware('auth')->group(function () {
 
         // Codes Promo & Remises
         Route::patch('promotions/{promotion}/toggle', [PromotionController::class, 'toggle'])->name('promotions.toggle');
+        Route::put('promotions/{promotion}/customers', [PromotionController::class, 'assignCustomers'])->name('promotions.customers');
         Route::resource('promotions', PromotionController::class)->except(['show']);
     });
 
