@@ -8,6 +8,7 @@ use App\Models\DailyTaskSheet;
 use App\Models\Employee;
 use App\Models\HrSetting;
 use App\Services\ActivityLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -44,13 +45,32 @@ class DailyTaskSheetController extends Controller
         $whatsappDispatchedCount = DailyTaskSheet::whereNotNull('whatsapp_sent_at')->count();
         $emailDispatchedCount = DailyTaskSheet::whereNotNull('email_sent_at')->count();
 
+        // File d'envoi WhatsApp groupé : fiches du jour dont l'employé a un numéro
+        $whatsappQueue = DailyTaskSheet::with('employee')
+            ->whereDate('date', $todayStr)
+            ->get()
+            ->filter(fn (DailyTaskSheet $sheet) => $sheet->whats_app_url !== null)
+            ->map(fn (DailyTaskSheet $sheet) => [
+                'id' => $sheet->id,
+                'name' => $sheet->employee->full_name,
+                'phone' => $sheet->employee->phone,
+                'reference' => $sheet->reference,
+                'url' => $sheet->whats_app_url,
+                'markUrl' => route('rh.daily-tasks.whatsapp-sent', $sheet),
+                'sent' => $sheet->whatsapp_sent_at !== null,
+            ])
+            ->values();
+        $sheetsWithoutPhoneCount = $todaySheetsCount - $whatsappQueue->count();
+
         return view('rh.daily_tasks.index', compact(
             'sheets',
             'employees',
             'todaySheetsCount',
             'totalAssignedCount',
             'whatsappDispatchedCount',
-            'emailDispatchedCount'
+            'emailDispatchedCount',
+            'whatsappQueue',
+            'sheetsWithoutPhoneCount'
         ));
     }
 
@@ -325,6 +345,16 @@ class DailyTaskSheetController extends Controller
     /**
      * Renvoyer la notification WhatsApp ou Email.
      */
+    /**
+     * Marque la fiche comme envoyée sur WhatsApp (appelé lors de l'envoi groupé, à l'ouverture du lien).
+     */
+    public function markWhatsAppSent(DailyTaskSheet $dailyTask): JsonResponse
+    {
+        $dailyTask->update(['whatsapp_sent_at' => now(), 'whatsapp_status' => 'envoye']);
+
+        return response()->json(['sent' => true]);
+    }
+
     public function resend(DailyTaskSheet $dailyTask, string $channel): RedirectResponse
     {
         $employee = $dailyTask->employee;
