@@ -15,6 +15,7 @@
     </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="min-h-dvh antialiased font-sans flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 selection:bg-[#0066FF] selection:text-white">
 
@@ -61,5 +62,6 @@
         <p class="text-slate-400 dark:text-slate-500">© {{ date('Y') }} Groupe IVOSPHERE. Tous droits réservés.</p>
     </footer>
 
+    @livewireScriptConfig
 </body>
 </html>

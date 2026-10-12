@@ -173,6 +173,7 @@
         }
     </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 
 <body class="bg-white font-sans text-[#0B0F14] antialiased" x-data="{ menu: false }" @keydown.escape.window="menu = false">
@@ -870,5 +871,6 @@
             relayout();
         })();
     </script>
+    @livewireScriptConfig
 </body>
 </html>

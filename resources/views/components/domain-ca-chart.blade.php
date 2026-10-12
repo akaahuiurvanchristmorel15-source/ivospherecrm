@@ -9,50 +9,7 @@
     $n = fn ($v) => number_format($v ?? 0, 0, ',', ' ');
     $year = $year ?? date('Y');
 
-    // Palette de couleurs distinctives par pôle
-    $palette = [
-        'print' => '#0066FF',      // Bleu électrique
-        'sport' => '#10B981',      // Émeraude
-        'tech' => '#6366F1',       // Indigo
-        'media' => '#F59E0B',      // Ambre
-        'assurance' => '#EC4899',  // Rose
-        'finance' => '#0D9488',    // Sarcelle
-        'rh' => '#8B5CF6',         // Violet
-        'ged' => '#0284C7',        // Cyan
-    ];
-
-    $circumference = 2 * M_PI * 60; // r = 60 => ~376.991
-    $chartItems = [];
-    $accumulatedPercent = 0;
-
-    foreach ($domainPerformance as $key => $dPerf) {
-        $cleanName = trim(preg_replace('/^IVOSPHERE\s+/i', '', $dPerf['name'] ?? $key));
-        $codeLower = strtolower($dPerf['code'] ?? $key);
-        $color = $palette[$codeLower] ?? ($dPerf['color'] ?? '#64748B');
-        $ca = (float) ($dPerf['ca'] ?? 0);
-        $percent = (float) ($dPerf['percent'] ?? 0);
-
-        $dash = ($percent / 100) * $circumference;
-        $offset = -($accumulatedPercent / 100) * $circumference;
-
-        $chartItems[] = [
-            'key' => $key,
-            'code' => $dPerf['code'] ?? $key,
-            'cleanName' => $cleanName,
-            'fullName' => 'IVOSPHERE ' . $cleanName,
-            'ca' => $ca,
-            'caFormatted' => $n($ca),
-            'percent' => $percent,
-            'color' => $color,
-            'dash' => round($dash, 2),
-            'gap' => round($circumference - $dash, 2),
-            'offset' => round($offset, 2),
-            'orders' => $dPerf['orders'] ?? 0,
-        ];
-
-        $accumulatedPercent += $percent;
-    }
-
+    $chartItems = \App\View\DomainCaChartData::items($domainPerformance);
     $activeCount = count(array_filter($chartItems, fn ($i) => $i['ca'] > 0));
 @endphp
 
@@ -65,6 +22,10 @@
         totalFormatted: '{{ $n($totalConsolidatedCa) }}',
         currency: '{{ $currency }}',
         items: {{ Js::from($chartItems) }},
+
+        get activeCount() {
+            return this.items.filter(i => i.ca > 0).length;
+        },
         
         get displayedItems() {
             if (this.activeFilter === 'active') {
@@ -80,6 +41,7 @@
             return null;
         }
     }"
+    x-on:dashboard-chart.window="items = $event.detail.items; totalCa = $event.detail.totalCa; totalFormatted = $event.detail.totalFormatted"
     class="flex flex-col h-full"
 >
     <!-- En-tête avec métrique et sélecteurs de vue -->
@@ -97,7 +59,7 @@
             <div class="text-right">
                 <span class="text-[10px] text-[#64748B] font-semibold uppercase tracking-wider block">Total Réalisé</span>
                 <span class="text-sm sm:text-base font-extrabold text-[#0066FF] tabular-nums">
-                    {{ $n($totalConsolidatedCa) }} {{ $currency }}
+                    <span x-text="totalFormatted">{{ $n($totalConsolidatedCa) }}</span> {{ $currency }}
                 </span>
             </div>
 
@@ -143,7 +105,7 @@
                 :class="activeFilter === 'all' ? 'bg-[#0B0F14] text-white font-bold' : 'bg-[#F5F7FA] text-[#64748B] hover:text-[#0B0F14]'"
                 class="px-2 py-0.5 rounded-md text-[10px] transition-all"
             >
-                Tous ({{ count($chartItems) }})
+                Tous (<span x-text="items.length">{{ count($chartItems) }}</span>)
             </button>
             <button 
                 type="button" 
@@ -151,7 +113,7 @@
                 :class="activeFilter === 'active' ? 'bg-[#0066FF] text-white font-bold' : 'bg-[#F5F7FA] text-[#64748B] hover:text-[#0B0F14]'"
                 class="px-2 py-0.5 rounded-md text-[10px] transition-all"
             >
-                Actifs ({{ $activeCount }})
+                Actifs (<span x-text="activeCount">{{ $activeCount }}</span>)
             </button>
         </div>
         <span class="text-[10px] text-[#64748B]" x-show="hovered">
@@ -180,14 +142,15 @@
                             stroke-width="16" 
                         />
 
-                        <!-- Segments interactifs dynamiques -->
-                        <template x-for="item in items" :key="item.key">
-                            <circle 
+                        <!-- Segments : un cercle par pôle (pas de <template> dans un SVG, qu'Alpine ne sait pas recréer) -->
+                        @foreach($chartItems as $index => $chartItem)
+                            <circle
+                                x-data="{ get item() { return items[{{ $index }}] || { percent: 0 } } }"
                                 x-show="item.percent > 0"
-                                cx="80" 
-                                cy="80" 
-                                r="60" 
-                                fill="transparent" 
+                                cx="80"
+                                cy="80"
+                                r="60"
+                                fill="transparent"
                                 :stroke="item.color"
                                 :stroke-width="hovered === item.key ? 20 : 16"
                                 :stroke-dasharray="`${item.dash} ${item.gap}`"
@@ -199,7 +162,7 @@
                                 @mouseleave="hovered = null"
                                 @click="hovered = (hovered === item.key ? null : item.key)"
                             />
-                        </template>
+                        @endforeach
                     </svg>
 
                     <!-- Centre d'information réactif (HUD central) -->
@@ -227,7 +190,7 @@
                         <div x-show="hovered === null" class="flex flex-col items-center">
                             <span class="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Consolidé</span>
                             <span class="text-base sm:text-lg font-black text-[#0B0F14] tabular-nums tracking-tight">
-                                {{ $n($totalConsolidatedCa) }}
+                                <span x-text="totalFormatted">{{ $n($totalConsolidatedCa) }}</span>
                             </span>
                             <span class="text-[10px] font-semibold text-[#0066FF]">
                                 {{ $currency }} • 100%
@@ -331,7 +294,7 @@
 
     <!-- Pied de carte interactif avec récapitulatif -->
     <div class="mt-4 pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-[#64748B]">
-        <span>Pôles actifs : <strong class="text-[#0B0F14] font-semibold">{{ $activeCount }} / {{ count($chartItems) }}</strong></span>
+        <span>Pôles actifs : <strong class="text-[#0B0F14] font-semibold"><span x-text="activeCount">{{ $activeCount }}</span> / <span x-text="items.length">{{ count($chartItems) }}</span></strong></span>
         <a href="{{ route('command-center.index') }}" class="font-semibold text-[#0066FF] hover:underline flex items-center gap-1">
             <span>Analyse détaillée</span>
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

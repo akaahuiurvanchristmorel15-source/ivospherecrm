@@ -20,6 +20,7 @@
             background-size: 24px 24px;
         }
     </style>
+    @livewireStyles
 </head>
 <body class="h-full antialiased font-sans text-[#0B0F14] bg-[#F6F9FC] flex flex-col justify-between selection:bg-[#0066FF] selection:text-white relative overflow-x-hidden">
 
@@ -216,5 +217,6 @@
         </p>
     </footer>
 
+    @livewireScriptConfig
 </body>
 </html>
