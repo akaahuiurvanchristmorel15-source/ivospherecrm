@@ -409,6 +409,9 @@
                 height: 25.5px !important;
             }
         }
+        .warehouse-line strong {
+            color: #0066FF;
+        }
     </style>
 </head>
 <body>
@@ -429,7 +432,7 @@
 
         <div style="display: flex; align-items: center; gap: 12px;">
             <span class="info-pill">
-                📄 Format : A4 Paysage · 20 articles / page · Total : {{ $products->count() }} produits ({{ $chunks->count() }} {{ Str::plural('page', $chunks->count()) }})
+                📄 Format : A4 Paysage · 20 articles / page · Total : {{ $productCount }} produits ({{ $chunks->count() }} {{ Str::plural('page', $chunks->count()) }})
             </span>
             <span style="font-size: 11px; color: #64748b;">
                 Colonnes Prix Unitaire & Prix de Revente : <strong>Vides</strong> (pour saisie manuscrite / inventaire)
@@ -440,13 +443,18 @@
     {{-- CONTENEUR DES PAGES CHUNKÉES PAR 20 PRODUITS --}}
     <div class="print-container">
         @php
-            $globalIndex = 0;
             $totalPages = $chunks->count() ?: 1;
+            $currentPageNumber = 0;
         @endphp
 
-        @forelse($chunks as $pageIndex => $pageProducts)
+        @foreach($sections as $section)
+        @php
+            $warehouse = $section['warehouse'];
+            $globalIndex = 0;
+        @endphp
+        @forelse($section['chunks'] as $pageProducts)
             @php
-                $currentPageNumber = $pageIndex + 1;
+                $currentPageNumber++;
             @endphp
             <div class="catalog-page">
                 {{-- 1. EN-TÊTE DE LA PAGE --}}
@@ -461,13 +469,19 @@
 
                     <div class="header-title-box">
                         <h2>Catalogue & Bordereau de Prix des Produits</h2>
-                        <p>Grille officielle de tarification & contrôle des stocks · Format A4 Paysage</p>
+                        @if($warehouse)
+                            <p class="warehouse-line">
+                                Entrepôt : <strong>{{ $warehouse->name }}</strong> ({{ $warehouse->code }})@if($warehouse->address) · {{ $warehouse->address }}@endif @if($warehouse->manager) · Resp. {{ $warehouse->manager }}@endif
+                            </p>
+                        @else
+                            <p>Stock global, tous entrepôts confondus · Format A4 Paysage</p>
+                        @endif
                     </div>
 
                     <div class="header-meta">
                         <div>Date d'édition : <strong>{{ now()->format('d/m/Y à H:i') }}</strong></div>
                         <div>Édité par : <strong>{{ auth()->user()->name ?? 'Administrateur' }}</strong></div>
-                        <div>Total articles : <strong>{{ $products->count() }}</strong></div>
+                        <div>{{ $warehouse ? 'Articles de l\'entrepôt' : 'Total articles' }} : <strong>{{ $section['rows']->count() }}</strong></div>
                         <span class="badge-landscape">A4 Paysage · 20 / page</span>
                     </div>
                 </div>
@@ -480,14 +494,15 @@
                                 <th class="col-num">N°</th>
                                 <th class="col-ref">RÉFÉRENCE</th>
                                 <th class="col-designation">DÉSIGNATION DU PRODUIT</th>
-                                <th class="col-qty">QUANTITÉ</th>
+                                <th class="col-qty">{{ $warehouse ? 'QTÉ ENTREPÔT' : 'QUANTITÉ' }}</th>
                                 <th class="col-price-empty">PRIX UNITAIRE</th>
                                 <th class="col-price-empty">PRIX DE REVENTE</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($pageProducts as $product)
+                            @foreach($pageProducts as $row)
                                 @php
+                                    $product = $row['product'];
                                     $globalIndex++;
                                 @endphp
                                 <tr>
@@ -511,7 +526,7 @@
 
                                     {{-- Quantité en stock --}}
                                     <td class="col-qty">
-                                        <span>{{ number_format((float) $product->current_stock, 0, ',', ' ') }}</span>
+                                        <span>{{ number_format($row['quantity'], 0, ',', ' ') }}</span>
                                         <span class="unit-label">{{ $product->unit ?? 'pcs' }}</span>
                                     </td>
 
@@ -541,7 +556,7 @@
                 {{-- 3. PIED DE PAGE --}}
                 <div class="page-footer">
                     <div class="footer-left">
-                        Document officiel IVOSPHERE CRM & WMS · Édité le {{ now()->format('d/m/Y à H:i:s') }}
+                        Document officiel IVOSPHERE CRM & WMS {{ $warehouse ? "· ".$warehouse->code : "" }} · Édité le {{ now()->format('d/m/Y à H:i:s') }}
                     </div>
                     <div class="footer-center">
                         Page {{ $currentPageNumber }} sur {{ $totalPages }}
@@ -560,6 +575,16 @@
                 </div>
             </div>
         @endforelse
+        @endforeach
+
+        @if($sections->isEmpty())
+            <div class="catalog-page" style="justify-content: center; align-items: center;">
+                <div style="text-align: center; color: #64748b;">
+                    <p style="font-size: 16px; font-weight: 700; color: #0b0f14;">Aucun produit en stock dans cet entrepôt.</p>
+                    <p>Les entrepôts sans stock ne sont pas imprimés.</p>
+                </div>
+            </div>
+        @endif
     </div>
 
 </body>

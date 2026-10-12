@@ -603,10 +603,34 @@ class StockProductController extends Controller
 
         $products = $query->orderBy('name')->get();
 
-        // Découpage strict en paquets de 20 produits par page A4 Paysage
-        $chunks = $products->chunk(20);
+        // Une section par entrepôt : un entrepôt choisi, tous les entrepôts (per_warehouse=1), ou le stock global
+        if ($request->filled('warehouse_id')) {
+            $warehouses = Warehouse::whereKey($request->integer('warehouse_id'))->get();
+        } elseif ($request->boolean('per_warehouse')) {
+            $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
+        } else {
+            $warehouses = collect([null]);
+        }
 
-        return view('stock.products.print_catalog', compact('products', 'chunks'));
+        $sections = $warehouses->map(function (?Warehouse $warehouse) use ($products) {
+            $rows = $products
+                ->map(fn (Product $product) => [
+                    'product' => $product,
+                    'quantity' => $warehouse
+                        ? (float) $product->warehouseStocks->where('warehouse_id', $warehouse->id)->sum('physical_quantity')
+                        : (float) $product->current_stock,
+                ])
+                ->when($warehouse, fn ($rows) => $rows->filter(fn (array $row) => $row['quantity'] > 0))
+                ->values();
+
+            // Découpage strict en paquets de 20 produits par page A4 Paysage
+            return ['warehouse' => $warehouse, 'rows' => $rows, 'chunks' => $rows->chunk(20)];
+        })->filter(fn (array $section) => $section['rows']->isNotEmpty() || $section['warehouse'] === null)->values();
+
+        $chunks = $sections->flatMap(fn (array $section) => $section['chunks']);
+        $productCount = $sections->sum(fn (array $section) => $section['rows']->count());
+
+        return view('stock.products.print_catalog', compact('sections', 'chunks', 'productCount'));
     }
 
     /**
