@@ -451,6 +451,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/folders', [GedController::class, 'storeFolder'])->name('folders.store');
         Route::post('/documents', [GedController::class, 'storeDocument'])->name('documents.store');
         Route::delete('/documents/{document}', [GedController::class, 'destroy'])->name('documents.destroy');
+        Route::get('/documents/{document}/open', [GedController::class, 'open'])->name('documents.open');
     });
 
     // Espace Client
