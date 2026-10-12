@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Commercial;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Commercial\CancelOrderRequest;
 use App\Models\Customer;
 use App\Models\CyberService;
 use App\Models\Domain;
@@ -10,11 +11,13 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\ActivityLogger;
+use App\Services\SaleLifecycleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CyberController extends Controller
@@ -36,7 +39,7 @@ class CyberController extends Controller
             ->whereDate('date', today())
             ->when(! $canManage, fn ($query) => $query->where('user_id', $request->user()->id))
             ->latest('id')
-            ->get(['id', 'reference', 'total', 'paid_amount', 'status', 'created_at']);
+            ->get(['id', 'order_id', 'reference', 'total', 'paid_amount', 'status', 'created_at']);
 
         return view('commercial.cyber.index', compact('services', 'customers', 'canManage', 'todayInvoices'));
     }
@@ -169,6 +172,23 @@ class CyberController extends Controller
         });
 
         return redirect()->route('commercial.invoices.print', $invoice)->with('success', 'Prestations enregistrées. Facture générée automatiquement.');
+    }
+
+    /**
+     * Annule une facture cyber : la vente, la facture et ses paiements passent au statut annulé.
+     */
+    public function cancelInvoice(CancelOrderRequest $request, Invoice $invoice, SaleLifecycleService $saleLifecycle): RedirectResponse
+    {
+        abort_unless($request->user()->hasRole(self::MANAGER_ROLES), 403);
+        abort_unless(str_starts_with($invoice->reference, 'FAC-CYB-') && $invoice->order, 404);
+
+        try {
+            $saleLifecycle->cancel($invoice->order, $request->user(), $request->validated('cancellation_reason'));
+        } catch (ValidationException $exception) {
+            return back()->with('error', collect($exception->errors())->flatten()->first());
+        }
+
+        return back()->with('success', 'Facture '.$invoice->reference.' annulée.');
     }
 
     public function storeService(Request $request): RedirectResponse

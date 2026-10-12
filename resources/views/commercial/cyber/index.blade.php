@@ -34,7 +34,7 @@
             openCatalog: {{ $errors->hasAny(['name', 'category', 'unit', 'price']) ? 'true' : 'false' }}
          })"
          x-init="if (window.matchMedia('(pointer: fine)').matches) { $nextTick(() => $refs.searchInput?.focus()); }"
-         @keydown.escape.window="cartOpen = false; customOpen = false; catalogOpen = false"
+         @keydown.escape.window="cartOpen = false; customOpen = false; catalogOpen = false; cancelTarget = null"
          class="space-y-4 pb-24 md:pb-0">
 
         <x-page-header title="Cyber & prestations">
@@ -160,7 +160,7 @@
                         </div>
                         <div class="text-right">
                             <p class="text-[11px] text-slate-500">Encaissé</p>
-                            <p class="text-base font-bold tabular-nums text-slate-900 sm:text-lg">{{ number_format($todayInvoices->sum('paid_amount'), 0, ',', ' ') }} F</p>
+                            <p class="text-base font-bold tabular-nums text-slate-900 sm:text-lg">{{ number_format($todayInvoices->where('status', '!=', 'annulee')->sum('paid_amount'), 0, ',', ' ') }} F</p>
                         </div>
                     </div>
                     @if($todayInvoices->isEmpty())
@@ -171,11 +171,17 @@
                                 <li class="flex items-center gap-3 px-4 py-2.5 sm:px-5">
                                     <span class="w-11 shrink-0 text-xs tabular-nums text-slate-400">{{ $invoice->created_at->format('H:i') }}</span>
                                     <span class="min-w-0 flex-1 truncate font-mono text-xs font-medium text-slate-900">{{ $invoice->reference }}</span>
-                                    @if($invoice->status !== 'payee')
+                                    @if($invoice->status === 'annulee')
+                                        <span class="shrink-0 rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">Annulée</span>
+                                    @elseif($invoice->status !== 'payee')
                                         <span class="shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">{{ $invoice->status === 'partielle' ? 'Partiel' : 'Impayé' }}</span>
                                     @endif
-                                    <span class="shrink-0 text-sm font-bold tabular-nums text-slate-900">{{ number_format($invoice->total, 0, ',', ' ') }} F</span>
+                                    <span class="shrink-0 text-sm font-bold tabular-nums {{ $invoice->status === 'annulee' ? 'text-slate-400 line-through' : 'text-slate-900' }}">{{ number_format($invoice->total, 0, ',', ' ') }} F</span>
                                     <a href="{{ route('commercial.invoices.print', $invoice) }}" class="shrink-0 text-xs font-semibold text-[#0066FF] hover:underline">Imprimer</a>
+                                    @if($canManage && $invoice->status !== 'annulee')
+                                        <button type="button" @click="openCancel({{ Js::from(['url' => route('commercial.cyber.invoices.cancel', $invoice), 'reference' => $invoice->reference, 'total' => (float) $invoice->total]) }})"
+                                                class="shrink-0 text-xs font-semibold text-rose-600 hover:underline">Annuler</button>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>
@@ -448,6 +454,37 @@
             </form>
         </div>
 
+        {{-- ===================== ANNULATION ===================== --}}
+        @if($canManage)
+            <div x-show="cancelTarget" x-cloak x-transition.opacity role="alertdialog" aria-modal="true" aria-labelledby="cancel-title"
+                 class="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 sm:items-center sm:p-4">
+                <form method="POST" :action="cancelTarget?.url" @click.outside="cancelTarget = null"
+                      class="w-full max-w-md space-y-4 rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6">
+                    @csrf
+                    <div>
+                        <h3 id="cancel-title" class="text-base font-bold text-slate-900">Annuler la facture</h3>
+                        <p class="mt-1 text-sm text-slate-600">
+                            <span class="font-mono font-semibold text-slate-900" x-text="cancelTarget?.reference"></span>
+                            · <span class="font-semibold tabular-nums" x-text="money(cancelTarget?.total) + ' FCFA'"></span>
+                        </p>
+                    </div>
+                    <p class="rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                        La facture et ses paiements seront marqués comme annulés. Action définitive, possible jusqu'à {{ \App\Models\Order::CANCELLATION_WINDOW_DAYS }} jours après la vente.
+                    </p>
+                    <label class="block">
+                        <span class="mb-1.5 block text-xs font-semibold text-slate-700 sm:text-sm">Motif d'annulation</span>
+                        <textarea name="cancellation_reason" x-ref="cancelReason" rows="3" required minlength="5" maxlength="500"
+                                  placeholder="Ex : erreur de saisie, client remboursé…"
+                                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15"></textarea>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" @click="cancelTarget = null" class="h-11 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">Retour</button>
+                        <button type="submit" class="h-11 rounded-xl bg-rose-600 text-sm font-bold text-white hover:bg-rose-700">Annuler la facture</button>
+                    </div>
+                </form>
+            </div>
+        @endif
+
         {{-- ===================== TARIFS (responsables) ===================== --}}
         @if($canManage)
             <div x-show="catalogOpen" x-cloak x-transition.opacity role="dialog" aria-modal="true" aria-labelledby="catalog-title"
@@ -536,6 +573,7 @@
                 cartOpen: false,
                 customOpen: false,
                 catalogOpen: config.openCatalog,
+                cancelTarget: null,
                 custom: { description: '', quantity: 1, unit_price: null },
                 paymentMethod: 'especes',
                 mobileMoneyProvider: 'wave',
@@ -590,6 +628,11 @@
                 clearCart() {
                     this.cart = [];
                     this.amountPaid = 0;
+                },
+
+                openCancel(target) {
+                    this.cancelTarget = target;
+                    this.$nextTick(() => this.$refs.cancelReason?.focus());
                 },
 
                 openCustom() {

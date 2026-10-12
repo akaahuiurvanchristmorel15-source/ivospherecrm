@@ -106,3 +106,36 @@ test('cyber agents cannot change the catalog', function () {
 
     expect((float) $service->fresh()->price)->toBe(50.0);
 });
+
+test('managers can cancel a cyber invoice with a reason', function () {
+    $this->actingAs($this->cyberAgent)->post(route('commercial.cyber.checkout'), [
+        'payment_method' => 'especes',
+        'amount_paid' => 400,
+        'items' => [['description' => 'Scan', 'quantity' => 2, 'unit_price' => 200]],
+    ]);
+    $invoice = Invoice::where('reference', 'like', 'FAC-CYB-%')->firstOrFail();
+
+    $this->actingAs($this->admin)
+        ->post(route('commercial.cyber.invoices.cancel', $invoice), ['cancellation_reason' => 'Erreur de saisie'])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($invoice->fresh()->status)->toBe('annulee')
+        ->and($invoice->order->fresh()->status)->toBe('annulée')
+        ->and(Payment::where('invoice_id', $invoice->id)->value('status'))->toBe('annule');
+});
+
+test('cyber agents cannot cancel invoices', function () {
+    $this->actingAs($this->cyberAgent)->post(route('commercial.cyber.checkout'), [
+        'payment_method' => 'especes',
+        'amount_paid' => 200,
+        'items' => [['description' => 'Scan', 'quantity' => 1, 'unit_price' => 200]],
+    ]);
+    $invoice = Invoice::where('reference', 'like', 'FAC-CYB-%')->firstOrFail();
+
+    $this->actingAs($this->cyberAgent)
+        ->post(route('commercial.cyber.invoices.cancel', $invoice), ['cancellation_reason' => 'Erreur de saisie'])
+        ->assertForbidden();
+
+    expect($invoice->fresh()->status)->toBe('payee');
+});

@@ -228,6 +228,7 @@ Route::middleware('auth')->group(function () {
         // Cyber : prestations (impression, photo minute…) avec facture automatique
         Route::get('cyber', [CyberController::class, 'index'])->name('cyber.index');
         Route::post('cyber/checkout', [CyberController::class, 'checkout'])->name('cyber.checkout');
+        Route::post('cyber/invoices/{invoice}/cancel', [CyberController::class, 'cancelInvoice'])->name('cyber.invoices.cancel');
         Route::post('cyber/services', [CyberController::class, 'storeService'])->name('cyber.services.store');
         Route::put('cyber/services/{cyberService}', [CyberController::class, 'updateService'])->name('cyber.services.update');
         Route::delete('cyber/services/{cyberService}', [CyberController::class, 'destroyService'])->name('cyber.services.destroy');
