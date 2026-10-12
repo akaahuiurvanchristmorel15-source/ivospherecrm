@@ -361,14 +361,10 @@
                 cart: [],
                 cartOpen: false,
                 customerId: '',
-                promoCode: '',
-                appliedPromoCode: '',
-                discountAmount: 0,
                 paymentMethod: 'especes',
                 mobileMoneyProvider: 'wave',
                 amountPaid: 0,
                 products: config.products || [],
-                promotions: config.promotions || [],
                 domains: config.domains || [],
 
                 money(value) {
@@ -473,57 +469,7 @@
 
                 clearCart() {
                     this.cart = [];
-                    this.removePromo();
                     this.amountPaid = 0;
-                },
-
-                removePromo() {
-                    this.discountAmount = 0;
-                    this.promoCode = '';
-                    this.appliedPromoCode = '';
-                    this.updateTotals();
-                },
-
-                onCustomerChange() {
-                    if (this.appliedPromoCode) {
-                        this.promoCode = this.appliedPromoCode;
-                        this.applyPromo();
-                    }
-                },
-
-                applyPromo() {
-                    const code = this.promoCode.trim().toUpperCase();
-                    const promo = this.promotions.find(p => p.code.toUpperCase() === code);
-                    this.appliedPromoCode = '';
-                    if (!promo) {
-                        alert('Code promo introuvable ou inactif.');
-                        this.discountAmount = 0;
-                        return;
-                    }
-                    if (promo.restricted && !(promo.customer_ids || []).some(id => String(id) === String(this.customerId))) {
-                        alert('Ce code promo est réservé à certains clients ou a déjà été utilisé par ce client.');
-                        this.discountAmount = 0;
-                        this.updateTotals();
-                        return;
-                    }
-                    const sub = this.subtotal;
-                    const minAmt = parseFloat(promo.min_amount || promo.min_order_amount || 0);
-                    if (minAmt > 0 && sub < minAmt) {
-                        alert('Montant minimum requis pour ce code : ' + minAmt + ' FCFA');
-                        this.discountAmount = 0;
-                        return;
-                    }
-                    if (promo.type === 'percent' || promo.type === 'percentage') {
-                        let d = sub * (parseFloat(promo.value) / 100);
-                        if (promo.max_discount_amount && d > promo.max_discount_amount) {
-                            d = promo.max_discount_amount;
-                        }
-                        this.discountAmount = d;
-                    } else {
-                        this.discountAmount = Math.min(sub, parseFloat(promo.value));
-                    }
-                    this.appliedPromoCode = promo.code;
-                    this.updateTotals();
                 },
 
                 get subtotal() {
@@ -538,7 +484,7 @@
                 },
 
                 get netTotal() {
-                    const total = Math.max(0, (this.subtotal - this.discountAmount) + this.taxAmount);
+                    const total = Math.max(0, this.subtotal + this.taxAmount);
                     return Math.round(total);
                 },
 
@@ -599,7 +545,6 @@
         x-init="if (window.matchMedia('(pointer: fine)').matches) { $nextTick(() => $refs.searchInput?.focus()); }"
         x-data="posTerminal({
             products: {{ Js::from($products) }},
-            promotions: {{ Js::from($activePromotions) }},
             domains: {{ Js::from($domains) }}
         })"
         @keydown.escape.window="cartOpen = false"
@@ -758,7 +703,7 @@
                                 <label for="customer_id" class="text-xs font-semibold text-slate-700 sm:text-sm">Client</label>
                                 <a href="{{ route('commercial.customers.create') }}" target="_blank" class="text-xs font-medium text-[#0066FF] hover:underline sm:text-sm">Nouveau client</a>
                             </div>
-                            <select id="customer_id" name="customer_id" x-model="customerId" @change="onCustomerChange()"
+                            <select id="customer_id" name="customer_id" x-model="customerId"
                                     class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:h-11 sm:text-sm">
                                 <option value="">Client comptoir (par défaut)</option>
                                 @foreach($customers as $c)
@@ -767,23 +712,6 @@
                             </select>
                         </div>
 
-                        {{-- Code promo --}}
-                        <div class="p-4 sm:p-5">
-                            <label for="promo_code_input" class="mb-1.5 block text-xs font-semibold text-slate-700 sm:text-sm">Code promo</label>
-                            <input type="hidden" name="promo_code" :value="appliedPromoCode">
-                            <div class="flex gap-2">
-                                <input id="promo_code_input" type="text" x-model="promoCode" @keydown.enter.prevent="applyPromo()" placeholder="Ex : BIENVENUE10"
-                                       :disabled="appliedPromoCode !== ''"
-                                       class="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 font-mono text-xs uppercase text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 disabled:bg-emerald-50 disabled:text-emerald-800 sm:h-11 sm:text-sm">
-                                <button type="button" x-show="!appliedPromoCode" @click="applyPromo()" :disabled="!promoCode.trim() || cart.length === 0"
-                                        class="shrink-0 rounded-xl bg-slate-900 px-3.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm">Appliquer</button>
-                                <button type="button" x-show="appliedPromoCode" x-cloak @click="removePromo()"
-                                        class="shrink-0 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 sm:text-sm">Retirer</button>
-                            </div>
-                            @error('promo_code')
-                                <p class="mt-1.5 text-xs font-medium text-rose-600">{{ $message }}</p>
-                            @enderror
-                        </div>
 
                         {{-- Articles --}}
                         <div class="p-4 sm:p-5">
@@ -944,10 +872,6 @@
                             <div class="flex justify-between text-slate-500">
                                 <dt>Sous-total</dt>
                                 <dd class="font-medium tabular-nums text-slate-700" x-text="money(subtotal) + ' FCFA'"></dd>
-                            </div>
-                            <div class="flex justify-between text-emerald-700" x-show="discountAmount > 0" x-cloak>
-                                <dt>Remise</dt>
-                                <dd class="font-semibold tabular-nums" x-text="'− ' + money(discountAmount) + ' FCFA'"></dd>
                             </div>
                             <div class="flex justify-between text-slate-500" x-show="taxAmount > 0" x-cloak>
                                 <dt>TVA</dt>

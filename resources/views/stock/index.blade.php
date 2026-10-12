@@ -244,7 +244,6 @@
 
                                     <div class="mt-3 flex gap-1 rounded-lg bg-[#F5F7FA] p-1 text-[11px]">
                                         <button type="button" @click="lever = 'price'" :class="lever === 'price' ? 'bg-white text-[#0066FF] font-semibold shadow-sm' : 'text-[#64748B]'" class="flex-1 rounded-md py-1 transition">Prix</button>
-                                        <button type="button" @click="lever = 'bundle'" :class="lever === 'bundle' ? 'bg-white text-[#0066FF] font-semibold shadow-sm' : 'text-[#64748B]'" class="flex-1 rounded-md py-1 transition">Pack</button>
                                         <button type="button" @click="lever = 'security'" :class="lever === 'security' ? 'bg-white text-[#0066FF] font-semibold shadow-sm' : 'text-[#64748B]'" class="flex-1 rounded-md py-1 transition">Anti-rupture</button>
                                     </div>
 
@@ -261,31 +260,6 @@
                                             <input type="hidden" name="reason" value="Optimisation tarifaire recommandée IA (+5% sur produit vedette)">
                                             <button type="submit" class="w-full rounded-lg bg-[#0066FF] py-2 text-xs font-semibold text-white hover:bg-[#0052cc]">Appliquer le prix (+5%)</button>
                                         </form>
-                                    </div>
-
-                                    {{-- Levier pack --}}
-                                    <div x-show="lever === 'bundle'" x-cloak class="mt-3 space-y-2">
-                                        @if($item['bundle_lever'])
-                                            @php $bundle = $item['bundle_lever']; @endphp
-                                            <p class="text-[11px] text-[#64748B]">
-                                                <strong class="text-[#0B0F14]">+ {{ $bundle['dormant_product']->name }}</strong> (dormant {{ $bundle['dormant_product']->days_without_movement }} j)<br>
-                                                <span class="line-through">{{ number_format($bundle['normal_total_price'], 0, ',', ' ') }}</span>
-                                                <strong class="text-[#0B0F14]">{{ number_format($bundle['bundle_price'], 0, ',', ' ') }} FCFA (-{{ $bundle['discount_percent'] }}%)</strong><br>
-                                                Panier +{{ number_format($bundle['additional_cart_revenue'], 0, ',', ' ') }} F · cash libéré {{ number_format($bundle['dormant_cash_freed'], 0, ',', ' ') }} F
-                                            </p>
-                                            <form action="{{ route('stock.revenue-booster.create-bundle') }}" method="POST">
-                                                @csrf
-                                                <input type="hidden" name="primary_product_id" value="{{ $p->id }}">
-                                                <input type="hidden" name="secondary_product_id" value="{{ $bundle['dormant_product']->id }}">
-                                                <input type="hidden" name="code" value="{{ $bundle['suggested_code'] }}">
-                                                <input type="hidden" name="name" value="{{ $bundle['bundle_name'] }}">
-                                                <input type="hidden" name="discount_percent" value="{{ $bundle['discount_percent'] }}">
-                                                <input type="hidden" name="min_amount" value="{{ $bundle['bundle_price'] }}">
-                                                <button type="submit" class="w-full rounded-lg bg-[#0B0F14] py-2 text-xs font-semibold text-white hover:bg-slate-800">Activer l'offre ({{ $bundle['suggested_code'] }})</button>
-                                            </form>
-                                        @else
-                                            <p class="rounded-lg bg-[#F5F7FA] p-3 text-center text-xs text-[#64748B]">Aucun article dormant compatible.</p>
-                                        @endif
                                     </div>
 
                                     {{-- Levier anti-rupture --}}

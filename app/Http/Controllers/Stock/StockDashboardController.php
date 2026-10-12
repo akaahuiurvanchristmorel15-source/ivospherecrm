@@ -9,7 +9,6 @@ use App\Models\PhysicalInventory;
 use App\Models\PhysicalInventoryItem;
 use App\Models\Product;
 use App\Models\ProductBatch;
-use App\Models\Promotion;
 use App\Models\PurchaseRequest;
 use App\Models\StockAlert;
 use App\Models\StockMovement;
@@ -638,47 +637,6 @@ class StockDashboardController extends Controller
             : "Prix de l'article '{$product->name}' ajusté à ".number_format($newPrice, 0, ',', ' ').' FCFA.';
 
         return back()->with('success', $msg);
-    }
-
-    /**
-     * Création automatique d'une offre pack synergie (vente croisée top seller + dormant).
-     */
-    public function createBundle(Request $request)
-    {
-        $validated = $request->validate([
-            'primary_product_id' => 'required|exists:products,id',
-            'secondary_product_id' => 'required|exists:products,id',
-            'code' => 'required|string|max:50',
-            'name' => 'required|string|max:255',
-            'discount_percent' => 'required|numeric|min:1|max:90',
-            'min_amount' => 'nullable|numeric|min:0',
-        ]);
-
-        $primary = Product::findOrFail($validated['primary_product_id']);
-        $secondary = Product::findOrFail($validated['secondary_product_id']);
-
-        $code = strtoupper(trim($validated['code']));
-
-        $promotion = Promotion::updateOrCreate(
-            ['code' => $code],
-            [
-                'name' => $validated['name'],
-                'type' => 'percent',
-                'value' => $validated['discount_percent'],
-                'min_amount' => $validated['min_amount'] ?? ($primary->selling_price + ($secondary->selling_price * 0.8)),
-                'start_date' => now()->startOfDay(),
-                'end_date' => now()->addMonths(3)->endOfDay(),
-                'is_active' => true,
-            ]
-        );
-
-        ActivityLogger::log(
-            'stock_bundle_created',
-            "Création de l'offre pack '{$promotion->name}' (Code: {$promotion->code}) associant '{$primary->name}' et '{$secondary->name}'",
-            $primary
-        );
-
-        return back()->with('success', "Offre Pack activée avec succès ! Code Promo '{$promotion->code}' ({$promotion->value}% de remise combinée) disponible en caisse et sur les devis pour valoriser le panier moyen.");
     }
 
     /**

@@ -152,14 +152,9 @@ class StockRevenueBoosterService
                 $additionalCartRevenue = max(0, $bundlePrice - $sellingPrice);
                 $dormantCashFreed = $dormantCost;
 
-                $topCleanSku = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', (string) ($product->sku ?: 'TOP')), 0, 4));
-                $dormantCleanSku = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', (string) ($matchedDormant->sku ?: 'ACC')), 0, 4));
-                $suggestedPromoCode = 'PACK-'.$topCleanSku.'-'.$dormantCleanSku;
-
                 $bundleData = [
                     'dormant_product' => $matchedDormant,
                     'bundle_name' => "Pack Synergie : {$product->name} + {$matchedDormant->name}",
-                    'suggested_code' => $suggestedPromoCode,
                     'normal_total_price' => $combinedNormalPrice,
                     'bundle_price' => $bundlePrice,
                     'pack_savings' => $packSavings,

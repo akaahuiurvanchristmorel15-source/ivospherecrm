@@ -26,7 +26,6 @@ use App\Http\Controllers\Commercial\OrderController;
 use App\Http\Controllers\Commercial\PaymentController;
 use App\Http\Controllers\Commercial\PosController;
 use App\Http\Controllers\Commercial\ProductController;
-use App\Http\Controllers\Commercial\PromotionController;
 use App\Http\Controllers\Commercial\ProspectController;
 use App\Http\Controllers\Commercial\QuotationController;
 use App\Http\Controllers\Commercial\SupplierController;
@@ -266,10 +265,6 @@ Route::middleware('auth')->group(function () {
         Route::resource('invoices', InvoiceController::class)->except(['edit', 'update', 'destroy']);
         Route::resource('payments', PaymentController::class)->only(['index', 'store']);
 
-        // Codes Promo & Remises
-        Route::patch('promotions/{promotion}/toggle', [PromotionController::class, 'toggle'])->name('promotions.toggle');
-        Route::put('promotions/{promotion}/customers', [PromotionController::class, 'assignCustomers'])->name('promotions.customers');
-        Route::resource('promotions', PromotionController::class)->except(['show']);
     });
 
     Route::prefix('finance')->name('finance.')->middleware('role:administrateur,responsable,responsable_financiere,agent_caissier_vendeur,agent_monetique,agent_cyber')->group(function () {
@@ -370,7 +365,6 @@ Route::middleware('auth')->group(function () {
         Route::patch('maintenances/{maintenance}/complete', [StockDashboardController::class, 'completeMaintenance'])->name('maintenances.complete');
 
         Route::post('revenue-booster/optimize-price', [StockDashboardController::class, 'optimizePrice'])->name('revenue-booster.optimize-price');
-        Route::post('revenue-booster/create-bundle', [StockDashboardController::class, 'createBundle'])->name('revenue-booster.create-bundle');
         Route::post('revenue-booster/secure-stock', [StockDashboardController::class, 'secureStock'])->name('revenue-booster.secure-stock');
 
         Route::resource('warehouses', WarehouseController::class);

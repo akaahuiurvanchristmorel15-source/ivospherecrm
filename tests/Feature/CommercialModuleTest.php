@@ -6,7 +6,6 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
-use App\Models\Promotion;
 use App\Models\Prospect;
 use App\Models\Quotation;
 use App\Models\StockMovement;
@@ -246,32 +245,6 @@ test('can schedule and manage commercial appointments', function () {
     $updateResponse->assertRedirect();
     $appointment->refresh();
     expect($appointment->status)->toBe('effectué');
-});
-
-test('can create and toggle promotions', function () {
-    $code = 'TESTPROMO'.rand(100, 999);
-
-    $response = $this->post(route('commercial.promotions.store'), [
-        'code' => $code,
-        'name' => 'Campagne Test Promo',
-        'type' => 'percent',
-        'value' => 15,
-        'min_amount' => 20000,
-        'is_active' => true,
-    ]);
-
-    $response->assertRedirect();
-
-    $promo = Promotion::where('code', $code)->first();
-    expect($promo)->not->toBeNull()
-        ->and((float) $promo->value)->toBe(15.0)
-        ->and($promo->is_active)->toBeTrue();
-
-    // Toggle
-    $toggleResponse = $this->patch(route('commercial.promotions.toggle', $promo));
-    $toggleResponse->assertRedirect();
-    $promo->refresh();
-    expect($promo->is_active)->toBeFalse();
 });
 
 test('commercial product routes redirect to stock logistics catalog and pos has no product addition buttons', function () {

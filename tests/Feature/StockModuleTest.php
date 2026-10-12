@@ -3,7 +3,6 @@
 use App\Models\Domain;
 use App\Models\PhysicalInventory;
 use App\Models\Product;
-use App\Models\Promotion;
 use App\Models\PurchaseRequest;
 use App\Models\StockAlert;
 use App\Models\StockMovement;
@@ -237,33 +236,6 @@ test('authorized user can optimize product price via revenue booster', function 
 
     $product->refresh();
     expect((float) $product->selling_price)->toBe((float) $newPrice);
-});
-
-test('authorized user can create cross-selling synergy bundle promotion', function () {
-    $admin = User::where('email', 'admin@ivosphere.com')->first();
-    $products = Product::take(2)->get();
-    $primary = $products[0];
-    $secondary = $products[1];
-
-    $code = 'PACK-TEST-'.rand(100, 999);
-
-    $response = $this->actingAs($admin)->post(route('stock.revenue-booster.create-bundle'), [
-        'primary_product_id' => $primary->id,
-        'secondary_product_id' => $secondary->id,
-        'code' => $code,
-        'name' => 'Pack Synergie Test Vente Croisée',
-        'discount_percent' => 10,
-        'min_amount' => 20000,
-    ]);
-
-    $response->assertRedirect();
-    $response->assertSessionHas('success');
-
-    $promotion = Promotion::where('code', $code)->first();
-    expect($promotion)->not->toBeNull()
-        ->and($promotion->type)->toBe('percent')
-        ->and((float) $promotion->value)->toBe(10.0)
-        ->and($promotion->is_active)->toBeTrue();
 });
 
 test('authorized user can secure VIP replenishment for fast-selling product', function () {

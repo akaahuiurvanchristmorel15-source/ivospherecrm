@@ -26,7 +26,6 @@ return [
                 ['route' => 'commercial.customers.index', 'label' => 'Clients', 'active' => 'commercial.customers.*'],
                 ['route' => 'commercial.prospects.index', 'label' => 'Prospects', 'active' => 'commercial.prospects.*'],
                 ['route' => 'commercial.appointments.index', 'label' => 'Rendez-vous', 'active' => 'commercial.appointments.*'],
-                ['route' => 'commercial.promotions.index', 'label' => 'Promotions', 'active' => 'commercial.promotions.*'],
                 ['route' => 'commercial.suppliers.index', 'label' => 'Fournisseurs', 'active' => 'commercial.suppliers.*'],
             ],
         ],

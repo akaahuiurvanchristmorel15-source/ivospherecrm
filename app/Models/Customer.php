@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
@@ -164,16 +163,6 @@ class Customer extends Model
     public function appointments(): HasMany
     {
         return $this->hasMany(CommercialAppointment::class);
-    }
-
-    /**
-     * Codes promo réservés à ce client.
-     */
-    public function promotions(): BelongsToMany
-    {
-        return $this->belongsToMany(Promotion::class)
-            ->withPivot(['used_at', 'order_id'])
-            ->withTimestamps();
     }
 
     public function scopeActive(Builder $query): Builder

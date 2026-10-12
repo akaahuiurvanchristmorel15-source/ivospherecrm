@@ -9,13 +9,11 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
-use App\Models\Promotion;
 use App\Services\ActivityLogger;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class PosController extends Controller
 {
@@ -39,22 +37,8 @@ class PosController extends Controller
         $products = $productsQuery->orderBy('name')->get();
         $customers = Customer::active()->orderBy('name')->get();
         $domains = Domain::active()->get();
-        $activePromotions = Promotion::active()
-            ->with('customers:id')
-            ->get()
-            ->map(fn (Promotion $promotion) => [
-                'code' => $promotion->code,
-                'type' => $promotion->type,
-                'value' => $promotion->value,
-                'min_amount' => $promotion->min_amount,
-                'restricted' => $promotion->customers->isNotEmpty(),
-                'customer_ids' => $promotion->customers
-                    ->filter(fn (Customer $customer) => $customer->pivot->used_at === null)
-                    ->pluck('id')
-                    ->values(),
-            ]);
 
-        return view('commercial.pos.index', compact('products', 'customers', 'domains', 'activePromotions'));
+        return view('commercial.pos.index', compact('products', 'customers', 'domains'));
     }
 
     public function checkout(Request $request)
@@ -65,7 +49,6 @@ class PosController extends Controller
             'payment_method' => 'required|in:especes,mobile_money,carte,virement,cheque,credit',
             'mobile_money_provider' => 'nullable|string|in:wave,orange_money',
             'amount_paid' => 'required|numeric|min:0',
-            'promo_code' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|numeric|min:1',
@@ -87,16 +70,6 @@ class PosController extends Controller
 
             if ($totalRequestedQty > $availableStock) {
                 return back()->withInput()->with('error', "Validation impossible : la quantité commandée pour l'article \"{$product->name}\" ({$totalRequestedQty}) est supérieure au stock disponible ({$availableStock}).");
-            }
-        }
-
-        // Code promo réservé : seul un client attribué, qui ne l'a pas encore utilisé, peut en bénéficier
-        if ($request->filled('promo_code')) {
-            $promo = Promotion::where('code', $request->promo_code)->first();
-            $selectedCustomer = $request->filled('customer_id') ? Customer::find($request->customer_id) : null;
-
-            if ($promo && ! $promo->canBeUsedBy($selectedCustomer)) {
-                return back()->withInput()->with('error', "Le code promo \"{$promo->code}\" est réservé à certains clients ou a déjà été utilisé par ce client.");
             }
         }
 
@@ -145,19 +118,8 @@ class PosController extends Controller
                 ];
             }
 
-            // Coupon / promo discount
-            $globalDiscount = 0;
-            $appliedPromo = null;
-            if ($request->filled('promo_code')) {
-                $promo = Promotion::where('code', $request->promo_code)->first();
-                if ($promo && $promo->isValid($subtotal)) {
-                    $globalDiscount = $promo->calculateDiscount($subtotal);
-                    $appliedPromo = $promo;
-                }
-            }
-
             $taxTotal = collect($itemsData)->sum('tax_amount');
-            $finalTotal = max(0, ($subtotal - $globalDiscount) + $taxTotal);
+            $finalTotal = max(0, $subtotal + $taxTotal);
             $amountPaid = min($finalTotal, (float) $request->amount_paid);
 
             // 1. Create Order
@@ -170,20 +132,13 @@ class PosController extends Controller
                 'status' => 'livree',
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxTotal,
-                'discount' => $globalDiscount,
+                'discount' => 0,
                 'total' => $finalTotal,
                 'notes' => 'Vente directe comptoir (POS). '.$request->notes,
             ]);
 
             foreach ($itemsData as $itemRow) {
                 $order->items()->create($itemRow);
-            }
-
-            // Code réservé : une seule utilisation par client
-            if ($appliedPromo && $appliedPromo->isRestricted() && ! $appliedPromo->markAsUsedBy($customer, $order)) {
-                throw ValidationException::withMessages([
-                    'promo_code' => "Le code promo \"{$appliedPromo->code}\" a déjà été utilisé par ce client.",
-                ]);
             }
 
             // 2. Create Invoice
@@ -201,7 +156,7 @@ class PosController extends Controller
                 'status' => $invoiceStatus,
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxTotal,
-                'discount' => $globalDiscount,
+                'discount' => 0,
                 'total' => $finalTotal,
                 'paid_amount' => $amountPaid,
                 'notes' => 'Ticket de caisse / Facture POS.',
