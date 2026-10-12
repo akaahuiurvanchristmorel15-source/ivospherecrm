@@ -91,3 +91,27 @@ test('phone formatter returns whatsapp-ready digits', function () {
         ->and(PhoneNumberFormatter::digits('+33 6 12 34 56 78'))->toBe('33612345678')
         ->and(PhoneNumberFormatter::format(null))->toBeNull();
 });
+
+describe('without the phone library', function () {
+    beforeEach(fn () => PhoneNumberFormatter::useLibrary(false));
+    afterEach(fn () => PhoneNumberFormatter::useLibrary(null));
+
+    test('employee is created and phone formatted', function () {
+        $this->actingAs($this->admin)
+            ->post(route('rh.employees.store'), employeePayload(['employee_code' => 'EMP-FB01', 'phone' => '07 08 09 10 11']))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('rh.employees.index'));
+
+        expect(Employee::where('employee_code', 'EMP-FB01')->value('phone'))->toBe('+225 07 08 09 10 11')
+            ->and(PhoneNumberFormatter::digits('+33 6 12 34 56 78'))->toBe('33612345678')
+            ->and(PhoneNumberFormatter::format('2250708091011'))->toBe('+225 07 08 09 10 11');
+    });
+
+    test('invalid phone numbers are still rejected', function (string $phone) {
+        $this->actingAs($this->admin)
+            ->post(route('commercial.customers.store'), customerPayload(['phone' => $phone]))
+            ->assertSessionHasErrors('phone');
+
+        expect(Customer::count())->toBe(0);
+    })->with(['123', 'téléphone', '+225 99 99 99 99 99', '+2250708']);
+});
