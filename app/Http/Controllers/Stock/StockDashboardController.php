@@ -21,6 +21,7 @@ use App\Services\ActivityLogger;
 use App\Services\StockRevenueBoosterService;
 use App\Services\StockService;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -261,32 +262,52 @@ class StockDashboardController extends Controller
 
         $executeNow = $request->boolean('execute_immediately', true);
 
-        $transfer = StockTransfer::create([
-            'reference' => 'TRF-'.now()->format('Y').'-'.str_pad((string) (StockTransfer::count() + 1), 3, '0', STR_PAD_LEFT).'-'.substr(uniqid(), -3),
-            'source_warehouse_id' => $validated['source_warehouse_id'],
-            'destination_warehouse_id' => $validated['destination_warehouse_id'],
-            'product_id' => $validated['product_id'],
-            'user_id' => auth()->id(),
-            'quantity' => $validated['quantity'],
-            'reason' => $validated['notes'] ?? 'Transfert inter-entrepôts',
-            'status' => $executeNow ? 'receptionne' : 'en_attente',
-            'shipped_at' => $executeNow ? now() : null,
-            'received_at' => $executeNow ? now() : null,
-            'notes' => $validated['notes'] ?? null,
-        ]);
-
         if ($executeNow) {
-            StockService::processMovement([
-                'warehouse_id' => $transfer->source_warehouse_id,
-                'destination_warehouse_id' => $transfer->destination_warehouse_id,
-                'product_id' => $transfer->product_id,
-                'type' => 'transfert',
-                'reason_motif' => 'transfert_inter_entrepots',
-                'quantity' => $transfer->quantity,
-                'reference' => $transfer->reference,
-                'notes' => $transfer->notes ?? 'Transfert inter-entrepôts exécuté',
-                'date' => now(),
-            ]);
+            $availableStock = StockService::getStock((int) $validated['product_id'], (int) $validated['source_warehouse_id']);
+
+            if ($validated['quantity'] > $availableStock) {
+                $productName = Product::whereKey($validated['product_id'])->value('name');
+                $warehouseName = Warehouse::whereKey($validated['source_warehouse_id'])->value('name');
+
+                return back()->withInput()->with('error', "Transfert impossible : seulement {$availableStock} unité(s) de « {$productName} » disponible(s) dans {$warehouseName}, pour {$validated['quantity']} demandée(s).");
+            }
+        }
+
+        try {
+            // Le transfert et son mouvement de stock sont enregistrés ensemble, ou pas du tout
+            $transfer = DB::transaction(function () use ($validated, $executeNow) {
+                $transfer = StockTransfer::create([
+                    'reference' => 'TRF-'.now()->format('Y').'-'.str_pad((string) (StockTransfer::count() + 1), 3, '0', STR_PAD_LEFT).'-'.substr(uniqid(), -3),
+                    'source_warehouse_id' => $validated['source_warehouse_id'],
+                    'destination_warehouse_id' => $validated['destination_warehouse_id'],
+                    'product_id' => $validated['product_id'],
+                    'user_id' => auth()->id(),
+                    'quantity' => $validated['quantity'],
+                    'reason' => $validated['notes'] ?? 'Transfert inter-entrepôts',
+                    'status' => $executeNow ? 'receptionne' : 'en_attente',
+                    'shipped_at' => $executeNow ? now() : null,
+                    'received_at' => $executeNow ? now() : null,
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                if ($executeNow) {
+                    StockService::processMovement([
+                        'warehouse_id' => $transfer->source_warehouse_id,
+                        'destination_warehouse_id' => $transfer->destination_warehouse_id,
+                        'product_id' => $transfer->product_id,
+                        'type' => 'transfert',
+                        'reason_motif' => 'transfert_inter_entrepots',
+                        'quantity' => $transfer->quantity,
+                        'reference' => $transfer->reference,
+                        'notes' => $transfer->notes ?? 'Transfert inter-entrepôts exécuté',
+                        'date' => now(),
+                    ]);
+                }
+
+                return $transfer;
+            });
+        } catch (Exception $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
         }
 
         return back()->with('success', "Transfert {$transfer->reference} enregistré avec succès.");
@@ -785,7 +806,7 @@ class StockDashboardController extends Controller
             ActivityLogger::log('stock_adjusted', $msg, $product);
 
             return redirect()->route('stock.index', ['tab' => 'disponibilite'])->with('success', $msg);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->with('error', 'Erreur lors de la mise à jour du stock : '.$e->getMessage());
         }
     }
