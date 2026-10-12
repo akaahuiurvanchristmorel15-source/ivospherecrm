@@ -22,14 +22,7 @@ class AiAssistantController extends Controller
 
         return view('ai.index', [
             'domains' => $domains,
-            'defaultSuggestions' => [
-                'Donne-moi le chiffre d\'affaires de TECH ce mois-ci',
-                'Quels produits sont bientôt en rupture ?',
-                'Quelles factures sont en retard ?',
-                'Quels clients n\'ont pas commandé depuis 3 mois ?',
-                'Résume les ventes de cette semaine',
-                'Combien avons-nous de trésorerie disponible ?',
-            ],
+            'defaultSuggestions' => AiAssistantService::exampleQuestions()->all(),
         ]);
     }
 

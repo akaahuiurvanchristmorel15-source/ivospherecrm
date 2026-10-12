@@ -1,269 +1,339 @@
-<x-layouts.app title="IVOSPHERE AI — Assistant de Gestion & Studio Créatif">
-    <div class="space-y-6" x-data="{ tab: 'assistant', promptInput: '' }">
+@php
+    $documentTypes = [
+        'commercial_pitch' => ['Proposition commerciale', 'Offre structurée pour un prospect'],
+        'invoice_followup_email' => ['Relance de facture', 'E-mail courtois et ferme'],
+        'product_description' => ['Fiche produit', 'Texte catalogue ou site web'],
+        'social_post' => ['Post réseaux sociaux', 'LinkedIn, Facebook'],
+        'slogans' => ['Slogans', '5 accroches de campagne'],
+        'video_script' => ['Script vidéo 30 s', 'Plans et voix off'],
+        'executive_report' => ['Synthèse exécutive', 'Avec les chiffres du mois'],
+    ];
+    $field = 'h-10 w-full rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm text-[#0B0F14] placeholder:text-slate-400 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15';
+@endphp
 
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#E2E8F0]">
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="px-2 py-0.5 rounded text-[10px] bg-[#0066FF]/10 text-[#0066FF] font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-[#0066FF] animate-pulse"></span>
-                        Moteur IA Intégré
-                    </span>
-                    <span class="text-xs text-slate-500">Données ERP Temps Réel</span>
+<x-layouts.app title="Assistant IVOSPHERE">
+    <div x-data="aiWorkspace({
+            queryUrl: '{{ route('ai.query') }}',
+            generateUrl: '{{ route('ai.generate') }}',
+            examples: {{ Js::from($defaultSuggestions) }},
+         })"
+         class="mx-auto max-w-5xl space-y-5">
+
+        {{-- En-tête --}}
+        <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div class="flex items-center gap-3">
+                <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0B0F14] text-white">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/></svg>
+                </span>
+                <div>
+                    <h1 class="text-xl font-semibold tracking-tight text-[#0B0F14] sm:text-2xl">Assistant IVOSPHERE</h1>
+                    <p class="text-sm text-[#64748B]">Posez vos questions sur l'entreprise, en français, comme à un collègue.</p>
                 </div>
-                <h1 class="text-2xl font-bold text-[#0B0F14] tracking-tight mt-1">Espace IVOSPHERE AI</h1>
-                <p class="text-xs text-slate-500">Interrogez vos indicateurs en langage naturel et générez vos contenus d'affaires instantanément.</p>
             </div>
 
-            <!-- Tab Switcher -->
-            <div class="inline-flex rounded-xl border border-[#E2E8F0] bg-white p-1 text-xs shadow-xs">
-                <button 
-                    @click="tab = 'assistant'" 
-                    :class="tab === 'assistant' ? 'bg-[#0066FF] text-white shadow-xs font-semibold' : 'text-slate-600 hover:text-[#0B0F14] font-medium'"
-                    class="px-4 py-2 rounded-lg transition-all flex items-center gap-2"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                    <span>Assistant de Gestion</span>
-                </button>
-                <button 
-                    @click="tab = 'studio'" 
-                    :class="tab === 'studio' ? 'bg-[#0066FF] text-white shadow-xs font-semibold' : 'text-slate-600 hover:text-[#0B0F14] font-medium'"
-                    class="px-4 py-2 rounded-lg transition-all flex items-center gap-2"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    <span>Studio de Génération</span>
-                </button>
+            <div class="inline-flex rounded-xl bg-[#F1F5F9] p-1 text-sm" role="tablist">
+                <button type="button" @click="tab = 'assistant'" :aria-selected="tab === 'assistant'"
+                        :class="tab === 'assistant' ? 'bg-white text-[#0B0F14] shadow-sm' : 'text-[#64748B] hover:text-[#0B0F14]'"
+                        class="rounded-lg px-4 py-1.5 font-medium transition">Questions</button>
+                <button type="button" @click="tab = 'studio'" :aria-selected="tab === 'studio'"
+                        :class="tab === 'studio' ? 'bg-white text-[#0B0F14] shadow-sm' : 'text-[#64748B] hover:text-[#0B0F14]'"
+                        class="rounded-lg px-4 py-1.5 font-medium transition">Rédaction</button>
             </div>
-        </div>
+        </header>
 
-        <!-- TAB 1: ASSISTANT DE GESTION -->
-        <div x-show="tab === 'assistant'" class="space-y-6">
+        {{-- ═══════════════ QUESTIONS ═══════════════ --}}
+        <section x-show="tab === 'assistant'" class="flex min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
 
-            <!-- Natural Language Query Card -->
-            <div class="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs">
-                <form action="{{ route('ai.query') }}" method="POST" class="space-y-4">
-                    @csrf
-                    <label for="ai-query-input" class="block text-xs font-bold text-[#0B0F14] uppercase tracking-wider">
-                        Posez une question sur les données de l'entreprise
-                    </label>
+            {{-- Conversation --}}
+            <div x-ref="thread" class="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6" style="max-height: calc(100dvh - 18rem)">
 
-                    <div class="relative">
-                        <textarea 
-                            id="ai-query-input"
-                            name="query" 
-                            rows="2" 
-                            x-model="promptInput"
-                            placeholder="Exemple : « Donne-moi le chiffre d'affaires de TECH ce mois-ci » ou « Quels produits sont bientôt en rupture ? »"
-                            class="w-full p-4 rounded-xl bg-[#F5F7FA] border border-[#E2E8F0] text-sm text-[#0B0F14] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0066FF] focus:border-[#0066FF] transition-all"
-                            required
-                        >{{ session('aiQuery') }}</textarea>
-
-                        <div class="mt-2 flex items-center justify-between">
-                            <span class="text-[11px] text-slate-400">Interroge en temps réel Commandes, Factures, Stocks, Clients & Projets.</span>
-                            <button 
-                                type="submit" 
-                                class="px-5 py-2.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white text-xs font-bold shadow-md shadow-[#0066FF]/20 transition-all flex items-center gap-2"
-                            >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                <span>Analyser les données</span>
-                            </button>
+                {{-- Accueil --}}
+                <template x-if="messages.length === 0">
+                    <div class="mx-auto max-w-2xl py-6 text-center sm:py-10">
+                        <p class="text-base font-semibold text-[#0B0F14]">Que voulez-vous savoir ?</p>
+                        <p class="mt-1 text-sm text-[#64748B]">Ventes, produits, stock, clients, factures, trésorerie, dépenses, projets. Précisez un pôle et une période si besoin.</p>
+                        <div class="mt-6 grid grid-cols-1 gap-2 text-left sm:grid-cols-2">
+                            <template x-for="example in examples" :key="example">
+                                <button type="button" @click="ask(example)"
+                                        class="group flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3.5 py-3 text-sm text-[#0B0F14] transition hover:border-[#0066FF] hover:bg-[#0066FF]/[0.03]">
+                                    <span x-text="example"></span>
+                                    <svg class="h-4 w-4 shrink-0 text-[#94A3B8] transition group-hover:translate-x-0.5 group-hover:text-[#0066FF]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                </button>
+                            </template>
                         </div>
                     </div>
-                </form>
+                </template>
 
-                <!-- Quick Prompt Chips -->
-                <div class="mt-5 pt-4 border-t border-[#E2E8F0]">
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">Questions suggérées :</p>
-                    <div class="flex flex-wrap gap-2">
-                        @foreach($defaultSuggestions as $sugg)
-                            <button 
-                                type="button"
-                                @click="promptInput = '{{ addslashes($sugg) }}'"
-                                class="px-3 py-1.5 rounded-lg bg-[#F5F7FA] hover:bg-slate-200 text-xs text-[#0B0F14] border border-[#E2E8F0] transition-colors text-left"
-                            >
-                                💬 {{ $sugg }}
-                            </button>
+                {{-- Messages --}}
+                <template x-for="(message, index) in messages" :key="index">
+                    <div>
+                        {{-- Question --}}
+                        <template x-if="message.role === 'user'">
+                            <div class="flex justify-end">
+                                <p class="max-w-[85%] rounded-2xl rounded-br-md bg-[#0B0F14] px-4 py-2.5 text-sm text-white" x-text="message.text"></p>
+                            </div>
+                        </template>
+
+                        {{-- Réponse --}}
+                        <template x-if="message.role === 'assistant'">
+                            <div class="flex gap-3">
+                                <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#0066FF] text-[11px] font-bold text-white">IA</span>
+                                <div class="min-w-0 flex-1 space-y-3">
+                                    <template x-if="message.understood?.length">
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-for="chip in message.understood" :key="chip">
+                                                <span class="rounded-md bg-[#F1F5F9] px-2 py-0.5 text-[11px] font-medium text-[#64748B]" x-text="chip"></span>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    <div class="text-sm leading-relaxed text-[#0B0F14] [&_strong]:font-semibold [&_em]:text-[#64748B]" x-html="format(message.answer)"></div>
+
+                                    {{-- Chiffres clés --}}
+                                    <template x-if="message.metrics?.length">
+                                        <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                                            <template x-for="metric in message.metrics" :key="metric.label">
+                                                <div class="rounded-xl border border-[#E2E8F0] p-3">
+                                                    <p class="truncate text-[11px] text-[#64748B]" x-text="metric.label"></p>
+                                                    <p class="mt-0.5 truncate text-base font-semibold tabular-nums text-[#0B0F14]" x-text="metric.value"></p>
+                                                    <template x-if="metric.trend !== undefined && metric.trend !== null">
+                                                        <p class="text-[11px] font-medium tabular-nums"
+                                                           :class="(metric.inverse ? -metric.trend : metric.trend) >= 0 ? 'text-emerald-600' : 'text-rose-600'"
+                                                           x-text="(metric.trend > 0 ? '▲ +' : (metric.trend < 0 ? '▼ ' : '')) + metric.trend + ' %'"></p>
+                                                    </template>
+                                                    <template x-if="metric.hint">
+                                                        <p class="text-[11px] text-[#94A3B8]" x-text="metric.hint"></p>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    {{-- Tableau --}}
+                                    <template x-if="message.table?.rows?.length">
+                                        <div class="overflow-x-auto rounded-xl border border-[#E2E8F0]">
+                                            <table class="w-full text-left text-sm">
+                                                <thead class="bg-[#F8FAFC] text-[11px] uppercase tracking-wide text-[#64748B]">
+                                                    <tr>
+                                                        <template x-for="column in message.table.columns" :key="column">
+                                                            <th class="whitespace-nowrap px-3 py-2 font-medium" x-text="column"></th>
+                                                        </template>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-[#E2E8F0]">
+                                                    <template x-for="(row, rowIndex) in message.table.rows" :key="rowIndex">
+                                                        <tr>
+                                                            <template x-for="(cell, cellIndex) in row" :key="cellIndex">
+                                                                <td class="whitespace-nowrap px-3 py-2 tabular-nums" :class="cellIndex === 0 ? 'font-medium text-[#0B0F14]' : 'text-[#334155]'" x-text="cell"></td>
+                                                            </template>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </template>
+
+                                    {{-- Actions & relances --}}
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <template x-for="suggestion in message.suggestions || []" :key="suggestion">
+                                            <button type="button" @click="ask(suggestion)" :disabled="loading"
+                                                    class="rounded-full border border-[#E2E8F0] px-3 py-1 text-xs text-[#334155] transition hover:border-[#0066FF] hover:text-[#0066FF] disabled:opacity-50"
+                                                    x-text="suggestion"></button>
+                                        </template>
+                                        <button type="button" @click="copy(message)" class="ml-auto rounded-md px-2 py-1 text-xs text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#0B0F14]"
+                                                x-text="copiedIndex === index ? 'Copié' : 'Copier'"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                {{-- Chargement --}}
+                <div x-show="loading" x-cloak class="flex items-center gap-3">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0066FF] text-[11px] font-bold text-white">IA</span>
+                    <span class="flex gap-1">
+                        <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[#94A3B8]"></span>
+                        <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[#94A3B8] [animation-delay:120ms]"></span>
+                        <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[#94A3B8] [animation-delay:240ms]"></span>
+                    </span>
+                </div>
+            </div>
+
+            {{-- Saisie --}}
+            <form @submit.prevent="ask(input)" class="border-t border-[#E2E8F0] p-3 sm:p-4">
+                <div class="flex items-end gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-1.5 transition focus-within:border-[#0066FF] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0066FF]/15">
+                    <label for="ai-question" class="sr-only">Votre question</label>
+                    <textarea id="ai-question" x-ref="input" x-model="input" rows="1" maxlength="500"
+                              @keydown.enter.prevent="if (!$event.shiftKey) ask(input)"
+                              @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 140) + 'px'"
+                              placeholder="Ex : chiffre d'affaires de PRINT le mois dernier"
+                              class="max-h-36 min-h-10 flex-1 resize-none border-0 bg-transparent px-2.5 py-2 text-base text-[#0B0F14] placeholder:text-[#94A3B8] focus:ring-0 sm:text-sm"></textarea>
+                    <button type="submit" :disabled="loading || !input.trim()" aria-label="Envoyer"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0066FF] text-white transition hover:bg-[#0052CC] disabled:bg-[#CBD5E1]">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"/></svg>
+                    </button>
+                </div>
+                <div class="mt-2 flex items-center justify-between px-1 text-[11px] text-[#94A3B8]">
+                    <span>Entrée pour envoyer · Maj + Entrée pour aller à la ligne</span>
+                    <button type="button" x-show="messages.length" @click="messages = []" class="hover:text-[#0B0F14]">Nouvelle conversation</button>
+                </div>
+            </form>
+        </section>
+
+        {{-- ═══════════════ RÉDACTION ═══════════════ --}}
+        <section x-show="tab === 'studio'" x-cloak class="grid grid-cols-1 gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+            <form @submit.prevent="generate()" class="space-y-4 rounded-2xl border border-[#E2E8F0] bg-white p-5">
+                <fieldset>
+                    <legend class="mb-2 text-xs font-semibold text-[#0B0F14]">Type de document</legend>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        @foreach($documentTypes as $value => [$label, $hint])
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="{{ $value }}" x-model="studio.type" class="peer sr-only">
+                                <span class="flex items-center justify-between gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm transition peer-checked:border-[#0066FF] peer-checked:bg-[#0066FF]/[0.04] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0066FF]">
+                                    <span class="font-medium text-[#0B0F14]">{{ $label }}</span>
+                                    <span class="truncate text-[11px] text-[#94A3B8]">{{ $hint }}</span>
+                                </span>
+                            </label>
                         @endforeach
                     </div>
-                </div>
+                </fieldset>
+
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold text-[#0B0F14]">Sujet</span>
+                    <input type="text" x-model="studio.topic" required maxlength="255" placeholder="Ex : impression de 5 000 catalogues" class="{{ $field }}">
+                </label>
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold text-[#0B0F14]">Pôle</span>
+                    <select x-model="studio.domain" class="{{ $field }}">
+                        <option value="IVOSPHERE">IVOSPHERE (groupe)</option>
+                        @foreach($domains as $domain)
+                            <option value="{{ $domain->name }}">{{ $domain->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold text-[#0B0F14]">Cible <span class="font-normal text-[#94A3B8]">(facultatif)</span></span>
+                    <input type="text" x-model="studio.target" placeholder="Ex : PME, écoles, directions financières" class="{{ $field }}">
+                </label>
+
+                <button type="submit" :disabled="generating || !studio.topic.trim()"
+                        class="h-11 w-full rounded-xl bg-[#0066FF] text-sm font-semibold text-white transition hover:bg-[#0052CC] disabled:bg-[#CBD5E1]"
+                        x-text="generating ? 'Rédaction…' : 'Rédiger le document'"></button>
+            </form>
+
+            <div class="flex min-h-[420px] flex-col rounded-2xl border border-[#E2E8F0] bg-white">
+                <template x-if="!document">
+                    <div class="m-auto max-w-xs p-6 text-center">
+                        <p class="text-sm font-medium text-[#0B0F14]">Votre document apparaîtra ici</p>
+                        <p class="mt-1 text-xs text-[#64748B]">Choisissez un type, indiquez le sujet, puis modifiez librement le texte avant de le copier.</p>
+                    </div>
+                </template>
+                <template x-if="document">
+                    <div class="flex flex-1 flex-col">
+                        <div class="flex items-start justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-medium uppercase tracking-wide text-[#0066FF]" x-text="document.format"></p>
+                                <h2 class="truncate text-base font-semibold text-[#0B0F14]" x-text="document.title"></h2>
+                            </div>
+                            <button type="button" @click="copyDocument()" class="shrink-0 rounded-lg bg-[#0B0F14] px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                                    x-text="documentCopied ? 'Copié' : 'Copier'"></button>
+                        </div>
+                        <textarea x-model="document.content" aria-label="Contenu du document"
+                                  class="min-h-[340px] flex-1 resize-none border-0 p-5 text-sm leading-relaxed text-[#0B0F14] focus:ring-0"></textarea>
+                    </div>
+                </template>
             </div>
-
-            <!-- Query Answer Result (if submitted) -->
-            @if(session('aiResponse'))
-                <div class="bg-white rounded-2xl p-6 border-2 border-[#0066FF]/30 shadow-md">
-                    <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 rounded-lg bg-[#0066FF] text-white flex items-center justify-center font-bold text-xs">
-                                IA
-                            </div>
-                            <div>
-                                <span class="text-xs font-bold text-[#0B0F14]">Réponse d'IVOSPHERE AI</span>
-                                <span class="text-[11px] text-slate-400 block">Intention détectée : {{ session('aiResponse')['intent'] }}</span>
-                            </div>
-                        </div>
-                        <button 
-                            type="button" 
-                            onclick="navigator.clipboard.writeText(`{{ addslashes(session('aiResponse')['answer']) }}`); alert('Copié dans le presse-papier !');"
-                            class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-500 hover:text-[#0B0F14] hover:bg-[#F5F7FA] border border-[#E2E8F0] transition-colors"
-                        >
-                            Copier
-                        </button>
-                    </div>
-
-                    <div class="py-4 text-sm text-[#0B0F14] whitespace-pre-line leading-relaxed">
-                        {!! nl2br(e(session('aiResponse')['answer'])) !!}
-                    </div>
-
-                    @if(!empty(session('aiResponse')['suggestions']))
-                        <div class="pt-3 border-t border-[#E2E8F0] flex flex-wrap items-center gap-2">
-                            <span class="text-[11px] font-medium text-slate-400">Poursuivre :</span>
-                            @foreach(session('aiResponse')['suggestions'] as $followUp)
-                                <button 
-                                    type="button"
-                                    @click="promptInput = '{{ addslashes($followUp) }}'"
-                                    class="inline-flex items-center gap-1 text-xs text-[#0066FF] font-medium hover:underline"
-                                >
-                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                    <span>{{ $followUp }}</span>
-                                </button>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            @endif
-
-        </div>
-
-        <!-- TAB 2: STUDIO DE GÉNÉRATION AUTOMATIQUE -->
-        <div x-show="tab === 'studio'" class="space-y-6" style="display: none;">
-            
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                <!-- Configuration Form (5 cols) -->
-                <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs">
-                    <h2 class="text-sm font-bold text-[#0B0F14] uppercase tracking-wider mb-4">Générateur de Contenus Métiers</h2>
-
-                    <form action="{{ route('ai.generate') }}" method="POST" class="space-y-4">
-                        @csrf
-
-                        <!-- Content Type -->
-                        <div>
-                            <label for="ai-type-select" class="block text-xs font-semibold text-[#0B0F14] mb-1">Type de Document</label>
-                            <select id="ai-type-select" name="type" class="w-full px-3 py-2 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-xs text-[#0B0F14] focus:ring-1 focus:ring-[#0066FF]" required>
-                                <option value="commercial_pitch">Offre / Proposition commerciale</option>
-                                <option value="product_description">Fiche Description Produit</option>
-                                <option value="invoice_followup_email">Email de Relance Facture Impayée</option>
-                                <option value="social_post">Publication Réseaux Sociaux (LinkedIn/FB)</option>
-                                <option value="slogans">Slogans & Accroches de Campagne</option>
-                                <option value="video_script">Script Vidéo / Spot 30s</option>
-                                <option value="executive_report">Compte Rendu / Synthèse Exécutive</option>
-                            </select>
-                        </div>
-
-                        <!-- Target Domain -->
-                        <div>
-                            <label for="ai-domain-select" class="block text-xs font-semibold text-[#0B0F14] mb-1">Domaine d'Activité</label>
-                            <select id="ai-domain-select" name="domain" class="w-full px-3 py-2 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-xs text-[#0B0F14] focus:ring-1 focus:ring-[#0066FF]">
-                                <option value="IVOSPHERE PRINT">IVOSPHERE PRINT (Imprimerie & Tirage)</option>
-                                <option value="IVOSPHERE SPORT">IVOSPHERE SPORT (Équipements sportifs)</option>
-                                <option value="IVOSPHERE TECH">IVOSPHERE TECH (Logiciels & IA)</option>
-                                <option value="IVOSPHERE MEDIA & ÉVÈNEMENTS">IVOSPHERE MEDIA (Production & Location)</option>
-                                <option value="IVOSPHERE ASSURANCE">IVOSPHERE ASSURANCE (Courtage & Santé)</option>
-                                <option value="IVOSPHERE GROUP">IVOSPHERE GLOBAL</option>
-                            </select>
-                        </div>
-
-                        <!-- Subject / Topic -->
-                        <div>
-                            <label for="ai-topic-input" class="block text-xs font-semibold text-[#0B0F14] mb-1">Sujet ou Objet du document</label>
-                            <input 
-                                id="ai-topic-input"
-                                type="text" 
-                                name="topic" 
-                                placeholder="Ex: Impression de 5 000 catalogues luxe, Refonte ERP..." 
-                                class="w-full px-3 py-2 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-xs text-[#0B0F14] focus:ring-1 focus:ring-[#0066FF]"
-                                required
-                            />
-                        </div>
-
-                        <!-- Target Audience -->
-                        <div>
-                            <label for="ai-target-input" class="block text-xs font-semibold text-[#0B0F14] mb-1">Cible visée</label>
-                            <input 
-                                id="ai-target-input"
-                                type="text" 
-                                name="target" 
-                                placeholder="Ex: PME industrielles, Directions Financières..." 
-                                class="w-full px-3 py-2 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0] text-xs text-[#0B0F14] focus:ring-1 focus:ring-[#0066FF]"
-                            />
-                        </div>
-
-                        <button 
-                            type="submit" 
-                            class="w-full py-2.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white text-xs font-bold shadow-md shadow-[#0066FF]/20 transition-all flex items-center justify-center gap-2 mt-4"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                            <span>Générer le document</span>
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Studio Output Canvas (7 cols) -->
-                <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0] mb-4">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full bg-[#0066FF]"></span>
-                                <h3 class="text-xs font-bold text-[#0B0F14] uppercase tracking-wider">Document Généré</h3>
-                            </div>
-                            @if(session('generatedContent'))
-                                <button 
-                                    type="button" 
-                                    onclick="navigator.clipboard.writeText(`{{ addslashes(session('generatedContent')['content']) }}`); alert('Contenu copié !');"
-                                    class="px-2.5 py-1 rounded-md text-xs font-medium bg-[#0066FF] text-white hover:bg-[#0052cc] transition-colors"
-                                >
-                                    Copier le texte
-                                </button>
-                            @endif
-                        </div>
-
-                        @if(session('generatedContent'))
-                            <div class="space-y-3">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0066FF]/10 text-[#0066FF]">
-                                        {{ session('generatedContent')['format'] }}
-                                    </span>
-                                    @foreach(session('generatedContent')['tags'] as $tag)
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
-                                            #{{ $tag }}
-                                        </span>
-                                    @endforeach
-                                </div>
-                                <h4 class="text-base font-bold text-[#0B0F14]">{{ session('generatedContent')['title'] }}</h4>
-                                <div class="p-4 rounded-xl bg-[#F5F7FA] border border-[#E2E8F0] text-xs text-[#0B0F14] whitespace-pre-line leading-relaxed font-mono">
-                                    {{ session('generatedContent')['content'] }}
-                                </div>
-                            </div>
-                        @else
-                            <div class="py-16 text-center text-slate-400">
-                                <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                <p class="text-xs font-medium text-[#0B0F14]">Aucun contenu généré pour le moment</p>
-                                <p class="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
-                                    Sélectionnez les options dans le formulaire de gauche pour générer des pitchs, descriptions produits, emails ou scripts.
-                                </p>
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="pt-4 border-t border-[#E2E8F0] mt-4 flex items-center justify-between text-[11px] text-slate-400">
-                        <span>Générateur conforme à la charte et à la typographie IVOSPHERE</span>
-                        <span>Norme 60-30-10</span>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-
+        </section>
     </div>
+
+    <script>
+        function aiWorkspace(config) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            };
+
+            return {
+                tab: 'assistant',
+                examples: config.examples,
+                messages: [],
+                input: '',
+                loading: false,
+                copiedIndex: null,
+                studio: { type: 'commercial_pitch', topic: '', domain: 'IVOSPHERE', target: '' },
+                generating: false,
+                document: null,
+                documentCopied: false,
+
+                async ask(question) {
+                    question = (question || '').trim();
+                    if (!question || this.loading) return;
+
+                    this.messages.push({ role: 'user', text: question });
+                    this.input = '';
+                    this.$refs.input.style.height = 'auto';
+                    this.loading = true;
+                    this.scrollDown();
+
+                    try {
+                        const response = await fetch(config.queryUrl, { method: 'POST', headers, body: JSON.stringify({ query: question }) });
+                        if (!response.ok) throw new Error();
+                        this.messages.push({ role: 'assistant', ...(await response.json()) });
+                    } catch (error) {
+                        this.messages.push({ role: 'assistant', answer: "Désolé, je n'ai pas pu interroger les données. Réessayez dans un instant.", suggestions: [question] });
+                    } finally {
+                        this.loading = false;
+                        this.scrollDown();
+                        this.$nextTick(() => this.$refs.input.focus());
+                    }
+                },
+
+                async generate() {
+                    this.generating = true;
+                    try {
+                        const response = await fetch(config.generateUrl, { method: 'POST', headers, body: JSON.stringify(this.studio) });
+                        if (!response.ok) throw new Error();
+                        this.document = await response.json();
+                        this.documentCopied = false;
+                    } catch (error) {
+                        alert('Impossible de générer le document. Vérifiez le sujet et réessayez.');
+                    } finally {
+                        this.generating = false;
+                    }
+                },
+
+                scrollDown() {
+                    this.$nextTick(() => { this.$refs.thread.scrollTop = this.$refs.thread.scrollHeight; });
+                },
+
+                // Texte échappé, puis **gras**, *italique* et retours à la ligne
+                format(text) {
+                    const escaped = String(text || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                    return escaped
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, '$1<em>$2</em>')
+                        .replace(/\n/g, '<br>');
+                },
+
+                copy(message) {
+                    const lines = [message.answer.replace(/\*/g, '')];
+                    (message.metrics || []).forEach(metric => lines.push(`${metric.label} : ${metric.value}`));
+                    if (message.table?.rows?.length) {
+                        lines.push('', message.table.columns.join('\t'), ...message.table.rows.map(row => row.join('\t')));
+                    }
+                    navigator.clipboard.writeText(lines.join('\n'));
+                    this.copiedIndex = this.messages.indexOf(message);
+                    setTimeout(() => { this.copiedIndex = null; }, 1500);
+                },
+
+                copyDocument() {
+                    navigator.clipboard.writeText(this.document.content);
+                    this.documentCopied = true;
+                    setTimeout(() => { this.documentCopied = false; }, 1500);
+                },
+            };
+        }
+    </script>
 </x-layouts.app>
