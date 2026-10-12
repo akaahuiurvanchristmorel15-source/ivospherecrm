@@ -7,6 +7,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -31,6 +32,10 @@ new class extends Component {
         'word' => ['Word', ['doc', 'docx', 'odt', 'rtf', 'txt']],
         'sheet' => ['Excel', ['xls', 'xlsx', 'ods', 'csv']],
     ];
+
+    /** Coffre-fort : documents privés, stockés hors du dossier public */
+    #[Locked]
+    public bool $vault = false;
 
     #[Url(as: 'dossier')]
     public ?int $folderId = null;
@@ -97,14 +102,14 @@ new class extends Component {
             Document::create([
                 'title' => Str::of(pathinfo($originalName, PATHINFO_FILENAME))->replace(['_', '-'], ' ')->squish()->ucfirst()->limit(255, ''),
                 'file_name' => $originalName,
-                'file_path' => $upload->store('ged_files', 'public'),
+                'file_path' => $this->vault ? $upload->store('vault_files', 'local') : $upload->store('ged_files', 'public'),
                 'file_size' => $upload->getSize(),
                 'mime_type' => $upload->getMimeType(),
                 'folder_id' => $this->folderId,
                 'domain_id' => $this->uploadDomainId,
                 'user_id' => auth()->id(),
                 'tags' => $tags ?: null,
-                'is_vault' => false,
+                'is_vault' => $this->vault,
                 'version' => '1.0',
                 'status' => 'active',
             ]);
@@ -130,7 +135,7 @@ new class extends Component {
             'slug' => Str::slug($validated['newFolderName']).'-'.Str::lower(Str::random(4)),
             'parent_id' => $this->folderId,
             'color' => $validated['newFolderColor'],
-            'is_vault' => false,
+            'is_vault' => $this->vault,
         ]);
 
         $this->reset('newFolderName');
@@ -140,10 +145,11 @@ new class extends Component {
 
     public function deleteDocument(int $documentId): void
     {
-        $document = Document::where('is_vault', false)->findOrFail($documentId);
+        $document = Document::where('is_vault', $this->vault)->findOrFail($documentId);
+        $disk = Storage::disk($document->storageDisk());
 
-        if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
-            Storage::disk('public')->delete($document->file_path);
+        if ($document->file_path && $disk->exists($document->file_path)) {
+            $disk->delete($document->file_path);
         }
 
         $document->delete();
@@ -153,7 +159,7 @@ new class extends Component {
     #[Computed]
     public function currentFolder(): ?DocumentFolder
     {
-        return $this->folderId ? DocumentFolder::where('is_vault', false)->find($this->folderId) : null;
+        return $this->folderId ? DocumentFolder::where('is_vault', $this->vault)->find($this->folderId) : null;
     }
 
     /**
@@ -178,7 +184,7 @@ new class extends Component {
     #[Computed]
     public function folders(): Collection
     {
-        return DocumentFolder::where('is_vault', false)
+        return DocumentFolder::where('is_vault', $this->vault)
             ->where('parent_id', $this->folderId)
             ->withCount(['documents', 'children'])
             ->orderBy('name')
@@ -190,7 +196,7 @@ new class extends Component {
     {
         $extensions = self::TYPES[$this->type][1] ?? null;
 
-        return Document::where('is_vault', false)
+        return Document::where('is_vault', $this->vault)
             ->with(['user', 'domain', 'folder'])
             // Une recherche porte sur toute la GED ; sinon on affiche le dossier courant
             ->when($this->search === '', fn ($query) => $query->where('folder_id', $this->folderId))
@@ -213,7 +219,7 @@ new class extends Component {
     #[Computed]
     public function stats(): array
     {
-        $documents = Document::where('is_vault', false);
+        $documents = Document::where('is_vault', $this->vault);
 
         return [
             'documents' => (clone $documents)->count(),
@@ -316,29 +322,57 @@ new class extends Component {
      class="relative mx-auto max-w-7xl space-y-5">
 
     {{-- ═══ En-tête ═══ --}}
-    <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div class="space-y-1">
-            <h1 class="text-2xl font-semibold tracking-tight text-[#0B0F14]">Documents</h1>
-            <p class="text-sm text-[#64748B]">
+    <header @class([
+        'flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between',
+        'relative overflow-hidden rounded-3xl bg-[#0B0F14] p-5 text-white sm:p-7' => $vault,
+    ])>
+        @if($vault)
+            <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl"></div>
+            <div class="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-[#0066FF]/20 blur-3xl"></div>
+        @endif
+        <div class="relative space-y-1">
+            @if($vault)
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+                    <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400"></span>
+                    Accès réservé · fichiers privés
+                </span>
+            @endif
+            <h1 @class(['text-2xl font-semibold tracking-tight', 'text-[#0B0F14]' => ! $vault, 'flex items-center gap-2 text-white sm:text-3xl' => $vault])>
+                {{ $vault ? 'Coffre-fort' : 'Documents' }}
+                @if($vault)
+                    <svg class="h-6 w-6 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                @endif
+            </h1>
+            @if($vault)
+                <p class="max-w-xl text-sm text-slate-400">Bilans, statuts, contrats de direction, pièces d'identité. Les fichiers ne sont jamais accessibles par un lien public : ils s'ouvrent uniquement depuis l'application.</p>
+            @endif
+            <p @class(['text-sm', 'text-[#64748B]' => ! $vault, 'pt-1 text-slate-300' => $vault])>
                 {{ number_format($this->stats['documents'], 0, ',', ' ') }} document(s) · {{ $this::humanSize($this->stats['size']) }}
                 @if($this->stats['week'])
                     · <span class="font-medium text-emerald-600">+{{ $this->stats['week'] }} cette semaine</span>
                 @endif
             </p>
         </div>
-        <div class="grid grid-cols-3 gap-2 sm:flex">
-            <a href="{{ route('ged.vault') }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 text-sm font-medium text-[#0B0F14] transition hover:bg-[#F5F7FA]">
+        <div class="relative grid grid-cols-3 gap-2 sm:flex">
+            @if($vault)
+                <a href="{{ route('ged.index') }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3.5 text-sm font-medium text-white transition hover:bg-white/10">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                    <span class="hidden sm:inline">GED</span>
+                </a>
+            @else
+                <a href="{{ route('ged.vault') }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 text-sm font-medium text-[#0B0F14] transition hover:bg-[#F5F7FA]">
                 <svg class="h-4 w-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
                 <span class="hidden sm:inline">Coffre-fort</span>
             </a>
+            @endif
             <button type="button" @click="newFolder = !newFolder; $nextTick(() => $refs.folderName?.focus())"
-                    class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 text-sm font-medium text-[#0B0F14] transition hover:bg-[#F5F7FA]">
+                    @class(['inline-flex h-10 items-center justify-center gap-2 rounded-xl px-3.5 text-sm font-medium transition', 'border border-[#E2E8F0] bg-white text-[#0B0F14] hover:bg-[#F5F7FA]' => ! $vault, 'border border-white/15 bg-white/5 text-white hover:bg-white/10' => $vault])>
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/></svg>
                 <span class="hidden sm:inline">Dossier</span>
             </button>
             <label class="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white transition hover:bg-[#0052CC]">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
-                <span>Importer</span>
+                <span>{{ $vault ? 'Déposer' : 'Importer' }}</span>
                 <input type="file" multiple wire:model="uploads" class="sr-only">
             </label>
         </div>
@@ -369,7 +403,7 @@ new class extends Component {
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div class="relative min-w-0 flex-1">
             <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"/></svg>
-            <input type="search" wire:model.live.debounce.300ms="search" placeholder="Rechercher dans toute la GED (titre, fichier, tag)"
+            <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ $vault ? 'Rechercher dans le coffre-fort' : 'Rechercher dans toute la GED (titre, fichier, tag)' }}"
                    class="h-11 w-full rounded-xl border border-[#E2E8F0] bg-white pl-10 pr-10 text-base text-[#0B0F14] placeholder:text-[#94A3B8] focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:text-sm">
             <svg wire:loading wire:target="search" class="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-20"/><path d="M22 12a10 10 0 00-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
         </div>
@@ -406,7 +440,7 @@ new class extends Component {
             @endforeach
         </nav>
     @else
-        <p class="text-sm text-[#64748B]">Résultats pour « <span class="font-medium text-[#0B0F14]">{{ $search }}</span> » dans toute la GED</p>
+        <p class="text-sm text-[#64748B]">Résultats pour « <span class="font-medium text-[#0B0F14]">{{ $search }}</span> » {{ $vault ? 'dans le coffre-fort' : 'dans toute la GED' }}</p>
     @endif
 
     {{-- ═══ Contenu (atténué pendant le chargement) ═══ --}}
@@ -450,7 +484,7 @@ new class extends Component {
                     @php [$badge, $badgeClass] = $familyStyles[$this::familyOf($document->file_name)]; @endphp
                     <article wire:key="doc-{{ $document->id }}" class="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/70">
                         <a href="{{ route('ged.documents.open', $document) }}" target="_blank" rel="noopener" class="flex aspect-[4/3] items-center justify-center bg-[#F8FAFC]">
-                            @if($this::familyOf($document->file_name) === 'image' && \Illuminate\Support\Facades\Storage::disk('public')->exists((string) $document->file_path))
+                            @if(! $vault && $this::familyOf($document->file_name) === 'image' && \Illuminate\Support\Facades\Storage::disk('public')->exists((string) $document->file_path))
                                 <img src="{{ asset('storage/'.$document->file_path) }}" alt="" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                             @else
                                 <span class="rounded-xl px-3 py-2 text-sm font-bold tracking-wide transition duration-300 group-hover:scale-110 {{ $badgeClass }}">{{ $badge }}</span>
@@ -540,7 +574,7 @@ new class extends Component {
         <div class="rounded-3xl border-2 border-dashed border-[#0066FF] bg-white/95 px-10 py-12 text-center shadow-2xl">
             <svg class="mx-auto h-10 w-10 animate-bounce text-[#0066FF]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
             <p class="mt-3 text-base font-semibold text-[#0B0F14]">Déposez vos fichiers</p>
-            <p class="text-sm text-[#64748B]">dans « {{ $this->currentFolder?->name ?? 'Tous les dossiers' }} »</p>
+            <p class="text-sm text-[#64748B]">{{ $vault ? 'Dépôt privé au coffre-fort' : 'dans' }} « {{ $this->currentFolder?->name ?? 'Tous les dossiers' }} »</p>
         </div>
     </div>
 

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Ged;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\DocumentFolder;
-use App\Models\Domain;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -23,24 +22,12 @@ class GedController extends Controller
         return view('ged.index');
     }
 
-    public function vault(Request $request): View
+    /**
+     * Coffre-fort : même explorateur, en mode privé.
+     */
+    public function vault(): View
     {
-        $this->ensureDefaultFolders();
-
-        $documentsQuery = Document::where('is_vault', true)->with(['user', 'domain']);
-
-        if ($request->filled('search')) {
-            $term = $request->search;
-            $documentsQuery->where(function ($q) use ($term) {
-                $q->where('title', 'like', "%{$term}%")->orWhere('file_name', 'like', "%{$term}%");
-            });
-        }
-
-        $documents = $documentsQuery->latest()->paginate(10)->withQueryString();
-        $vaultFolders = DocumentFolder::where('is_vault', true)->withCount('documents')->get();
-        $domains = Domain::all();
-
-        return view('ged.vault', compact('documents', 'vaultFolders', 'domains'));
+        return view('ged.vault');
     }
 
     public function storeFolder(Request $request): RedirectResponse
@@ -118,13 +105,14 @@ class GedController extends Controller
      */
     public function open(Request $request, Document $document): StreamedResponse
     {
-        abort_unless($document->file_path && Storage::disk('public')->exists($document->file_path), 404, 'Ce fichier est introuvable sur le serveur.');
+        $disk = Storage::disk($document->storageDisk());
+        abort_unless($document->file_path && $disk->exists($document->file_path), 404, 'Ce fichier est introuvable sur le serveur.');
 
         $document->increment('downloads_count');
 
         return $request->boolean('download')
-            ? Storage::disk('public')->download($document->file_path, $document->file_name)
-            : Storage::disk('public')->response($document->file_path, $document->file_name);
+            ? $disk->download($document->file_path, $document->file_name)
+            : $disk->response($document->file_path, $document->file_name);
     }
 
     public function destroy(Document $document): RedirectResponse
