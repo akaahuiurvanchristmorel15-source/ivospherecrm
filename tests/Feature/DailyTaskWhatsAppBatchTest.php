@@ -63,3 +63,16 @@ test('opening a WhatsApp link from the batch marks the sheet as sent', function 
     expect($sheet->fresh()->whatsapp_sent_at)->not->toBeNull()
         ->and($sheet->fresh()->whatsapp_status)->toBe('envoye');
 });
+
+test('printable daily task sheet shows the employee, tasks and signatures', function () {
+    $sheet = dailySheetFor('EMP-PRINT', '+225 07 00 00 00 03');
+
+    $this->actingAs($this->admin)
+        ->get(route('rh.daily-tasks.print', $sheet))
+        ->assertOk()
+        ->assertSee('Fiche de tâches du jour')
+        ->assertSee('TCH-EMP-PRINT')
+        ->assertSee('Agent EMP-PRINT')
+        ->assertSee('Ranger la boutique')
+        ->assertSee('Le superviseur');
+});
