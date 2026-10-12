@@ -14,6 +14,7 @@ use App\Http\Controllers\Assurance\InsuranceCommissionController;
 use App\Http\Controllers\Assurance\InsuranceContractController;
 use App\Http\Controllers\Assurance\InsuranceProductController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Automation\AlertController;
 use App\Http\Controllers\Automation\AutomationController;
 use App\Http\Controllers\Calendar\CalendarController;
@@ -107,6 +108,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 
 // Espace Authentifié
 Route::middleware('auth')->group(function () {
+    // Mon compte : changement du mot de passe
+    Route::get('/mon-compte/mot-de-passe', [PasswordController::class, 'edit'])->name('password.edit');
+    Route::put('/mon-compte/mot-de-passe', [PasswordController::class, 'update'])->middleware('throttle:6,1')->name('password.update');
+
     // Tableau de bord principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
