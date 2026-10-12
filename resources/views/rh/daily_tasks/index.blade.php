@@ -10,7 +10,7 @@
 @endphp
 
 <x-layouts.app title="Tâches du jour — Ressources Humaines">
-    <div class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
+    <div x-data class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
 
         {{-- ───────── En-tête ───────── --}}
         <header class="space-y-4">
@@ -20,10 +20,17 @@
                     <h1 class="text-2xl font-semibold tracking-tight text-[#0B0F14]">Tâches du jour</h1>
                     <p class="text-sm text-[#64748B]">Fiches de missions quotidiennes, envoyées par WhatsApp et e-mail.</p>
                 </div>
-                <a href="{{ route('rh.daily-tasks.create') }}" class="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white transition hover:bg-[#0052cc]">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                    Nouvelle fiche
-                </a>
+                <div class="grid grid-cols-2 gap-2 sm:flex">
+                    <button type="button" @click="$dispatch('open-whatsapp-batch')"
+                            class="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="{{ $whatsappIcon }}"/></svg>
+                        Envoyer à tous
+                    </button>
+                    <a href="{{ route('rh.daily-tasks.create') }}" class="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white transition hover:bg-[#0052cc]">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        Nouvelle fiche
+                    </a>
+                </div>
             </div>
         </header>
 
@@ -157,4 +164,129 @@
             @endif
         @endif
     </div>
+
+    {{-- ───────── Envoi WhatsApp groupé (un clic par employé, via wa.me) ───────── --}}
+    <div x-data="whatsappBatch({{ Js::from($whatsappQueue) }})" @open-whatsapp-batch.window="open = true"
+         @keydown.escape.window="open = false">
+        <div x-show="open" x-cloak x-transition.opacity role="dialog" aria-modal="true" aria-labelledby="whatsapp-batch-title"
+             class="fixed inset-0 z-50 flex items-end justify-center bg-[#0B0F14]/50 sm:items-center sm:p-4">
+            <div @click.outside="open = false" class="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-2xl">
+                <div class="flex shrink-0 items-start justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
+                    <div>
+                        <h2 id="whatsapp-batch-title" class="text-base font-semibold text-[#0B0F14]">Envoyer les fiches du jour</h2>
+                        <p class="mt-0.5 text-xs text-[#64748B]">Chaque clic ouvre WhatsApp avec le message prêt : appuyez sur « Envoyer », puis revenez ici pour le suivant.</p>
+                    </div>
+                    <button type="button" @click="open = false" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Fermer">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <template x-if="queue.length === 0">
+                    <div class="px-5 py-10 text-center">
+                        <p class="text-sm font-medium text-[#0B0F14]">Aucune fiche à envoyer aujourd'hui</p>
+                        <p class="mt-1 text-xs text-[#64748B]">Créez les fiches du jour, avec un numéro de téléphone renseigné pour chaque employé.</p>
+                    </div>
+                </template>
+
+                <template x-if="queue.length > 0">
+                    <div class="flex min-h-0 flex-1 flex-col">
+                        {{-- Progression --}}
+                        <div class="shrink-0 space-y-2 px-5 pt-4">
+                            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                <span class="font-medium text-[#0B0F14]" x-text="sentCount + ' / ' + queue.length + ' envoyée(s)'"></span>
+                                <label class="flex cursor-pointer items-center gap-1.5 text-[#64748B]">
+                                    <input type="checkbox" x-model="includeSent" class="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                                    Renvoyer aussi les fiches déjà envoyées
+                                </label>
+                            </div>
+                            <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" :style="`width: ${(sentCount / queue.length) * 100}%`"></div>
+                            </div>
+                        </div>
+
+                        {{-- Prochain envoi --}}
+                        <div class="shrink-0 px-5 py-4">
+                            <template x-if="next">
+                                <button type="button" @click="send(next)"
+                                        class="flex w-full items-center justify-between gap-3 rounded-2xl bg-emerald-600 px-4 py-3.5 text-left text-white transition hover:bg-emerald-700 active:scale-[0.99]">
+                                    <span class="min-w-0">
+                                        <span class="block text-[11px] font-medium uppercase tracking-wide text-emerald-100">Suivant</span>
+                                        <span class="block truncate text-sm font-semibold" x-text="next.name"></span>
+                                    </span>
+                                    <span class="flex shrink-0 items-center gap-2 text-sm font-semibold">
+                                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="{{ $whatsappIcon }}"/></svg>
+                                        Ouvrir WhatsApp
+                                    </span>
+                                </button>
+                            </template>
+                            <template x-if="!next">
+                                <div class="rounded-2xl bg-emerald-50 px-4 py-3.5 text-center text-sm font-semibold text-emerald-700">Toutes les fiches ont été envoyées.</div>
+                            </template>
+                        </div>
+
+                        {{-- Liste --}}
+                        <ul class="min-h-0 flex-1 divide-y divide-[#E2E8F0] overflow-y-auto border-t border-[#E2E8F0]">
+                            <template x-for="item in queue" :key="item.id">
+                                <li class="flex items-center gap-3 px-5 py-2.5">
+                                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                                          :class="item.sent ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'">
+                                        <svg x-show="item.sent" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-sm font-medium text-[#0B0F14]" x-text="item.name"></span>
+                                        <span class="block truncate text-[11px] text-[#94A3B8]" x-text="item.phone + ' · ' + item.reference"></span>
+                                    </span>
+                                    <button type="button" @click="send(item)" class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition"
+                                            :class="item.sent ? 'text-[#64748B] hover:bg-slate-100' : 'text-emerald-700 hover:bg-emerald-50'"
+                                            x-text="item.sent ? 'Renvoyer' : 'Envoyer'"></button>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+
+                @if($sheetsWithoutPhoneCount > 0)
+                    <p class="shrink-0 border-t border-[#E2E8F0] bg-amber-50 px-5 py-2.5 text-xs text-amber-800">
+                        {{ $sheetsWithoutPhoneCount }} fiche(s) du jour sans numéro de téléphone : complétez la fiche de l'employé pour l'inclure.
+                    </p>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function whatsappBatch(queue) {
+            return {
+                open: false,
+                includeSent: false,
+                queue,
+
+                get sentCount() {
+                    return this.queue.filter(item => item.sent).length;
+                },
+
+                get next() {
+                    return this.queue.find(item => !item.sent || (this.includeSent && !item.resent)) ?? null;
+                },
+
+                send(item) {
+                    // Ouverture directe au clic, sinon le navigateur bloque la fenêtre
+                    window.open(item.url, '_blank', 'noopener');
+
+                    if (item.sent) {
+                        item.resent = true;
+                    }
+                    item.sent = true;
+
+                    fetch(item.markUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                        },
+                    });
+                },
+            };
+        }
+    </script>
 </x-layouts.app>

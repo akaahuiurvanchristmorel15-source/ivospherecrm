@@ -171,6 +171,7 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/regenerate-qr', [HrSettingController::class, 'regenerateQrSecret'])->name('settings.regenerate-qr');
 
         // Fiches de Tâches du Jour (Attribution, Checklist, WhatsApp & PDF)
+        Route::post('daily-tasks/{dailyTask}/whatsapp-sent', [DailyTaskSheetController::class, 'markWhatsAppSent'])->name('daily-tasks.whatsapp-sent');
         Route::get('daily-tasks/{dailyTask}/print', [DailyTaskSheetController::class, 'print'])->name('daily-tasks.print');
         Route::patch('daily-tasks/{dailyTask}/toggle-task', [DailyTaskSheetController::class, 'toggleTask'])->name('daily-tasks.toggle-task');
         Route::post('daily-tasks/{dailyTask}/submit-task', [DailyTaskSheetController::class, 'submitTask'])->name('daily-tasks.submit-task');
