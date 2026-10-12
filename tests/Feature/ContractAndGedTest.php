@@ -43,7 +43,7 @@ test('user can explore GED folders, archive a document and access the vault', fu
     // GED Explorer
     $gedResponse = $this->actingAs($user)->get('/ged');
     $gedResponse->assertStatus(200);
-    $gedResponse->assertSee('GED — Gestion Documentaire');
+    $gedResponse->assertSeeLivewire('ged-explorer');
 
     // Archive standard document
     $docResponse = $this->actingAs($user)->post('/ged/documents', [

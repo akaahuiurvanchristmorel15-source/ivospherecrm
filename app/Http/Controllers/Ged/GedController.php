@@ -8,40 +8,19 @@ use App\Models\DocumentFolder;
 use App\Models\Domain;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GedController extends Controller
 {
-    public function index(Request $request): View
+    /**
+     * Explorateur de documents (composant Livewire ged-explorer).
+     */
+    public function index(): View
     {
-        $this->ensureDefaultFolders();
-
-        $currentFolderId = $request->get('folder_id');
-        $currentFolder = $currentFolderId ? DocumentFolder::find($currentFolderId) : null;
-
-        $folders = DocumentFolder::where('is_vault', false)
-            ->when($currentFolderId, fn ($q) => $q->where('parent_id', $currentFolderId), fn ($q) => $q->whereNull('parent_id'))
-            ->withCount('documents')
-            ->get();
-
-        $documentsQuery = Document::where('is_vault', false)->with(['user', 'domain']);
-
-        if ($currentFolderId) {
-            $documentsQuery->where('folder_id', $currentFolderId);
-        }
-
-        if ($request->filled('search')) {
-            $term = $request->search;
-            $documentsQuery->where(function ($q) use ($term) {
-                $q->where('title', 'like', "%{$term}%")->orWhere('file_name', 'like', "%{$term}%");
-            });
-        }
-
-        $documents = $documentsQuery->latest()->paginate(12)->withQueryString();
-        $domains = Domain::all();
-
-        return view('ged.index', compact('folders', 'documents', 'currentFolder', 'domains'));
+        return view('ged.index');
     }
 
     public function vault(Request $request): View
@@ -132,6 +111,20 @@ class GedController extends Controller
         $route = $isVault ? 'ged.vault' : 'ged.index';
 
         return redirect()->route($route)->with('success', "Document « {$validated['title']} » archivé avec succès.");
+    }
+
+    /**
+     * Ouvre le fichier dans le navigateur (PDF, images…) ou le télécharge avec ?download=1.
+     */
+    public function open(Request $request, Document $document): StreamedResponse
+    {
+        abort_unless($document->file_path && Storage::disk('public')->exists($document->file_path), 404, 'Ce fichier est introuvable sur le serveur.');
+
+        $document->increment('downloads_count');
+
+        return $request->boolean('download')
+            ? Storage::disk('public')->download($document->file_path, $document->file_name)
+            : Storage::disk('public')->response($document->file_path, $document->file_name);
     }
 
     public function destroy(Document $document): RedirectResponse
