@@ -1,3 +1,4 @@
+import './form-submit-spinner';
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 
 // Une seule copie d'Alpine pour toute l'application : celle de Livewire, qui la démarre

@@ -54,6 +54,44 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
+/* Spinner d'enregistrement des formulaires (voir resources/js/form-submit-spinner.js et Livewire wire:submit) */
+:is(button, input)[data-submitting],
+form[wire\:submit][data-loading] :is(button[type="submit"], button:not([type])) {
+    pointer-events: none;
+    cursor: wait;
+    opacity: 0.75;
+}
+
+button[data-submitting] > svg,
+form[wire\:submit][data-loading] :is(button[type="submit"], button:not([type])) > svg {
+    display: none;
+}
+
+button[data-submitting]::before,
+form[wire\:submit][data-loading] :is(button[type="submit"], button:not([type]))::before {
+    content: '';
+    display: inline-block;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    margin-inline-end: 0.5em;
+    vertical-align: -0.125em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    animation: form-submit-spin 0.7s linear infinite;
+}
+
+button[data-submitting]:has(> svg:only-child)::before {
+    margin-inline-end: 0;
+}
+
+@keyframes form-submit-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* Responsive Table Wrapper with Smooth Scrolling */
 .table-responsive-wrapper {
     overflow-x: auto;
