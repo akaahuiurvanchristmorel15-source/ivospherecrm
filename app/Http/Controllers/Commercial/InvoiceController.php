@@ -9,10 +9,13 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Services\ActivityLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Spatie\Browsershot\Browsershot;
+use Spatie\Browsershot\Exceptions\CouldNotTakeBrowsershot;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class InvoiceController extends Controller
 {
@@ -124,25 +127,62 @@ class InvoiceController extends Controller
 
     /**
      * Télécharge la facture au format PDF A4 (rendu identique à la page d'impression).
+     *
+     * Si Node.js / Chromium ne sont pas disponibles sur le serveur, l'utilisateur est
+     * redirigé vers la page d'impression pour enregistrer la facture en PDF depuis le navigateur.
      */
-    public function download(Invoice $invoice): Response
+    public function download(Invoice $invoice): Response|RedirectResponse
     {
         $invoice->load(['items.product', 'customer', 'user', 'payments', 'domain']);
 
         $html = view('commercial.invoices.print', ['invoice' => $invoice, 'isPdf' => true])->render();
 
-        $pdf = Browsershot::html($html)
-            ->format('A4')
-            ->margins(14, 14, 14, 14)
-            ->showBackground()
-            ->emulateMedia('print')
-            ->waitUntilNetworkIdle()
-            ->pdf();
+        try {
+            $pdf = $this->configureBrowsershot(Browsershot::html($html))
+                ->format('A4')
+                ->margins(14, 14, 14, 14)
+                ->showBackground()
+                ->emulateMedia('print')
+                ->waitUntilNetworkIdle()
+                ->pdf();
+        } catch (ProcessFailedException|CouldNotTakeBrowsershot $exception) {
+            report($exception);
+
+            return redirect()
+                ->route('commercial.invoices.print', ['invoice' => $invoice, 'autoprint' => 1])
+                ->with('pdf_unavailable', true);
+        }
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="Facture-'.$invoice->reference.'.pdf"',
         ]);
+    }
+
+    /**
+     * Applique les chemins Node.js / npm / Chromium définis dans config/services.php.
+     */
+    private function configureBrowsershot(Browsershot $browsershot): Browsershot
+    {
+        $config = config('services.browsershot');
+
+        if (filled($config['node_binary'] ?? null)) {
+            $browsershot->setNodeBinary($config['node_binary']);
+        }
+
+        if (filled($config['npm_binary'] ?? null)) {
+            $browsershot->setNpmBinary($config['npm_binary']);
+        }
+
+        if (filled($config['chrome_path'] ?? null)) {
+            $browsershot->setChromePath($config['chrome_path']);
+        }
+
+        if (filled($config['node_modules_path'] ?? null)) {
+            $browsershot->setNodeModulePath($config['node_modules_path']);
+        }
+
+        return $browsershot;
     }
 
     public function quickPayment(Request $request, Invoice $invoice)

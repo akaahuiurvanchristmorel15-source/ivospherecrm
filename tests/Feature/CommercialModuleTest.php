@@ -215,6 +215,22 @@ test('can render printable quotation and invoice views', function () {
     $invResponse->assertSee('FACTURE CLIENT');
 });
 
+test('invoice pdf download falls back to the print page when node is unavailable', function () {
+    config(['services.browsershot.node_binary' => '/nonexistent/node']);
+
+    $invoice = Invoice::first();
+
+    $response = $this->get(route('commercial.invoices.download', $invoice));
+
+    $response->assertRedirect(route('commercial.invoices.print', ['invoice' => $invoice, 'autoprint' => 1]));
+    $response->assertSessionHas('pdf_unavailable', true);
+
+    $this->followRedirects($response)
+        ->assertOk()
+        ->assertSee("Le PDF n'a pas pu être généré sur le serveur", false)
+        ->assertSee("window.addEventListener('load', () => window.print())", false);
+});
+
 test('can schedule and manage commercial appointments', function () {
     $customer = Customer::first();
 

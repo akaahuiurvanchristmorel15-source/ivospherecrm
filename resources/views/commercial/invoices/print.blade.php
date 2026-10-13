@@ -48,6 +48,16 @@
             align-items: center;
         }
         .action-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pdf-notice {
+            max-width: 820px;
+            margin: 0 auto 16px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #FCD34D;
+            background: #FFFBEB;
+            color: #92400E;
+            font-size: 13px;
+        }
         .btn {
             display: inline-flex;
             align-items: center;
@@ -232,7 +242,7 @@
         /* ---------- Impression ---------- */
         @media print {
             body { background: #fff; padding: 0; font-size: 12px; }
-            .action-bar { display: none !important; }
+            .action-bar, .pdf-notice { display: none !important; }
             .invoice-box { max-width: none; padding: 0; border: 0; border-radius: 0; }
             .watermark { position: fixed; opacity: .06; }
             table.page-layout > thead { display: table-header-group; }
@@ -258,6 +268,13 @@
             <button onclick="window.print()" class="btn btn-primary">Imprimer</button>
         </div>
     </div>
+
+    @if(session('pdf_unavailable'))
+        <div class="pdf-notice">
+            Le PDF n'a pas pu être généré sur le serveur. Dans la fenêtre d'impression, choisissez
+            « Enregistrer au format PDF » comme destination.
+        </div>
+    @endif
 
     @php
         $companyName = \App\Models\Setting::get('company_name', 'IVOSPHERE GROUP');
@@ -512,5 +529,9 @@
         </td></tr></tfoot>
         </table>
     </div>
+
+    @if(request()->boolean('autoprint'))
+        <script>window.addEventListener('load', () => window.print());</script>
+    @endif
 </body>
 </html>
