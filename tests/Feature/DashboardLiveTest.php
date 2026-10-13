@@ -18,7 +18,7 @@ test('the home page renders the live dashboard that refreshes itself', function 
     $this->get(route('dashboard'))
         ->assertOk()
         ->assertSeeLivewire('dashboard-live')
-        ->assertSee('wire:poll.30s.visible', false);
+        ->assertSee('wire:poll.10s.visible', false);
 });
 
 test('filters from the address are applied on first display', function () {

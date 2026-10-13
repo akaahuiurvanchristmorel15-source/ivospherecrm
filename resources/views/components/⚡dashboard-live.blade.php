@@ -6,7 +6,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Tableau de bord (page d'accueil) : les chiffres se mettent à jour tout seuls toutes les 30 secondes,
+ * Tableau de bord (page d'accueil) : les chiffres se mettent à jour tout seuls toutes les 10 secondes,
  * et les filtres de domaine et de période s'appliquent sans recharger la page.
  */
 new class extends Component {
@@ -120,7 +120,7 @@ new class extends Component {
     $pillIdle = 'bg-white text-[#64748B] ring-1 ring-[#E2E8F0] hover:text-[#0B0F14] md:bg-[#F5F7FA] md:ring-0 md:hover:bg-slate-200/60 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10 dark:hover:text-white md:dark:bg-white/5 md:dark:hover:bg-white/10';
 @endphp
 
-    <div wire:poll.30s.visible class="mx-auto max-w-7xl space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
+    <div wire:poll.10s.visible class="mx-auto max-w-7xl space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
 
         {{-- 1. En-tête --}}
         <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
