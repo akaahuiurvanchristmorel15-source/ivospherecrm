@@ -19,7 +19,7 @@ class PosController extends Controller
 {
     public function index(Request $request)
     {
-        $productsQuery = Product::with(['category', 'domain', 'warehouseStocks'])->active();
+        $productsQuery = Product::with(['category', 'domain', 'warehouseStocks.warehouse:id,name,label_number,label_color'])->active();
 
         if ($request->filled('domain_id')) {
             $productsQuery->where('domain_id', $request->domain_id);

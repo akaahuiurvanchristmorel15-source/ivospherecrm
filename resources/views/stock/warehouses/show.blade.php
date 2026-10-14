@@ -53,6 +53,10 @@
             
             <dl class="space-y-4">
                 <div>
+                    <dt class="text-xs font-medium text-[#64748B]">Étiquette</dt>
+                    <dd class="mt-1"><x-warehouse-label :warehouse="$warehouse" size="lg" /></dd>
+                </div>
+                <div>
                     <dt class="text-xs font-medium text-[#64748B]">Code Entrepôt</dt>
                     <dd class="mt-1 text-sm font-semibold font-mono text-[#0B0F14]">{{ $warehouse->code }}</dd>
                 </div>

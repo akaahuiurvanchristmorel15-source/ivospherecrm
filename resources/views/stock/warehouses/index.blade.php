@@ -61,8 +61,9 @@
                     </div>
                 @endif
                 <div>
-                    <div class="flex items-start justify-between pr-14">
-                        <div>
+                    <div class="flex items-start gap-3 pr-14">
+                        <x-warehouse-label :warehouse="$warehouse" size="lg" />
+                        <div class="min-w-0">
                             <h3 class="text-base font-semibold text-[#0B0F14]">{{ $warehouse->name }}</h3>
                             <p class="text-xs text-[#64748B] mt-0.5">{{ $warehouse->domain->name ?? 'Général' }}</p>
                         </div>
