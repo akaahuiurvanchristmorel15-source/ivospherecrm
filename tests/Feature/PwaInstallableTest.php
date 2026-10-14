@@ -9,11 +9,19 @@ test('pages expose the pwa manifest and apple touch icon', function (string $uri
         ->assertSee('<link rel="apple-touch-icon" href="'.asset('icons/apple-touch-icon.png').'">', false);
 })->with(['/', '/login']);
 
-test('authenticated layout exposes the pwa manifest', function () {
+test('authenticated layout exposes the pwa manifest and the install button', function () {
     $this->actingAs(User::factory()->create())
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('<link rel="manifest" href="'.asset('manifest.webmanifest').'">', false);
+        ->assertSee('<link rel="manifest" href="'.asset('manifest.webmanifest').'">', false)
+        ->assertSee('x-data="pwaInstall"', false)
+        ->assertSee('aria-label="Installer l\'application"', false);
+});
+
+test('install button is not shown to guests', function () {
+    $this->get('/login')
+        ->assertOk()
+        ->assertDontSee('x-data="pwaInstall"', false);
 });
 
 test('manifest is valid and its icons exist', function () {
