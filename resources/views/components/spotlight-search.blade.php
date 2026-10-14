@@ -96,22 +96,30 @@
             class="mx-auto max-w-2xl w-full transform rounded-2xl bg-white shadow-2xl border border-[#E2E8F0] overflow-hidden transition-all text-[#0B0F14]"
         >
             <!-- Search Header -->
-            <div class="relative flex items-center border-b border-[#E2E8F0] px-4 py-3 bg-[#F5F7FA]/50">
-                <svg class="w-5 h-5 text-slate-400 shrink-0 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <input 
-                    x-ref="searchInput"
-                    type="text" 
-                    x-model="query"
-                    @input.debounce.250ms="performSearch()"
-                    placeholder="Rechercher client, facture, devis, produit, contrat, ticket..." 
-                    class="w-full bg-transparent border-0 text-sm text-[#0B0F14] placeholder-slate-400 focus:outline-none focus:ring-0"
-                />
-                
-                <div class="flex items-center gap-2">
-                    <span x-show="isLoading" class="text-xs text-slate-400 animate-pulse">Recherche...</span>
-                    <kbd class="px-2 py-0.5 text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 rounded">ESC</kbd>
+            <div class="border-b border-[#E2E8F0] bg-[#F5F7FA]/60 p-3 sm:p-4">
+                <div class="relative flex h-14 items-center gap-3 rounded-full border border-slate-200 bg-white pl-2 pr-3 shadow-sm transition-all focus-within:border-[#0066FF] focus-within:ring-4 focus-within:ring-[#0066FF]/15">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0066FF] text-white shadow-sm">
+                        <svg x-show="!isLoading" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <svg x-show="isLoading" x-cloak class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                        </svg>
+                    </span>
+                    <input 
+                        x-ref="searchInput"
+                        type="text" 
+                        x-model="query"
+                        @input.debounce.250ms="performSearch()"
+                        placeholder="Rechercher client, facture, devis, produit, contrat, ticket..." 
+                        class="min-w-0 flex-1 border-0 bg-transparent p-0 text-base text-[#0B0F14] placeholder-slate-400 focus:outline-none focus:ring-0"
+                    />
+                    <button type="button" x-show="query.length > 0" x-cloak @click="query = ''; performSearch(); $refs.searchInput.focus()"
+                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700" aria-label="Effacer la recherche">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                    <kbd class="hidden sm:inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-500">ESC</kbd>
                 </div>
             </div>
 

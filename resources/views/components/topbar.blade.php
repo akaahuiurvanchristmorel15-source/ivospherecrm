@@ -121,11 +121,15 @@
         <button
             type="button"
             @click="$dispatch('open-spotlight')"
-            class="hidden md:flex items-center gap-2 w-full max-w-xs px-3.5 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-xs text-slate-400 transition-colors"
+            x-data="{ shortcut: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K' }"
+            class="group hidden md:flex items-center gap-3 w-full max-w-md h-11 pl-1.5 pr-2 rounded-full bg-white border border-slate-200 shadow-sm text-sm text-slate-400 transition-all hover:border-[#0066FF]/40 hover:shadow-md focus:outline-none focus-visible:border-[#0066FF] focus-visible:ring-4 focus-visible:ring-[#0066FF]/15"
+            aria-label="Ouvrir la recherche globale"
         >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <span class="flex-1 text-left">Rechercher</span>
-            <kbd class="text-[10px] text-slate-400">⌘K</kbd>
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0066FF]/10 text-[#0066FF] transition-colors group-hover:bg-[#0066FF] group-hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </span>
+            <span class="flex-1 truncate text-left">Rechercher un client, une facture, un produit…</span>
+            <kbd class="hidden lg:inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-500" x-text="shortcut">Ctrl K</kbd>
         </button>
     </div>
 
@@ -133,7 +137,7 @@
     <div class="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-2">
 
         {{-- Recherche (mobile) --}}
-        <button type="button" @click="$dispatch('open-spotlight')" class="md:hidden p-2 rounded-full text-slate-600 active:bg-slate-100 transition-colors" aria-label="Recherche">
+        <button type="button" @click="$dispatch('open-spotlight')" class="md:hidden flex h-9 w-9 items-center justify-center rounded-full bg-[#0066FF]/10 text-[#0066FF] active:bg-[#0066FF] active:text-white transition-colors" aria-label="Recherche">
             <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </button>
 
