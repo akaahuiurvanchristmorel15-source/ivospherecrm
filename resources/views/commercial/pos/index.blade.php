@@ -371,6 +371,13 @@
                     return new Intl.NumberFormat('fr-FR').format(Math.round(Number(value) || 0));
                 },
 
+                warehouseLabelsOf(product) {
+                    return (product.warehouse_stocks || [])
+                        .filter(ws => Number(ws.physical_quantity) > 0 && ws.warehouse)
+                        .map(ws => ({ ...ws.warehouse, quantity: Number(ws.physical_quantity) }))
+                        .sort((a, b) => (a.label_number ?? 0) - (b.label_number ?? 0));
+                },
+
                 stockOf(product) {
                     return Number(product.available_stock ?? product.current_stock ?? 0);
                 },
@@ -434,6 +441,7 @@
                             name: product.name,
                             sku: product.sku,
                             image: product.image,
+                            warehouse_labels: this.warehouseLabelsOf(product),
                             available_stock: available,
                             unit_price: parseFloat(product.selling_price),
                             tax_rate: parseFloat(product.tax_rate || 0),
@@ -626,6 +634,15 @@
                                     </div>
                                 </template>
 
+                                <div x-show="warehouseLabelsOf(product).length > 0" class="absolute left-2 top-2 flex max-w-[70%] flex-wrap gap-1">
+                                    <template x-for="label in warehouseLabelsOf(product)" :key="label.id">
+                                        <span class="flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-[11px] font-bold leading-none shadow-md ring-1 ring-white/70"
+                                              :style="'background-color:' + (label.label_color || '#64748B') + ';color:' + (label.label_text_color || '#FFFFFF')"
+                                              :title="label.name + ' : ' + label.quantity + ' en stock'"
+                                              x-text="label.label_number ?? '?'"></span>
+                                    </template>
+                                </div>
+
                                 <div x-show="getItemCartQty(product.id) > 0" x-cloak
                                      class="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0066FF] px-1.5 text-[11px] font-bold text-white shadow-md">
                                     <span x-text="getItemCartQty(product.id)"></span>
@@ -744,7 +761,14 @@
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                                 </button>
                                             </div>
-                                            <p class="text-[11px] text-slate-500" x-text="money(item.unit_price) + ' F / unité'"></p>
+                                            <p class="flex items-center gap-1 text-[11px] text-slate-500">
+                                                <template x-for="label in (item.warehouse_labels || [])" :key="label.id">
+                                                    <span class="flex h-4 min-w-4 items-center justify-center rounded px-1 text-[9px] font-bold leading-none"
+                                                          :style="'background-color:' + (label.label_color || '#64748B') + ';color:' + (label.label_text_color || '#FFFFFF')"
+                                                          :title="label.name" x-text="label.label_number ?? '?'"></span>
+                                                </template>
+                                                <span x-text="money(item.unit_price) + ' F / unité'"></span>
+                                            </p>
 
                                             <div class="mt-2 flex items-center justify-between gap-2">
                                                 <div class="inline-flex items-center rounded-lg border border-slate-200 bg-white">

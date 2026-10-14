@@ -16,7 +16,7 @@ class WarehouseController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Warehouse::with('domain');
+        $query = Warehouse::with('domain')->orderBy('label_number');
 
         if ($request->filled('domain_id')) {
             $query->where('domain_id', $request->domain_id);
@@ -43,8 +43,9 @@ class WarehouseController extends Controller
     public function create()
     {
         $domains = Domain::all();
+        $nextLabelNumber = Warehouse::nextLabelNumber();
 
-        return view('stock.warehouses.create_edit', compact('domains'));
+        return view('stock.warehouses.create_edit', compact('domains', 'nextLabelNumber'));
     }
 
     public function store(Request $request)
@@ -52,6 +53,8 @@ class WarehouseController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:warehouses,code',
+            'label_number' => 'nullable|integer|min:1|max:65535|unique:warehouses,label_number',
+            'label_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'domain_id' => 'nullable|exists:domains,id',
             'address' => 'nullable|string',
             'description' => 'nullable|string',
@@ -93,8 +96,9 @@ class WarehouseController extends Controller
     public function edit(Warehouse $warehouse)
     {
         $domains = Domain::all();
+        $nextLabelNumber = $warehouse->label_number ?? Warehouse::nextLabelNumber();
 
-        return view('stock.warehouses.create_edit', compact('warehouse', 'domains'));
+        return view('stock.warehouses.create_edit', compact('warehouse', 'domains', 'nextLabelNumber'));
     }
 
     public function update(Request $request, Warehouse $warehouse)
@@ -102,6 +106,8 @@ class WarehouseController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:warehouses,code,'.$warehouse->id,
+            'label_number' => 'nullable|integer|min:1|max:65535|unique:warehouses,label_number,'.$warehouse->id,
+            'label_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'domain_id' => 'nullable|exists:domains,id',
             'address' => 'nullable|string',
             'description' => 'nullable|string',
@@ -110,6 +116,9 @@ class WarehouseController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+
+        $validated['label_number'] ??= $warehouse->label_number ?? Warehouse::nextLabelNumber();
+        $validated['label_color'] ??= Warehouse::defaultLabelColor($validated['label_number']);
 
         $warehouse->update($validated);
 

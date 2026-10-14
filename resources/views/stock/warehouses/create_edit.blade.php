@@ -46,6 +46,47 @@
                         @error('code') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                     </div>
 
+                    @php
+                        $initialLabelNumber = old('label_number', $warehouse->label_number ?? $nextLabelNumber);
+                        $initialLabelColor = old('label_color', $warehouse->label_color ?? \App\Models\Warehouse::defaultLabelColor((int) $initialLabelNumber));
+                    @endphp
+                    <div class="md:col-span-2 rounded-lg border border-[#E2E8F0] bg-[#F5F7FA] p-4"
+                         x-data="{ labelNumber: {{ Js::from((string) $initialLabelNumber) }}, labelColor: {{ Js::from($initialLabelColor) }}, textColor() { const hex = (this.labelColor || '#000000').replace('#', ''); const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.substr(i, 2), 16) || 0); return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#0B0F14' : '#FFFFFF'; } }">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+                            <div class="flex shrink-0 flex-col items-center gap-1">
+                                <span class="flex h-14 w-14 items-center justify-center rounded-xl text-2xl font-bold shadow-sm"
+                                      :style="'background-color:' + labelColor + ';color:' + textColor()" x-text="labelNumber || '?'">{{ $initialLabelNumber }}</span>
+                                <span class="text-[10px] font-medium text-[#64748B]">Aperçu</span>
+                            </div>
+                            <div class="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="label_number" class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Numéro d'étiquette</label>
+                                    <input type="number" name="label_number" id="label_number" min="1" x-model="labelNumber"
+                                        class="w-full rounded-lg border border-[#E2E8F0] bg-white px-3.5 py-2.5 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]">
+                                    <p class="mt-1 text-[11px] text-[#64748B]">Identifie rapidement l'entrepôt sur les produits (catalogue, caisse POS).</p>
+                                    @error('label_number') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="label_color" class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Couleur de fond</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="color" name="label_color" id="label_color" x-model="labelColor"
+                                            class="h-10 w-14 cursor-pointer rounded-lg border border-[#E2E8F0] bg-white p-1">
+                                        <span class="font-mono text-xs uppercase text-[#64748B]" x-text="labelColor"></span>
+                                    </div>
+                                    <div class="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Couleurs suggérées">
+                                        @foreach(\App\Models\Warehouse::LABEL_COLORS as $color)
+                                            <button type="button" @click="labelColor = '{{ $color }}'" title="{{ $color }}"
+                                                    class="h-6 w-6 rounded-md border-2 transition"
+                                                    :class="labelColor.toUpperCase() === '{{ $color }}' ? 'border-[#0B0F14] scale-110' : 'border-white'"
+                                                    style="background-color: {{ $color }}"></button>
+                                        @endforeach
+                                    </div>
+                                    @error('label_color') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
                         <label for="domain_id" class="block text-xs font-semibold text-[#0B0F14] mb-1.5">
                             Domaine Associé

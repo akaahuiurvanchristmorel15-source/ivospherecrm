@@ -36,7 +36,7 @@ class StockDashboardController extends Controller
         $activeAlertsCount = StockAlert::active()->count();
 
         $domains = Domain::all();
-        $warehouses = Warehouse::active()->with(['warehouseStocks.product'])->get();
+        $warehouses = Warehouse::active()->with(['warehouseStocks.product'])->orderBy('label_number')->get();
         $suppliers = Supplier::orderBy('name')->get();
 
         // Products with full WMS enrichment

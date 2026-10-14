@@ -448,7 +448,10 @@
                     @foreach($warehouses as $wh)
                         <div class="min-w-[180px] shrink-0 rounded-xl border border-[#E2E8F0] bg-white p-3 md:min-w-0">
                             <div class="flex items-center justify-between">
-                                <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-[#0B0F14]">{{ $wh->code }}</span>
+                                <span class="flex items-center gap-1.5">
+                                    <x-warehouse-label :warehouse="$wh" />
+                                    <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-[#0B0F14]">{{ $wh->code }}</span>
+                                </span>
                                 <div class="flex items-center gap-1.5">
                                     <a href="{{ route('stock.warehouses.show', $wh) }}" class="text-slate-400 hover:text-[#0066FF]" title="Consulter">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -523,6 +526,7 @@
                                     <button type="button" @click="filterWarehouse = '{{ $wh->id }}'" :aria-pressed="filterWarehouse === '{{ $wh->id }}'"
                                             :class="filterWarehouse === '{{ $wh->id }}' ? 'bg-[#0066FF] text-white' : 'bg-[#F5F7FA] text-slate-600 hover:text-[#0B0F14]'"
                                             class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium" title="{{ $wh->name }}">
+                                        <x-warehouse-label :warehouse="$wh" size="xs" />
                                         {{ $wh->name }}
                                         <span class="rounded-full bg-black/10 px-1.5 text-[10px] font-semibold">{{ $wh->warehouseStocks->where('physical_quantity', '>', 0)->count() }}</span>
                                     </button>
@@ -668,8 +672,9 @@
                                         <div class="mt-1 flex flex-wrap gap-1 md:justify-end">
                                             @foreach($product->warehouseStocks as $ws)
                                                 @if($ws->physical_quantity > 0)
-                                                    <span class="rounded px-1.5 text-[10px] transition-colors" title="{{ $ws->warehouse?->name }}"
+                                                    <span class="inline-flex items-center gap-1 rounded py-px pl-px pr-1.5 text-[10px] transition-colors" title="{{ $ws->warehouse?->name }}"
                                                           :class="filterWarehouse === '{{ $ws->warehouse_id }}' ? 'bg-[#0066FF] text-white ring-1 ring-[#0066FF]' : 'bg-slate-100 text-slate-600'">
+                                                        <x-warehouse-label :warehouse="$ws->warehouse" size="xs" />
                                                         {{ $ws->warehouse?->code ?: Str::limit($ws->warehouse?->name, 8) }}: <strong :class="filterWarehouse === '{{ $ws->warehouse_id }}' ? 'text-white' : 'text-[#0B0F14]'" class="text-[#0B0F14]">{{ $ws->physical_quantity }}</strong>
                                                     </span>
                                                 @endif
