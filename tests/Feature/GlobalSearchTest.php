@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\Customer;
+use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Models\WarehouseStock;
 use Database\Seeders\DatabaseSeeder;
 
 beforeEach(function () {
@@ -20,4 +23,15 @@ test('spotlight search returns json results across multiple erp entities', funct
         'results',
         'count',
     ]);
+});
+
+test('spotlight product results show the available stock', function () {
+    $user = User::where('email', 'admin@ivosphere.com')->first();
+    $warehouse = Warehouse::create(['name' => 'Dépôt Spotlight', 'code' => 'WH-SPOT']);
+    $product = Product::create(['name' => 'Zzyzx agrafeuse', 'sku' => 'ZZ-AGR', 'is_active' => true, 'selling_price' => 1500]);
+    WarehouseStock::create(['warehouse_id' => $warehouse->id, 'product_id' => $product->id, 'physical_quantity' => 37, 'reserved_quantity' => 0]);
+
+    $this->actingAs($user)->getJson('/api/search?q=Zzyzx')
+        ->assertOk()
+        ->assertJsonPath('results.Produits.0.subtitle', 'SKU: ZZ-AGR — Stock: 37 — 1 500 FCFA');
 });

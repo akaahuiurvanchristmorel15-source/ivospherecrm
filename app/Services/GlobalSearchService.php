@@ -104,6 +104,7 @@ class GlobalSearchService
         // 5. Produits / Articles
         $products = Product::where('name', 'like', "%{$term}%")
             ->orWhere('sku', 'like', "%{$term}%")
+            ->with('warehouseStocks')
             ->take(5)
             ->get();
 
@@ -112,7 +113,7 @@ class GlobalSearchService
                 return [
                     'id' => $p->id,
                     'title' => $p->name,
-                    'subtitle' => "SKU: {$p->sku} — Stock: {$p->stock} — ".number_format($p->selling_price, 0, ',', ' ').' FCFA',
+                    'subtitle' => "SKU: {$p->sku} — Stock: {$p->available_stock} — ".number_format($p->selling_price, 0, ',', ' ').' FCFA',
                     'url' => route('commercial.products.show', $p->id),
                     'badge' => 'Produit',
                 ];

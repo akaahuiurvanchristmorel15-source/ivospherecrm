@@ -1,58 +1,5 @@
 <div 
-    x-data="{
-        isOpen: false,
-        query: '',
-        results: {},
-        totalCount: 0,
-        isLoading: false,
-        selectedIndex: 0,
-        flatResults: [],
-        openModal() {
-            this.isOpen = true;
-            this.$nextTick(() => {
-                this.$refs.searchInput.focus();
-            });
-        },
-        closeModal() {
-            this.isOpen = false;
-            this.query = '';
-            this.results = {};
-            this.flatResults = [];
-            this.totalCount = 0;
-        },
-        async performSearch() {
-            if (this.query.trim().length < 2) {
-                this.results = {};
-                this.flatResults = [];
-                this.totalCount = 0;
-                return;
-            }
-            this.isLoading = true;
-            try {
-                const response = await fetch(`{{ route('api.search') }}?q=${encodeURIComponent(this.query)}`);
-                const data = await response.json();
-                this.results = data.results || {};
-                this.totalCount = data.count || 0;
-                
-                // Flatten for arrow navigation
-                let flat = [];
-                Object.values(this.results).forEach(group => {
-                    flat = flat.concat(group);
-                });
-                this.flatResults = flat;
-                this.selectedIndex = 0;
-            } catch (e) {
-                console.error('Search error:', e);
-            } finally {
-                this.isLoading = false;
-            }
-        },
-        goToSelected() {
-            if (this.flatResults.length > 0 && this.flatResults[this.selectedIndex]) {
-                window.location.href = this.flatResults[this.selectedIndex].url;
-            }
-        }
-    }"
+    x-data="spotlightSearch()"
     @open-spotlight.window="openModal()"
     @keydown.window.prevent.cmd.k="openModal()"
     @keydown.window.prevent.ctrl.k="openModal()"
@@ -90,10 +37,10 @@
     >
         <div 
             @click.outside="closeModal()"
-            @keydown.arrow-down.prevent="selectedIndex = (selectedIndex + 1) % (flatResults.length || 1)"
-            @keydown.arrow-up.prevent="selectedIndex = (selectedIndex - 1 + flatResults.length) % (flatResults.length || 1)"
+            @keydown.arrow-down.prevent="selectedIndex = (selectedIndex + 1) % (flatResults.length || 1); scrollToSelected()"
+            @keydown.arrow-up.prevent="selectedIndex = (selectedIndex - 1 + flatResults.length) % (flatResults.length || 1); scrollToSelected()"
             @keydown.enter.prevent="goToSelected()"
-            class="mx-auto max-w-2xl w-full transform rounded-2xl bg-white shadow-2xl border border-[#E2E8F0] overflow-hidden transition-all text-[#0B0F14]"
+            class="mx-auto max-w-2xl w-full transform rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden transition-all text-[#0B0F14]"
         >
             <!-- Search Header -->
             <div class="border-b border-[#E2E8F0] bg-[#F5F7FA]/60 p-3 sm:p-4">
@@ -146,48 +93,179 @@
             </div>
 
             <!-- Results container -->
-            <div x-show="query.trim().length >= 2" class="max-h-96 overflow-y-auto p-2 divide-y divide-slate-100">
-                <template x-if="totalCount === 0 && !isLoading">
-                    <div class="py-10 text-center">
-                        <svg class="mx-auto h-8 w-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p class="mt-2 text-xs text-slate-500 font-medium">Aucun résultat trouvé pour « <span x-text="query"></span> »</p>
+            <div x-show="query.trim().length >= 2" x-ref="results" class="max-h-[26rem] overflow-y-auto overscroll-contain px-3 py-3">
+                {{-- Chargement --}}
+                <template x-if="isLoading && totalCount === 0">
+                    <div class="space-y-2 p-1">
+                        <template x-for="i in 4" :key="i">
+                            <div class="flex animate-pulse items-center gap-3 rounded-2xl p-2.5">
+                                <div class="h-10 w-10 rounded-xl bg-slate-100"></div>
+                                <div class="flex-1 space-y-2">
+                                    <div class="h-3 w-1/2 rounded bg-slate-100"></div>
+                                    <div class="h-2.5 w-1/3 rounded bg-slate-100"></div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </template>
 
+                {{-- Aucun résultat --}}
+                <template x-if="totalCount === 0 && !isLoading">
+                    <div class="flex flex-col items-center py-12 text-center">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM8 10h4"/></svg>
+                        </span>
+                        <p class="mt-3 text-sm font-semibold text-[#0B0F14]">Aucun résultat</p>
+                        <p class="mt-1 text-xs text-slate-500">Rien ne correspond à « <span class="font-medium text-slate-700" x-text="query"></span> ». Essayez un autre mot-clé.</p>
+                    </div>
+                </template>
+
+                {{-- Résultats groupés --}}
                 <template x-for="(items, category) in results" :key="category">
-                    <div class="py-2">
-                        <div class="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400" x-text="category"></div>
-                        <div class="space-y-0.5">
+                    <section class="mb-3 last:mb-0">
+                        <div class="sticky top-0 z-10 flex items-center gap-2 bg-white/95 px-2 pb-1.5 pt-1 backdrop-blur">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500" x-text="category"></span>
+                            <span class="rounded-full bg-slate-100 px-1.5 text-[10px] font-semibold text-slate-500" x-text="items.length"></span>
+                            <span class="h-px flex-1 bg-slate-100"></span>
+                        </div>
+                        <div class="space-y-1">
                             <template x-for="item in items" :key="item.url">
-                                <a 
-                                    :href="item.url" 
-                                    class="group flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-[#F5F7FA] transition-colors"
+                                <a
+                                    :href="item.url"
+                                    @mouseenter="selectedIndex = indexOf(item)"
+                                    :data-selected="indexOf(item) === selectedIndex"
+                                    :class="indexOf(item) === selectedIndex ? 'bg-[#0066FF]/[0.06] ring-1 ring-[#0066FF]/25' : 'hover:bg-slate-50'"
+                                    class="group flex items-center gap-3 rounded-2xl p-2.5 transition-colors"
                                 >
-                                    <div class="flex items-center gap-3 min-w-0">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#0066FF] shrink-0"></span>
-                                        <div class="truncate">
-                                            <p class="font-medium text-[#0B0F14] group-hover:text-[#0066FF] truncate" x-text="item.title"></p>
-                                            <p class="text-slate-500 text-[11px] truncate" x-text="item.subtitle"></p>
-                                        </div>
+                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="styleFor(category).tile">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="styleFor(category).icon"/></svg>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-semibold text-[#0B0F14]" x-html="highlight(item.title)"></p>
+                                        <p class="truncate text-xs text-slate-500" x-html="highlight(item.subtitle)"></p>
                                     </div>
-                                    <span class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-medium shrink-0 ml-2" x-text="item.badge"></span>
+                                    <span class="hidden shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset sm:inline-flex" :class="styleFor(category).badge" x-text="item.badge"></span>
+                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all"
+                                          :class="indexOf(item) === selectedIndex ? 'bg-[#0066FF] text-white' : 'text-slate-300 group-hover:text-slate-500'">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                    </span>
                                 </a>
                             </template>
                         </div>
-                    </div>
+                    </section>
                 </template>
             </div>
 
             <!-- Footer Help -->
-            <div class="px-4 py-2.5 bg-[#F5F7FA] border-t border-[#E2E8F0] flex items-center justify-between text-[11px] text-slate-500">
-                <div class="flex items-center gap-3">
-                    <span><kbd class="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px]">↑</kbd> <kbd class="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px]">↓</kbd> Naviguer</span>
-                    <span><kbd class="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px]">↵</kbd> Ouvrir</span>
+            <div class="flex items-center justify-between gap-3 border-t border-[#E2E8F0] bg-[#F5F7FA] px-5 py-3 text-[11px] text-slate-500">
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-1.5">
+                        <kbd class="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-slate-200 bg-white px-1 text-[10px] font-semibold shadow-xs">↑</kbd>
+                        <kbd class="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-slate-200 bg-white px-1 text-[10px] font-semibold shadow-xs">↓</kbd>
+                        Naviguer
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <kbd class="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-slate-200 bg-white px-1 text-[10px] font-semibold shadow-xs">↵</kbd>
+                        Ouvrir
+                    </span>
+                    <span class="hidden items-center gap-1.5 sm:flex">
+                        <kbd class="inline-flex h-5 items-center justify-center rounded-md border border-slate-200 bg-white px-1.5 text-[10px] font-semibold shadow-xs">Esc</kbd>
+                        Fermer
+                    </span>
                 </div>
-                <span>Recherche globale universelle</span>
+                <span x-show="query.trim().length >= 2 && totalCount > 0" class="font-medium text-slate-600"><span x-text="totalCount"></span> résultat(s)</span>
+                <span x-show="query.trim().length < 2" class="hidden sm:inline">Recherche globale</span>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    function spotlightSearch() {
+        return {
+            isOpen: false,
+            query: '',
+            results: {},
+            totalCount: 0,
+            isLoading: false,
+            selectedIndex: 0,
+            flatResults: [],
+            openModal() {
+                this.isOpen = true;
+                this.$nextTick(() => {
+                    this.$refs.searchInput.focus();
+                });
+            },
+            closeModal() {
+                this.isOpen = false;
+                this.query = '';
+                this.results = {};
+                this.flatResults = [];
+                this.totalCount = 0;
+            },
+            async performSearch() {
+                if (this.query.trim().length < 2) {
+                    this.results = {};
+                    this.flatResults = [];
+                    this.totalCount = 0;
+                    return;
+                }
+                this.isLoading = true;
+                try {
+                    const response = await fetch(`{{ route('api.search') }}?q=${encodeURIComponent(this.query)}`);
+                    const data = await response.json();
+                    this.results = data.results || {};
+                    this.totalCount = data.count || 0;
+                
+                    // Flatten for arrow navigation
+                    let flat = [];
+                    Object.values(this.results).forEach(group => {
+                        flat = flat.concat(group);
+                    });
+                    this.flatResults = flat;
+                    this.selectedIndex = 0;
+                } catch (e) {
+                    console.error('Search error:', e);
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+            categoryStyles: {
+                'Clients': { tile: 'bg-sky-50 text-sky-600', badge: 'bg-sky-50 text-sky-700 ring-sky-200', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+                'Factures': { tile: 'bg-emerald-50 text-emerald-600', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200', icon: 'M9 14l2 2 4-4M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z' },
+                'Devis': { tile: 'bg-violet-50 text-violet-600', badge: 'bg-violet-50 text-violet-700 ring-violet-200', icon: 'M9 12h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z' },
+                'Commandes': { tile: 'bg-amber-50 text-amber-600', badge: 'bg-amber-50 text-amber-700 ring-amber-200', icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' },
+                'Produits': { tile: 'bg-blue-50 text-[#0066FF]', badge: 'bg-blue-50 text-[#0066FF] ring-blue-200', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+                'Contrats': { tile: 'bg-slate-100 text-slate-600', badge: 'bg-slate-100 text-slate-700 ring-slate-200', icon: 'M15.232 5.232l3.536 3.536M9 13l6.232-6.232a2.5 2.5 0 113.536 3.536L12.536 16.536 8 18l1.464-4.536z' },
+                'Support': { tile: 'bg-rose-50 text-rose-600', badge: 'bg-rose-50 text-rose-700 ring-rose-200', icon: 'M18.364 5.636a9 9 0 11-12.728 0M12 3v9' },
+                'Projets TECH': { tile: 'bg-cyan-50 text-cyan-600', badge: 'bg-cyan-50 text-cyan-700 ring-cyan-200', icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' },
+            },
+            styleFor(category) {
+                return this.categoryStyles[category] || { tile: 'bg-slate-100 text-slate-600', badge: 'bg-slate-100 text-slate-700 ring-slate-200', icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' };
+            },
+            indexOf(item) {
+                return this.flatResults.indexOf(item);
+            },
+            highlight(text) {
+                const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                const safeText = escape(text);
+                const term = this.query.trim();
+                if (term.length < 2) {
+                    return safeText;
+                }
+                const pattern = new RegExp('(' + escape(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                return safeText.replace(pattern, '<mark class="rounded bg-yellow-100 px-0.5 text-inherit">$1</mark>');
+            },
+            scrollToSelected() {
+                this.$nextTick(() => {
+                    this.$refs.results?.querySelector('[data-selected=true]')?.scrollIntoView({ block: 'nearest' });
+                });
+            },
+            goToSelected() {
+                if (this.flatResults.length > 0 && this.flatResults[this.selectedIndex]) {
+                    window.location.href = this.flatResults[this.selectedIndex].url;
+                }
+            }
+        };
+    }
+</script>
