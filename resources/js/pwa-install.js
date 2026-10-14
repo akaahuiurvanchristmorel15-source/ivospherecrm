@@ -14,6 +14,9 @@ const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent)
 
 const isMobile = () => isIos() || /Android|Mobi/i.test(navigator.userAgent);
 
+/** Largeur « mobile » de Tailwind (sous le breakpoint md) : couvre aussi le mode responsive */
+const narrowViewport = window.matchMedia('(max-width: 767px)');
+
 window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     deferredPrompt = event;
@@ -31,11 +34,18 @@ export function registerPwaInstall(Alpine) {
         installed: isStandalone(),
         ios: isIos(),
         mobile: isMobile(),
+        narrow: narrowViewport.matches,
         secure: window.isSecureContext,
         helpOpen: false,
 
+        init() {
+            narrowViewport.addEventListener('change', (event) => {
+                this.narrow = event.matches;
+            });
+        },
+
         get visible() {
-            return !this.installed && (this.canPrompt || this.mobile);
+            return !this.installed && (this.canPrompt || this.mobile || this.narrow);
         },
 
         async install() {
