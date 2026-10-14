@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <x-pwa-meta />
 
     <title>{{ $title ?? 'IVOSPHERE — Plateforme Intégrée de Gestion d’Entreprise' }}</title>
     <meta name="description" content="Une seule plateforme pour piloter toute votre entreprise : Ressources humaines, Gestion commerciale, CRM, Finance, Trésorerie, Stocks, Immobilisations et Opérations multi-activités.">

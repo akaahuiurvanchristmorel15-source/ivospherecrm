@@ -5,3 +5,10 @@ import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.e
 window.Alpine = Alpine;
 
 Livewire.start();
+
+// Service worker : rend l'application installable sur smartphone (PWA)
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+    });
+}
