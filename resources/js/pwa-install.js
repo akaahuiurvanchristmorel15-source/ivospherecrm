@@ -1,8 +1,9 @@
 /*
  * Bouton « Installer l'application » (PWA).
- * Android / Chrome / Edge : on capture l'événement beforeinstallprompt pour
- * déclencher l'invite native au clic. iOS Safari n'a pas d'invite : on affiche
- * la marche à suivre (Partager → Sur l'écran d'accueil).
+ * Quand le navigateur le permet (Chrome, Edge, Samsung Internet en HTTPS), on
+ * capture beforeinstallprompt pour ouvrir l'invite native au clic. Sinon
+ * (iPhone, connexion non sécurisée, autre navigateur), le bouton reste visible
+ * sur mobile et affiche la marche à suivre adaptée.
  */
 let deferredPrompt = null;
 
@@ -10,6 +11,8 @@ const isStandalone = () => window.matchMedia('(display-mode: standalone)').match
 
 const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent)
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+const isMobile = () => isIos() || /Android|Mobi/i.test(navigator.userAgent);
 
 window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -27,15 +30,17 @@ export function registerPwaInstall(Alpine) {
         canPrompt: deferredPrompt !== null,
         installed: isStandalone(),
         ios: isIos(),
-        iosHelpOpen: false,
+        mobile: isMobile(),
+        secure: window.isSecureContext,
+        helpOpen: false,
 
         get visible() {
-            return !this.installed && (this.canPrompt || this.ios);
+            return !this.installed && (this.canPrompt || this.mobile);
         },
 
         async install() {
-            if (this.ios || !deferredPrompt) {
-                this.iosHelpOpen = !this.iosHelpOpen;
+            if (!deferredPrompt) {
+                this.helpOpen = !this.helpOpen;
 
                 return;
             }

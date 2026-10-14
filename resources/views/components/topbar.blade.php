@@ -149,7 +149,7 @@
             <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
         </a>
 
-        {{-- Installer l'application (PWA) : masqué si déjà installée ou non installable --}}
+        {{-- Installer l'application (PWA) : visible sur mobile ou quand le navigateur le propose, masqué une fois installée --}}
         <div
             class="md:relative"
             x-data="pwaInstall"
@@ -158,8 +158,8 @@
             style="display:none"
             @pwa-install-available.window="canPrompt = true"
             @pwa-installed.window="installed = true"
-            @click.outside="iosHelpOpen = false"
-            @keydown.escape.window="iosHelpOpen = false"
+            @click.outside="helpOpen = false"
+            @keydown.escape.window="helpOpen = false"
         >
             <button
                 type="button"
@@ -167,27 +167,41 @@
                 class="flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-full bg-[#0066FF] text-white text-xs font-semibold shadow-sm hover:bg-[#0052CC] active:bg-[#0040A8] transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0066FF]/25"
                 aria-label="Installer l'application"
                 title="Installer l'application sur cet appareil"
-                :aria-expanded="ios ? iosHelpOpen.toString() : null"
+                :aria-expanded="canPrompt ? null : helpOpen.toString()"
             >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 <span class="hidden sm:inline">Installer</span>
             </button>
 
             <div
-                x-show="iosHelpOpen"
+                x-show="helpOpen"
                 x-transition.origin.top.right
                 x-cloak
                 style="display:none"
                 class="absolute right-2 left-2 md:left-auto md:right-0 top-full mt-2 md:w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl z-50"
                 role="dialog"
-                aria-label="Installer l'application sur iPhone ou iPad"
+                aria-label="Installer l'application"
             >
                 <p class="text-sm font-semibold text-slate-900">Installer IVOSPHERE</p>
-                <ol class="mt-2 space-y-1.5 text-xs text-slate-600 list-decimal pl-4">
-                    <li>Ouvrez cette page dans <strong>Safari</strong>.</li>
-                    <li>Touchez le bouton <strong>Partager</strong> <svg class="inline w-3.5 h-3.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12H6a2 2 0 00-2 2v5a2 2 0 002 2h12a2 2 0 002-2v-5a2 2 0 00-2-2h-2M12 3v12m0-12L8 7m4-4l4 4"/></svg>.</li>
-                    <li>Choisissez <strong>Sur l'écran d'accueil</strong>.</li>
-                </ol>
+
+                <template x-if="ios">
+                    <ol class="mt-2 space-y-1.5 text-xs text-slate-600 list-decimal pl-4">
+                        <li>Ouvrez cette page dans <strong>Safari</strong>.</li>
+                        <li>Touchez le bouton <strong>Partager</strong> <svg class="inline w-3.5 h-3.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12H6a2 2 0 00-2 2v5a2 2 0 002 2h12a2 2 0 002-2v-5a2 2 0 00-2-2h-2M12 3v12m0-12L8 7m4-4l4 4"/></svg>.</li>
+                        <li>Choisissez <strong>Sur l'écran d'accueil</strong>.</li>
+                    </ol>
+                </template>
+
+                <template x-if="!ios">
+                    <ol class="mt-2 space-y-1.5 text-xs text-slate-600 list-decimal pl-4">
+                        <li>Ouvrez le menu <strong>⋮</strong> du navigateur (Chrome conseillé).</li>
+                        <li>Choisissez <strong>Installer l'application</strong> ou <strong>Ajouter à l'écran d'accueil</strong>.</li>
+                    </ol>
+                </template>
+
+                <p x-show="!secure" class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                    Connexion non sécurisée : l'installation complète nécessite d'accéder au site en <strong>https://</strong>.
+                </p>
             </div>
         </div>
 
