@@ -560,7 +560,8 @@
                         <button type="button" @click="selectedProductIds = []" class="rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white">Désélectionner</button>
                         {{-- GET : la page peut être rechargée (Android recharge l'onglet au retour de l'appareil photo) --}}
                         <form action="{{ route('stock.products.bulk-edit') }}" method="GET" class="inline">
-                            <input type="hidden" name="product_ids" :value="selectedProductIds.join(',')">
+                            {{-- Tout le catalogue sélectionné : aucune liste (une URL de plusieurs milliers d'identifiants peut être refusée) --}}
+                            <input type="hidden" name="product_ids" :value="selectedProductIds.join(',')" :disabled="isAllSelected">
                             <button type="submit" class="rounded-lg bg-[#0066FF] px-3 py-1.5 text-xs font-semibold hover:bg-[#0052cc]">Prix &amp; photos</button>
                         </form>
                         <button type="button" @click="$dispatch('open-bulk-delete-products', { product_ids: selectedProductIds })" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold hover:bg-rose-700">Supprimer</button>
@@ -644,7 +645,7 @@
                                         class="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] hover:ring-2 hover:ring-[#0066FF]"
                                         title="Changer la photo">
                                     @if($product->image)
-                                        <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="h-full w-full object-cover">
+                                        <img src="{{ $product->thumbnail_url }}" alt="{{ $product->name }}" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                     @else
                                         <div class="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
                                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
