@@ -33,6 +33,9 @@
             initialProducts: {{ Js::from($initialRowsData) }},
             warehouses: {{ Js::from($warehouseOptions) }}
         })" 
+        @dragover.window.prevent="isDragging = true"
+        @dragleave.window="if (!$event.relatedTarget) isDragging = false"
+        @drop.window.prevent="isDragging = false; assignMultipleFiles($event.dataTransfer.files)"
         class="max-w-7xl mx-auto space-y-6 pb-16 text-xs"
     >
         <x-page-header 
@@ -185,14 +188,11 @@
                         </p>
 
                         <label
-                            @dragover.prevent="isDragging = true"
-                            @dragleave.prevent="isDragging = false"
-                            @drop.prevent="isDragging = false; assignMultipleFiles($event.dataTransfer.files)"
                             :class="isDragging ? 'border-emerald-500 bg-emerald-100/60' : 'border-emerald-300 bg-white hover:bg-emerald-50'"
                             class="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-5 text-center transition">
                             <svg class="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             <span class="text-xs font-bold text-emerald-800">Choisir plusieurs photos</span>
-                            <span class="hidden text-[10px] text-slate-500 sm:block">ou glissez-déposez les images ici</span>
+                            <span class="hidden text-[10px] text-slate-500 sm:block">ou glissez-déposez les images n'importe où sur la page (ou sur la miniature d'un article)</span>
                             <input type="file" accept="image/*" multiple class="sr-only" @change="assignMultipleFiles($event.target.files); $event.target.value = ''">
                         </label>
 
@@ -273,7 +273,10 @@
                                     <td class="col-span-2 md:table-cell md:px-3 md:py-3 md:text-center">
                                         <div class="flex items-center gap-3 md:flex-col md:gap-1.5">
                                             {{-- Miniature --}}
-                                            <div class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs md:h-14 md:w-14">
+                                            <div @drop.stop.prevent="isDragging = false; $event.dataTransfer.files[0] && $event.dataTransfer.files[0].type.startsWith('image/') && setRowFile(item, $event.dataTransfer.files[0])"
+                                                 :class="isDragging ? 'ring-2 ring-emerald-400 ring-offset-1' : ''"
+                                                 title="Glissez une photo ici pour cet article"
+                                                 class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs md:h-14 md:w-14">
                                                 <template x-if="displayImage(item)">
                                                     <img :src="displayImage(item)" alt="" class="h-full w-full object-cover">
                                                 </template>
