@@ -186,7 +186,7 @@
                             </span>
                         </div>
                         <p class="text-[11px] text-slate-600">
-                            Prenez les photos à la suite avec l'appareil photo du téléphone, ou sélectionnez plusieurs photos d'un coup (galerie ou dossier de l'ordinateur). Elles sont associées aux articles dont le SKU ou le nom figure dans le nom du fichier, sinon dans l'ordre du tableau. Vous pouvez ensuite changer chaque photo individuellement.
+                            Sélectionnez plusieurs photos d'un coup (galerie du téléphone ou dossier de l'ordinateur). Elles sont associées aux articles dont le SKU ou le nom figure dans le nom du fichier, sinon dans l'ordre du tableau. Vous pouvez ensuite changer chaque photo individuellement.
                         </p>
 
                         <label
@@ -199,41 +199,6 @@
                         </label>
 
                         <p x-show="multiAssignMessage" x-cloak class="rounded-lg bg-white px-3 py-2 text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-200" x-text="multiAssignMessage"></p>
-
-                        {{-- Prise de vue à la suite (appareil photo du téléphone) --}}
-                        <button type="button" x-show="shootingIndex === null" @click="startShooting()"
-                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-4 py-3 text-xs font-bold text-white shadow-sm transition active:bg-[#0052cc] md:hidden">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-                            Prendre les photos à la suite
-                        </button>
-
-                        <div x-show="shootingIndex !== null" x-cloak class="space-y-3 rounded-xl bg-white p-3 ring-1 ring-[#0066FF]/30">
-                            <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                                <span>Article <span x-text="(shootingIndex ?? 0) + 1"></span> / <span x-text="products.length"></span></span>
-                                <button type="button" @click="stopShooting()" class="text-[#0066FF]">Terminer</button>
-                            </div>
-                            <template x-if="shootingItem()">
-                                <div class="flex items-center gap-3">
-                                    <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                                        <template x-if="displayImage(shootingItem())">
-                                            <img :src="displayImage(shootingItem())" alt="" class="h-full w-full object-cover">
-                                        </template>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <p class="line-clamp-2 text-sm font-bold text-[#0B0F14]" x-text="shootingItem().name"></p>
-                                        <p class="font-mono text-[10px] font-semibold text-[#0066FF]" x-text="shootingItem().sku"></p>
-                                    </div>
-                                </div>
-                            </template>
-                            <div class="grid grid-cols-3 gap-2">
-                                <label class="col-span-2 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-3 py-3 text-xs font-bold text-white active:bg-[#0052cc]">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-                                    Prendre la photo
-                                    <input type="file" accept="image/*" capture="environment" class="sr-only" @change="onShootingPhoto($event)">
-                                </label>
-                                <button type="button" @click="nextShootingItem()" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-slate-600">Passer</button>
-                            </div>
-                        </div>
 
                         <div class="flex items-center gap-3 border-t border-emerald-100 pt-3">
                             <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -338,14 +303,8 @@
 
                                             {{-- Boutons photo --}}
                                             <div class="flex shrink-0 flex-col items-stretch gap-1 md:flex-row md:items-center">
-                                                <label class="flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-[#0066FF] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-2xs transition active:bg-[#0052cc] md:hidden">
-                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-                                                    Photo
-                                                    <input type="file" accept="image/*" capture="environment" @change="handleRowImage($event, item, true)" class="sr-only">
-                                                </label>
                                                 <label class="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-center text-[11px] font-semibold text-slate-700 shadow-2xs transition hover:border-[#0066FF] hover:bg-blue-50 hover:text-[#0066FF] md:rounded md:px-2 md:py-0.5 md:text-[10px]">
-                                                    <span class="md:hidden">Galerie</span>
-                                                    <span class="hidden md:inline" x-text="displayImage(item) ? 'Changer' : 'Ajouter'"></span>
+                                                    <span x-text="displayImage(item) ? 'Changer' : 'Ajouter'"></span>
                                                     <input type="file" accept="image/*" @change="handleRowImage($event, item)" class="sr-only">
                                                 </label>
                                                 <button type="button" x-show="(item.current_image || item.pending_file) && !item.delete_image" x-cloak @click="markImageDeleted(item)"
@@ -528,7 +487,6 @@
                 customMarkupPercent: null,
                 isDragging: false,
                 multiAssignMessage: '',
-                shootingIndex: null,
                 search: '',
                 pageSize: 50,
                 visibleLimit: 50,
@@ -569,11 +527,10 @@
                 },
 
                 /**
-                 * Réduit la photo dès sa sélection (évite de saturer la mémoire du téléphone avec des
-                 * miniatures en pleine résolution, ce qui faisait planter l'onglet), puis l'envoie
-                 * immédiatement si demandé (photos prises avec l'appareil photo).
+                 * Réduit la photo dès sa sélection : des miniatures en pleine résolution saturaient
+                 * la mémoire du téléphone et faisaient planter l'onglet.
                  */
-                setRowFile(item, file, autoUpload = false) {
+                setRowFile(item, file) {
                     const token = (item.processing_token || 0) + 1;
                     item.processing_token = token;
                     item.pending_file = file;
@@ -592,9 +549,6 @@
                         item.pending_file = compressed;
                         item.preview_image = URL.createObjectURL(compressed);
                         item.upload_status = '';
-                        if (autoUpload) {
-                            await this.sendImageRequest(item);
-                        }
                     }).catch(() => {
                         item.upload_status = '';
                     });
@@ -617,10 +571,10 @@
                     event.target.value = '';
                 },
 
-                handleRowImage(event, item, autoUpload = false) {
+                handleRowImage(event, item) {
                     const file = event.target.files[0];
                     if (file) {
-                        this.setRowFile(item, file, autoUpload);
+                        this.setRowFile(item, file);
                     }
                     event.target.value = '';
                 },
@@ -690,46 +644,6 @@
                     this.multiAssignMessage = message + ' Vérifiez les miniatures avant d\'enregistrer.';
                 },
 
-                /** Prise de vue à la suite : une photo par article, en commençant par ceux sans photo. */
-                startShooting() {
-                    const firstWithoutPhoto = this.products.findIndex(item => !item.pending_file && (!item.current_image || item.delete_image));
-                    this.shootingIndex = firstWithoutPhoto >= 0 ? firstWithoutPhoto : 0;
-                    this.multiAssignMessage = '';
-                },
-
-                shootingItem() {
-                    return this.shootingIndex === null ? null : this.products[this.shootingIndex] || null;
-                },
-
-                onShootingPhoto(event) {
-                    const file = event.target.files[0];
-                    event.target.value = '';
-                    const item = this.shootingItem();
-                    if (file && item) {
-                        this.setRowFile(item, file, true);
-                        this.nextShootingItem();
-                    }
-                },
-
-                nextShootingItem() {
-                    if (this.shootingIndex === null) {
-                        return;
-                    }
-                    if (this.shootingIndex + 1 >= this.products.length) {
-                        this.stopShooting();
-                        return;
-                    }
-                    this.shootingIndex++;
-                },
-
-                stopShooting() {
-                    const taken = this.products.filter(item => item.pending_file || item.upload_status === 'done').length;
-                    this.shootingIndex = null;
-                    if (taken > 0) {
-                        this.multiAssignMessage = taken + ' photo(s) prise(s) : elles sont enregistrées automatiquement (✓ sur la miniature).';
-                    }
-                },
-
                 markImageDeleted(item) {
                     item.processing_token = (item.processing_token || 0) + 1;
                     if (item.preview_image) {
@@ -753,9 +667,6 @@
                     const index = this.products.indexOf(item);
                     if (this.products.length > 1 && index >= 0) {
                         this.products.splice(index, 1);
-                        if (this.shootingIndex !== null && this.shootingIndex >= this.products.length) {
-                            this.shootingIndex = this.products.length - 1;
-                        }
                     }
                 },
 
