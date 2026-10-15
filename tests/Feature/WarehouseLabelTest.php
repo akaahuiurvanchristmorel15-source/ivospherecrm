@@ -6,6 +6,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
+use Database\Seeders\StockSeeder;
 use Database\Seeders\UserSeeder;
 
 beforeEach(function () {
@@ -78,4 +79,11 @@ test('pos exposes warehouse labels of each product', function () {
                 && $warehouseData['label_color'] === '#DC2626'
                 && $warehouseData['label_text_color'] === '#FFFFFF';
         });
+});
+
+test('seeded warehouses receive a label even though model events are disabled', function () {
+    Warehouse::withoutEvents(fn () => $this->seed(StockSeeder::class));
+
+    expect(Warehouse::whereNull('label_number')->count())->toBe(0)
+        ->and(Warehouse::orderBy('label_number')->pluck('label_number')->all())->toBe(range(1, Warehouse::count()));
 });
