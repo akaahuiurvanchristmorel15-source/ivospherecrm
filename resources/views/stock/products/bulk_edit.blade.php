@@ -184,7 +184,7 @@
                             </span>
                         </div>
                         <p class="text-[11px] text-slate-600">
-                            Sélectionnez plusieurs photos d'un coup (galerie du téléphone ou dossier de l'ordinateur). Elles sont associées aux articles dont le SKU ou le nom figure dans le nom du fichier, sinon dans l'ordre du tableau. Vous pouvez ensuite changer chaque photo individuellement.
+                            Prenez les photos à la suite avec l'appareil photo du téléphone, ou sélectionnez plusieurs photos d'un coup (galerie ou dossier de l'ordinateur). Elles sont associées aux articles dont le SKU ou le nom figure dans le nom du fichier, sinon dans l'ordre du tableau. Vous pouvez ensuite changer chaque photo individuellement.
                         </p>
 
                         <label
@@ -197,6 +197,41 @@
                         </label>
 
                         <p x-show="multiAssignMessage" x-cloak class="rounded-lg bg-white px-3 py-2 text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-200" x-text="multiAssignMessage"></p>
+
+                        {{-- Prise de vue à la suite (appareil photo du téléphone) --}}
+                        <button type="button" x-show="shootingIndex === null" @click="startShooting()"
+                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-4 py-3 text-xs font-bold text-white shadow-sm transition active:bg-[#0052cc] md:hidden">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                            Prendre les photos à la suite
+                        </button>
+
+                        <div x-show="shootingIndex !== null" x-cloak class="space-y-3 rounded-xl bg-white p-3 ring-1 ring-[#0066FF]/30">
+                            <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                                <span>Article <span x-text="(shootingIndex ?? 0) + 1"></span> / <span x-text="products.length"></span></span>
+                                <button type="button" @click="stopShooting()" class="text-[#0066FF]">Terminer</button>
+                            </div>
+                            <template x-if="shootingItem()">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                        <template x-if="displayImage(shootingItem())">
+                                            <img :src="displayImage(shootingItem())" alt="" class="h-full w-full object-cover">
+                                        </template>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="line-clamp-2 text-sm font-bold text-[#0B0F14]" x-text="shootingItem().name"></p>
+                                        <p class="font-mono text-[10px] font-semibold text-[#0066FF]" x-text="shootingItem().sku"></p>
+                                    </div>
+                                </div>
+                            </template>
+                            <div class="grid grid-cols-3 gap-2">
+                                <label class="col-span-2 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-3 py-3 text-xs font-bold text-white active:bg-[#0052cc]">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                                    Prendre la photo
+                                    <input type="file" accept="image/*" capture="environment" class="sr-only" @change="onShootingPhoto($event)">
+                                </label>
+                                <button type="button" @click="nextShootingItem()" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-slate-600">Passer</button>
+                            </div>
+                        </div>
 
                         <div class="flex items-center gap-3 border-t border-emerald-100 pt-3">
                             <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -264,7 +299,7 @@
                         </thead>
                         <tbody class="block divide-y divide-slate-100 md:table-row-group">
                             <template x-for="(item, index) in products" :key="item.id">
-                                <tr class="relative grid grid-cols-2 gap-x-3 gap-y-2 p-4 transition-colors hover:bg-slate-50/70 md:table-row md:p-0"
+                                <tr class="grid grid-cols-2 gap-x-3 gap-y-2 p-4 transition-colors hover:bg-slate-50/70 md:table-row md:p-0"
                                     :class="item.upload_status === 'error' ? 'bg-rose-50/60' : ''">
                                     {{-- Index --}}
                                     <td class="hidden px-3 py-3 text-center font-mono font-bold text-slate-400 md:table-cell" x-text="index + 1"></td>
@@ -295,19 +330,25 @@
 
                                             {{-- Sur mobile : nom de l'article à côté de la photo --}}
                                             <div class="min-w-0 flex-1 md:hidden">
-                                                <div class="line-clamp-2 pr-8 text-sm font-bold text-[#0B0F14]" x-text="item.name"></div>
+                                                <div class="line-clamp-2 text-sm font-bold text-[#0B0F14]" x-text="item.name"></div>
                                                 <div class="mt-0.5 text-[10px] text-slate-400"><span class="font-mono font-semibold text-[#0066FF]" x-text="item.sku"></span> · <span x-text="item.domain"></span></div>
                                             </div>
 
                                             {{-- Boutons photo --}}
                                             <div class="flex shrink-0 flex-col items-stretch gap-1 md:flex-row md:items-center">
+                                                <label class="flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-[#0066FF] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-2xs transition active:bg-[#0052cc] md:hidden">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                                                    Photo
+                                                    <input type="file" accept="image/*" capture="environment" @change="handleRowImage($event, item)" class="sr-only">
+                                                </label>
                                                 <label class="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-center text-[11px] font-semibold text-slate-700 shadow-2xs transition hover:border-[#0066FF] hover:bg-blue-50 hover:text-[#0066FF] md:rounded md:px-2 md:py-0.5 md:text-[10px]">
-                                                    <span x-text="displayImage(item) ? 'Changer' : 'Ajouter'"></span>
+                                                    <span class="md:hidden">Galerie</span>
+                                                    <span class="hidden md:inline" x-text="displayImage(item) ? 'Changer' : 'Ajouter'"></span>
                                                     <input type="file" accept="image/*" @change="handleRowImage($event, item)" class="sr-only">
                                                 </label>
                                                 <button type="button" x-show="(item.current_image || item.pending_file) && !item.delete_image" x-cloak @click="markImageDeleted(item)"
                                                         class="rounded-lg px-2 py-1 text-[11px] font-semibold text-slate-400 transition hover:text-rose-600 md:p-0.5" title="Supprimer la photo">
-                                                    <span class="md:hidden">Retirer</span>
+                                                    <span class="md:hidden">Suppr. photo</span>
                                                     <svg class="hidden h-3.5 w-3.5 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                                 </button>
                                                 <button type="button" x-show="item.delete_image" x-cloak @click="restoreImage(item)" class="px-1 text-[11px] text-[#0066FF] hover:underline md:text-[10px]">
@@ -389,10 +430,11 @@
                                     @endif
 
                                     {{-- Action : Retirer du lot --}}
-                                    <td class="absolute right-2 top-2 md:static md:table-cell md:px-3 md:py-3 md:text-center">
+                                    <td class="col-span-2 flex justify-end md:table-cell md:px-3 md:py-3 md:text-center">
                                         <button type="button" @click="removeProduct(index)" :disabled="products.length <= 1"
-                                            class="rounded-md p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
+                                            class="flex items-center gap-1 rounded-md p-1.5 text-[11px] font-semibold text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
                                             title="Retirer cet article du lot">
+                                            <span class="md:hidden">Retirer du lot</span>
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
                                     </td>
@@ -475,6 +517,7 @@
                 customMarkupPercent: null,
                 isDragging: false,
                 multiAssignMessage: '',
+                shootingIndex: null,
                 isSaving: false,
                 saveError: '',
                 uploadDone: 0,
@@ -597,6 +640,46 @@
                     this.multiAssignMessage = message + ' Vérifiez les miniatures avant d\'enregistrer.';
                 },
 
+                /** Prise de vue à la suite : une photo par article, en commençant par ceux sans photo. */
+                startShooting() {
+                    const firstWithoutPhoto = this.products.findIndex(item => !item.pending_file && (!item.current_image || item.delete_image));
+                    this.shootingIndex = firstWithoutPhoto >= 0 ? firstWithoutPhoto : 0;
+                    this.multiAssignMessage = '';
+                },
+
+                shootingItem() {
+                    return this.shootingIndex === null ? null : this.products[this.shootingIndex] || null;
+                },
+
+                onShootingPhoto(event) {
+                    const file = event.target.files[0];
+                    event.target.value = '';
+                    const item = this.shootingItem();
+                    if (file && item) {
+                        this.setRowFile(item, file);
+                        this.nextShootingItem();
+                    }
+                },
+
+                nextShootingItem() {
+                    if (this.shootingIndex === null) {
+                        return;
+                    }
+                    if (this.shootingIndex + 1 >= this.products.length) {
+                        this.stopShooting();
+                        return;
+                    }
+                    this.shootingIndex++;
+                },
+
+                stopShooting() {
+                    const taken = this.products.filter(item => item.pending_file).length;
+                    this.shootingIndex = null;
+                    if (taken > 0) {
+                        this.multiAssignMessage = taken + ' photo(s) prête(s) à enregistrer. Vérifiez les miniatures puis appuyez sur « Enregistrer ».';
+                    }
+                },
+
                 markImageDeleted(item) {
                     if (item.preview_image) {
                         URL.revokeObjectURL(item.preview_image);
@@ -618,6 +701,9 @@
                 removeProduct(index) {
                     if (this.products.length > 1) {
                         this.products.splice(index, 1);
+                        if (this.shootingIndex !== null && this.shootingIndex >= this.products.length) {
+                            this.shootingIndex = this.products.length - 1;
+                        }
                     }
                 },
 
