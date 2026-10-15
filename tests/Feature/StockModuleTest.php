@@ -4,6 +4,7 @@ use App\Models\Domain;
 use App\Models\PhysicalInventory;
 use App\Models\Product;
 use App\Models\PurchaseRequest;
+use App\Models\Role;
 use App\Models\StockAlert;
 use App\Models\StockMovement;
 use App\Models\SupplierReception;
@@ -15,6 +16,25 @@ use Database\Seeders\DatabaseSeeder;
 
 beforeEach(function () {
     $this->seed(DatabaseSeeder::class);
+
+    // Les seeders ne créent plus de données de démonstration : utilisateur commercial et article de test.
+    $commercial = User::factory()->create([
+        'name' => 'Responsable Commercial',
+        'email' => 'commercial@ivosphere.com',
+        'is_active' => true,
+    ]);
+    $commercial->roles()->sync([Role::where('slug', 'responsable_commercial')->value('id')]);
+    $commercial->domains()->sync(Domain::pluck('id'));
+
+    Product::create([
+        'sku' => 'STK-TEST-001',
+        'name' => 'Article de test stock',
+        'domain_id' => Domain::first()->id,
+        'purchase_price' => 1000,
+        'selling_price' => 1500,
+        'unit' => 'pièce',
+        'is_active' => true,
+    ]);
 });
 
 test('commercial manager can access stock dashboard with WMS KPIs and tabs', function () {
@@ -24,7 +44,7 @@ test('commercial manager can access stock dashboard with WMS KPIs and tabs', fun
 
     $response->assertStatus(200);
     $response->assertSee('Gestion des Stocks');
-    $response->assertSee('Stock Disponible');
+    $response->assertSee('Catalogue produits');
     $response->assertSee('Mode Scan / Magasinier');
     $response->assertSee('Disponible = Physique');
 });
