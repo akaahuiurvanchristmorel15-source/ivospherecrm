@@ -252,12 +252,6 @@
                 this.deleteImage = false;
                 this.hasNewImage = true;
 
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.imagePreview = e.target.result;
-                };
-                reader.readAsDataURL(file);
-
                 // Réinitialiser l'autre input
                 if (source === 'camera' && this.$refs.fileInput) {
                     this.$refs.fileInput.value = '';
@@ -265,22 +259,30 @@
                     this.$refs.cameraInput.value = '';
                 }
 
-                // Photo de téléphone (plusieurs Mo) réduite avant envoi pour rester sous la limite du serveur
-                if (window.compressProductImage && typeof DataTransfer !== 'undefined') {
-                    this.isCompressing = true;
-                    try {
+                // Photo de téléphone (plusieurs Mo) réduite avant envoi pour rester sous la limite du serveur.
+                // L'aperçu utilise la version réduite : une photo de 12 Mpx en pleine résolution peut faire planter l'onglet.
+                this.isCompressing = true;
+                let previewFile = file;
+                try {
+                    if (window.compressProductImage) {
                         const compressed = await window.compressProductImage(file);
-                        if (compressed !== file && input.files[0] === file) {
+                        previewFile = compressed;
+                        if (compressed !== file && input.files[0] === file && typeof DataTransfer !== 'undefined') {
                             const transfer = new DataTransfer();
                             transfer.items.add(compressed);
                             input.files = transfer.files;
                         }
-                    } catch (error) {
-                        // Le fichier d'origine est conservé
-                    } finally {
-                        this.isCompressing = false;
                     }
+                } catch (error) {
+                    // Le fichier d'origine est conservé
+                } finally {
+                    this.isCompressing = false;
                 }
+
+                if (this.imagePreview && this.imagePreview.startsWith('blob:')) {
+                    URL.revokeObjectURL(this.imagePreview);
+                }
+                this.imagePreview = URL.createObjectURL(previewFile);
             },
 
             markDeleteImage() {

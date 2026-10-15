@@ -558,11 +558,9 @@
                     <span class="text-xs"><strong x-text="selectedProductIds.length"></strong> article(s) sélectionné(s)</span>
                     <div class="flex flex-wrap items-center gap-2">
                         <button type="button" @click="selectedProductIds = []" class="rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white">Désélectionner</button>
-                        <form action="{{ route('stock.products.bulk-edit') }}" method="POST" class="inline">
-                            @csrf
-                            <template x-for="id in selectedProductIds" :key="id">
-                                <input type="hidden" name="product_ids[]" :value="id">
-                            </template>
+                        {{-- GET : la page peut être rechargée (Android recharge l'onglet au retour de l'appareil photo) --}}
+                        <form action="{{ route('stock.products.bulk-edit') }}" method="GET" class="inline">
+                            <input type="hidden" name="product_ids" :value="selectedProductIds.join(',')">
                             <button type="submit" class="rounded-lg bg-[#0066FF] px-3 py-1.5 text-xs font-semibold hover:bg-[#0052cc]">Prix &amp; photos</button>
                         </form>
                         <button type="button" @click="$dispatch('open-bulk-delete-products', { product_ids: selectedProductIds })" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold hover:bg-rose-700">Supprimer</button>

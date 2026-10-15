@@ -319,11 +319,11 @@
                                                     <svg class="h-6 w-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                                 </template>
 
-                                                <span x-show="item.pending_file && item.upload_status !== 'uploading'" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-500 px-1 text-[8px] font-bold text-white">Nouveau</span>
+                                                <span x-show="item.pending_file && !['uploading', 'processing'].includes(item.upload_status)" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-500 px-1 text-[8px] font-bold text-white">Nouveau</span>
                                                 <span x-show="usesCommonImage(item)" x-cloak class="absolute right-0 top-0 rounded-bl bg-sky-500 px-1 text-[8px] font-bold text-white">Commune</span>
                                                 <span x-show="item.delete_image" x-cloak class="absolute right-0 top-0 rounded-bl bg-rose-500 px-1 text-[8px] font-bold text-white">Supprimée</span>
                                                 <span x-show="item.upload_status === 'done'" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-600 px-1 text-[8px] font-bold text-white">✓</span>
-                                                <div x-show="item.upload_status === 'uploading'" x-cloak class="absolute inset-0 flex items-center justify-center bg-white/70">
+                                                <div x-show="['uploading', 'processing'].includes(item.upload_status)" x-cloak class="absolute inset-0 flex items-center justify-center bg-white/70">
                                                     <svg class="h-5 w-5 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
                                                 </div>
                                             </div>
@@ -339,7 +339,7 @@
                                                 <label class="flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-[#0066FF] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-2xs transition active:bg-[#0052cc] md:hidden">
                                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
                                                     Photo
-                                                    <input type="file" accept="image/*" capture="environment" @change="handleRowImage($event, item)" class="sr-only">
+                                                    <input type="file" accept="image/*" capture="environment" @change="handleRowImage($event, item, true)" class="sr-only">
                                                 </label>
                                                 <label class="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-center text-[11px] font-semibold text-slate-700 shadow-2xs transition hover:border-[#0066FF] hover:bg-blue-50 hover:text-[#0066FF] md:rounded md:px-2 md:py-0.5 md:text-[10px]">
                                                     <span class="md:hidden">Galerie</span>
@@ -500,6 +500,8 @@
         function bulkEditManager(config) {
             const UPLOAD_CONCURRENCY = 2;
             const compressImage = (file) => window.compressProductImage(file);
+            // Les photos sont réduites une par une (une photo de 12 Mpx décodée occupe ~50 Mo de mémoire).
+            let processingQueue = Promise.resolve();
 
             function normalizeForMatch(value) {
                 return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
@@ -541,15 +543,38 @@
                     return this.applyCommonImageToAll && !!this.commonImageFile && !item.pending_file && !item.delete_image && item.upload_status !== 'done';
                 },
 
-                setRowFile(item, file) {
-                    if (item.preview_image) {
-                        URL.revokeObjectURL(item.preview_image);
-                    }
+                /**
+                 * Réduit la photo dès sa sélection (évite de saturer la mémoire du téléphone avec des
+                 * miniatures en pleine résolution, ce qui faisait planter l'onglet), puis l'envoie
+                 * immédiatement si demandé (photos prises avec l'appareil photo).
+                 */
+                setRowFile(item, file, autoUpload = false) {
+                    const token = (item.processing_token || 0) + 1;
+                    item.processing_token = token;
                     item.pending_file = file;
-                    item.preview_image = URL.createObjectURL(file);
                     item.delete_image = false;
-                    item.upload_status = '';
+                    item.upload_status = 'processing';
                     item.upload_error = '';
+
+                    processingQueue = processingQueue.then(async () => {
+                        const compressed = await compressImage(file);
+                        if (item.processing_token !== token) {
+                            return;
+                        }
+                        if (item.preview_image) {
+                            URL.revokeObjectURL(item.preview_image);
+                        }
+                        item.pending_file = compressed;
+                        item.preview_image = URL.createObjectURL(compressed);
+                        item.upload_status = '';
+                        if (autoUpload) {
+                            await this.sendImageRequest(item);
+                        }
+                    }).catch(() => {
+                        item.upload_status = '';
+                    });
+
+                    return processingQueue;
                 },
 
                 handleCommonImage(event) {
@@ -567,10 +592,10 @@
                     event.target.value = '';
                 },
 
-                handleRowImage(event, item) {
+                handleRowImage(event, item, autoUpload = false) {
                     const file = event.target.files[0];
                     if (file) {
-                        this.setRowFile(item, file);
+                        this.setRowFile(item, file, autoUpload);
                     }
                     event.target.value = '';
                 },
@@ -656,7 +681,7 @@
                     event.target.value = '';
                     const item = this.shootingItem();
                     if (file && item) {
-                        this.setRowFile(item, file);
+                        this.setRowFile(item, file, true);
                         this.nextShootingItem();
                     }
                 },
@@ -673,14 +698,15 @@
                 },
 
                 stopShooting() {
-                    const taken = this.products.filter(item => item.pending_file).length;
+                    const taken = this.products.filter(item => item.pending_file || item.upload_status === 'done').length;
                     this.shootingIndex = null;
                     if (taken > 0) {
-                        this.multiAssignMessage = taken + ' photo(s) prête(s) à enregistrer. Vérifiez les miniatures puis appuyez sur « Enregistrer ».';
+                        this.multiAssignMessage = taken + ' photo(s) prise(s) : elles sont enregistrées automatiquement (✓ sur la miniature).';
                     }
                 },
 
                 markImageDeleted(item) {
+                    item.processing_token = (item.processing_token || 0) + 1;
                     if (item.preview_image) {
                         URL.revokeObjectURL(item.preview_image);
                     }
@@ -782,8 +808,9 @@
                         return;
                     }
 
-                    const imageRows = this.products.filter(item => item.pending_file || item.delete_image || this.usesCommonImage(item));
                     this.isSaving = true;
+                    await processingQueue;
+                    const imageRows = this.products.filter(item => (item.pending_file && item.upload_status !== 'done') || item.delete_image || this.usesCommonImage(item));
                     this.saveError = '';
                     this.uploadDone = 0;
                     this.uploadTotal = imageRows.length;
