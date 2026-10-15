@@ -1,5 +1,5 @@
 <x-layouts.app>
-    <x-slot:title>Modification Groupée des Articles — Stocks & Logistique (WMS)</x-slot>
+    <x-slot:title>Prix & photos — Stock</x-slot>
 
     @php
         $initialRowsData = $products->map(function ($p) use ($warehouses) {
@@ -28,47 +28,41 @@
         $warehouseOptions = $warehouses->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'code' => $w->code])->values();
     @endphp
 
-    <div 
+    <div
         x-data="bulkEditManager({
             initialProducts: {{ Js::from($initialRowsData) }},
             warehouses: {{ Js::from($warehouseOptions) }}
-        })" 
+        })"
         @dragover.window.prevent="isDragging = true"
         @dragleave.window="if (!$event.relatedTarget) isDragging = false"
         @drop.window.prevent="isDragging = false; assignMultipleFiles($event.dataTransfer.files)"
-        class="max-w-7xl mx-auto space-y-6 pb-16 text-xs"
+        @visibilitychange.document="if (document.hidden) closeCamera()"
+        class="mx-auto max-w-6xl space-y-4 pb-32 text-sm"
     >
-        <x-page-header 
-            title="Modification Groupée des Articles"
-            description="Mise à jour simultanée des photos/images, prix d'achat, prix de revente et stock par entrepôt sur les articles sélectionnés du catalogue WMS"
-        >
-            <x-slot:breadcrumbs>
-                <x-breadcrumb :items="[
-                    ['label' => 'Stocks & Logistique', 'url' => route('stock.index')],
-                    ['label' => 'Stock Disponible', 'url' => route('stock.index', ['tab' => 'disponibilite'])],
-                    ['label' => 'Modification Groupée']
-                ]" />
-            </x-slot:breadcrumbs>
-
-            <x-slot:actions>
-                <x-button variant="secondary" href="{{ route('stock.index', ['tab' => 'disponibilite']) }}" class="flex items-center gap-1.5">
-                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                    <span>Retour au Stock</span>
-                </x-button>
-            </x-slot:actions>
-        </x-page-header>
+        {{-- ============ EN-TÊTE ============ --}}
+        <header class="flex flex-wrap items-center gap-3">
+            <a href="{{ route('stock.index', ['tab' => 'disponibilite']) }}"
+               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-slate-500 hover:text-[#0B0F14]" title="Retour au stock">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+            <div class="min-w-0 flex-1">
+                <h1 class="text-xl font-semibold tracking-tight text-[#0B0F14]">Prix & photos</h1>
+                <p class="text-xs text-[#64748B]"><span x-text="products.length"></span> article(s) · modifiez les photos, les prix et le stock</p>
+            </div>
+            <button type="button" @click="openCameraSequence()"
+                    class="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#0052cc] sm:w-auto">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                Photographier les articles
+            </button>
+        </header>
 
         @if(session('error'))
-            <div class="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 font-semibold">{{ session('error') }}</div>
+            <div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-800">{{ session('error') }}</div>
         @endif
-
         @if($errors->any())
-            <div class="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 space-y-1">
-                <div class="font-bold flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                    <span>Veuillez corriger les erreurs de saisie :</span>
-                </div>
-                <ul class="list-disc list-inside text-[11px] space-y-0.5 pl-2">
+            <div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                <p class="font-semibold">Veuillez corriger les erreurs :</p>
+                <ul class="mt-1 list-inside list-disc text-xs">
                     @foreach($errors->all() as $err)
                         <li>{{ $err }}</li>
                     @endforeach
@@ -76,390 +70,269 @@
             </div>
         @endif
 
-        <form action="{{ route('stock.products.bulk-update') }}" method="POST" id="bulkEditForm" x-ref="form" @submit.prevent="submitAll()" class="space-y-6">
+        <form action="{{ route('stock.products.bulk-update') }}" method="POST" id="bulkEditForm" x-ref="form" @submit.prevent="submitAll()" class="space-y-4">
             @csrf
             <input type="hidden" name="images_updated_count" :value="imagesUpdatedCount">
             {{-- Champs générés à l'envoi à partir des données (les lignes non affichées sont aussi envoyées) --}}
             <div x-ref="payload" class="hidden"></div>
 
-            {{-- 1. Outils d'Application Globale & Calculateur de Marge --}}
-            <x-card title="1. Outils d'Application Rapide & Paramètres Globaux">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {{-- Outil A: Ajustement Rapide des Prix de Revente --}}
-                    <div class="space-y-3 p-4 rounded-xl border border-blue-100 bg-blue-50/40">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-[#0B0F14] text-xs flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-[#0066FF]"></span>
-                                Calculateur & Ajustement Automatique des Prix
-                            </span>
-                            <span class="text-[10px] font-semibold text-[#0066FF] bg-blue-100 px-2 py-0.5 rounded-full">
-                                Gain de temps
-                            </span>
-                        </div>
-                        <p class="text-[11px] text-slate-600">
-                            Appliquez un coefficient de marge ou une augmentation tarifaire à l'ensemble des articles affichés ci-dessous.
-                        </p>
+            {{-- ============ BARRE D'OUTILS ============ --}}
+            <section class="space-y-3 rounded-2xl border border-[#E2E8F0] bg-white p-3 sm:p-4">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="search" x-model.debounce.250ms="search" @input="visibleLimit = pageSize" placeholder="Rechercher un article (nom, SKU)…"
+                           class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-2.5 pl-9 pr-3 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
+                </div>
 
-                        <div class="flex flex-wrap items-center gap-2 pt-1">
-                            <span class="text-[11px] font-semibold text-slate-700">Marge brute rapide :</span>
-                            <button type="button" @click="applyMarginPercent(20)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-[#0066FF] text-[#0B0F14] hover:text-[#0066FF] font-semibold text-xs transition shadow-2xs">
-                                +20%
-                            </button>
-                            <button type="button" @click="applyMarginPercent(30)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-[#0066FF] text-[#0B0F14] hover:text-[#0066FF] font-semibold text-xs transition shadow-2xs">
-                                +30%
-                            </button>
-                            <button type="button" @click="applyMarginPercent(40)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-[#0066FF] text-[#0B0F14] hover:text-[#0066FF] font-semibold text-xs transition shadow-2xs">
-                                +40%
-                            </button>
-                            <button type="button" @click="applyMarginPercent(50)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-[#0066FF] text-[#0B0F14] hover:text-[#0066FF] font-semibold text-xs transition shadow-2xs">
-                                +50%
-                            </button>
-                            <button type="button" @click="applyMarginPercent(100)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-[#0066FF] text-[#0B0F14] hover:text-[#0066FF] font-semibold text-xs transition shadow-2xs">
-                                x 2 (100%)
-                            </button>
-                        </div>
+                <div class="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
+                    <label class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-[#E2E8F0] px-3 py-1.5 text-xs font-medium text-[#0B0F14] hover:bg-slate-50">
+                        <svg class="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        Photos de la galerie
+                        <input type="file" accept="image/*" multiple class="sr-only" @change="assignMultipleFiles($event.target.files); $event.target.value = ''">
+                    </label>
+                    <button type="button" @click="panel = panel === 'margin' ? '' : 'margin'" :class="panel === 'margin' ? 'border-[#0066FF] bg-blue-50 text-[#0066FF]' : 'border-[#E2E8F0] text-[#0B0F14] hover:bg-slate-50'"
+                            class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium">Marge</button>
+                    @if($warehouses->isNotEmpty())
+                        <button type="button" @click="panel = panel === 'stock' ? '' : 'stock'" :class="panel === 'stock' ? 'border-[#0066FF] bg-blue-50 text-[#0066FF]' : 'border-[#E2E8F0] text-[#0B0F14] hover:bg-slate-50'"
+                                class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium">Stock</button>
+                    @endif
+                    <button type="button" @click="panel = panel === 'common' ? '' : 'common'" :class="panel === 'common' ? 'border-[#0066FF] bg-blue-50 text-[#0066FF]' : 'border-[#E2E8F0] text-[#0B0F14] hover:bg-slate-50'"
+                            class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium">Même photo pour tous</button>
+                </div>
 
-                        <div class="pt-2 flex items-center gap-2">
-                            <div class="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    step="1" 
-                                    x-model.number="customMarkupPercent" 
-                                    placeholder="Taux de marge personnalisé (ex: 35 %)" 
-                                    class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]"
-                                >
-                            </div>
-                            <button 
-                                type="button" 
-                                @click="applyCustomMarkup()" 
-                                class="px-3 py-1.5 rounded-lg bg-[#0066FF] hover:bg-[#0052cc] text-white font-semibold text-xs transition shadow-2xs shrink-0 cursor-pointer"
-                            >
-                                Appliquer la marge
-                            </button>
+                {{-- Panneau : marge --}}
+                <div x-show="panel === 'margin'" x-cloak class="space-y-2 rounded-xl bg-[#F8FAFC] p-3">
+                    <p class="text-xs text-[#64748B]">Prix de vente = prix d'achat + marge, pour les articles affichés par la recherche.</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @foreach([20, 30, 40, 50, 100] as $percent)
+                            <button type="button" @click="applyMarginPercent({{ $percent }})" class="rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0B0F14] hover:border-[#0066FF] hover:text-[#0066FF]">+{{ $percent }}%</button>
+                        @endforeach
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" step="1" min="1" x-model.number="customMarkupPercent" placeholder="Autre %" class="w-24 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 text-xs focus:border-[#0066FF] focus:outline-none">
+                            <button type="button" @click="applyCustomMarkup()" class="rounded-lg bg-[#0066FF] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0052cc]">Appliquer</button>
                         </div>
                     </div>
+                </div>
 
-                    {{-- Outil C: Stock par entrepôt --}}
-                    @if($warehouses->isNotEmpty())
-                        <div class="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4 lg:col-span-2 lg:order-last">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <span class="flex items-center gap-2 text-xs font-bold text-[#0B0F14]">
-                                    <span class="h-2 w-2 rounded-full bg-amber-500"></span>
-                                    Stock par entrepôt
-                                </span>
-                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800" x-show="stockChangesCount() > 0" x-cloak>
-                                    <span x-text="stockChangesCount()"></span> modification(s) de stock
-                                </span>
+                {{-- Panneau : stock par entrepôt --}}
+                @if($warehouses->isNotEmpty())
+                    <div x-show="panel === 'stock'" x-cloak class="space-y-2 rounded-xl bg-[#F8FAFC] p-3">
+                        <p class="text-xs text-[#64748B]"><strong class="text-[#0B0F14]">Stock par entrepôt</strong> : choisissez l'entrepôt, puis saisissez la quantité exacte de chaque article. Chaque changement crée un ajustement tracé.</p>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <select x-model.number="stockWarehouseId" class="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold text-[#0B0F14] focus:border-[#0066FF] focus:outline-none sm:w-64">
+                                @foreach($warehouses as $warehouse)
+                                    <option value="{{ $warehouse->id }}">{{ $warehouse->name }}{{ $warehouse->code ? ' (' . $warehouse->code . ')' : '' }}</option>
+                                @endforeach
+                            </select>
+                            <div class="flex flex-1 items-center gap-2">
+                                <input type="number" min="0" step="1" x-model.number="bulkStockValue" placeholder="Quantité pour tous"
+                                       class="min-w-0 flex-1 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-xs focus:border-[#0066FF] focus:outline-none">
+                                <button type="button" @click="applyStockToAll()" class="shrink-0 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600">Appliquer à tous</button>
+                                <button type="button" @click="resetStocks()" x-show="stockChangesCount() > 0" x-cloak class="shrink-0 px-2 py-2 text-xs font-semibold text-slate-500 hover:text-[#0B0F14]">Annuler</button>
                             </div>
-                            <p class="text-[11px] text-slate-600">
-                                Choisissez l'entrepôt, puis saisissez la quantité physique exacte de chaque article dans la colonne « Stock ». Chaque changement crée un mouvement d'ajustement tracé.
-                            </p>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <select x-model.number="stockWarehouseId" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0B0F14] focus:border-[#0066FF] focus:outline-none sm:w-64">
-                                    <template x-for="wh in warehouses" :key="wh.id">
-                                        <option :value="wh.id" x-text="wh.name + (wh.code ? ' (' + wh.code + ')' : '')" :selected="wh.id === stockWarehouseId"></option>
-                                    </template>
-                                </select>
-                                <div class="flex flex-1 items-center gap-2">
-                                    <input type="number" min="0" step="1" x-model.number="bulkStockValue" placeholder="Quantité pour tous (ex : 10)"
-                                           class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-[#0B0F14] focus:border-[#0066FF] focus:outline-none">
-                                    <button type="button" @click="applyStockToAll()" class="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600">
-                                        Appliquer à tous
-                                    </button>
-                                    <button type="button" @click="resetStocks()" x-show="stockChangesCount() > 0" x-cloak class="shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-600 hover:text-[#0B0F14]">
-                                        Annuler
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Panneau : même photo pour tous --}}
+                <div x-show="panel === 'common'" x-cloak class="flex items-center gap-3 rounded-xl bg-[#F8FAFC] p-3">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+                        <template x-if="commonImagePreview">
+                            <img :src="commonImagePreview" alt="" class="h-full w-full object-cover">
+                        </template>
+                    </div>
+                    <div class="min-w-0 flex-1 space-y-1.5">
+                        <label class="inline-flex cursor-pointer items-center rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0066FF] hover:bg-blue-50">
+                            Choisir la photo…
+                            <input type="file" accept="image/*" class="sr-only" @change="handleCommonImage($event)">
+                        </label>
+                        <label class="flex cursor-pointer select-none items-center gap-2" x-show="commonImageFile" x-cloak>
+                            <input type="checkbox" x-model="applyCommonImageToAll" class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
+                            <span class="text-xs text-slate-700">Appliquer aux articles sans nouvelle photo</span>
+                        </label>
+                    </div>
+                </div>
+
+                <p x-show="multiAssignMessage" x-cloak class="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800" x-text="multiAssignMessage"></p>
+            </section>
+
+            {{-- ============ ARTICLES ============ --}}
+            <ul class="space-y-2">
+                <template x-for="item in visibleProducts" :key="item.id">
+                    <li class="rounded-2xl border bg-white p-3 transition sm:p-4"
+                        :class="item.upload_status === 'error' ? 'border-rose-300 bg-rose-50/40' : (isRowDirty(item) || item.pending_file ? 'border-[#0066FF]/40' : 'border-[#E2E8F0]')">
+                        <div class="flex items-start gap-3">
+                            {{-- Photo : toucher pour photographier --}}
+                            <button type="button" @click="openCamera(item)"
+                                    @drop.stop.prevent="isDragging = false; $event.dataTransfer.files[0] && $event.dataTransfer.files[0].type.startsWith('image/') && setRowFile(item, $event.dataTransfer.files[0])"
+                                    :class="isDragging ? 'ring-2 ring-emerald-400 ring-offset-1' : ''"
+                                    class="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-slate-100 sm:h-16 sm:w-16"
+                                    title="Prendre une photo">
+                                <template x-if="displayImage(item)">
+                                    <img :src="displayImage(item)" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                                </template>
+                                <template x-if="!displayImage(item)">
+                                    <svg class="h-7 w-7 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                                </template>
+                                <span x-show="item.upload_status === 'done'" x-cloak class="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white shadow">✓</span>
+                                <span x-show="item.pending_file && !['uploading', 'processing', 'done'].includes(item.upload_status)" x-cloak class="absolute bottom-1 right-1 rounded-full bg-[#0066FF] px-1.5 text-[9px] font-bold text-white shadow">Nouveau</span>
+                                <span x-show="usesCommonImage(item)" x-cloak class="absolute bottom-1 right-1 rounded-full bg-sky-500 px-1.5 text-[9px] font-bold text-white shadow">Commune</span>
+                                <span x-show="item.delete_image" x-cloak class="absolute inset-x-0 bottom-0 bg-rose-500 py-0.5 text-center text-[9px] font-bold text-white">Supprimée</span>
+                                <div x-show="['uploading', 'processing'].includes(item.upload_status)" x-cloak class="absolute inset-0 flex items-center justify-center bg-white/70">
+                                    <svg class="h-6 w-6 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                </div>
+                            </button>
+
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start gap-2">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="line-clamp-2 text-sm font-semibold text-[#0B0F14]" x-text="item.name"></p>
+                                        <p class="truncate text-[11px] text-slate-500"><span class="font-mono font-semibold text-[#0066FF]" x-text="item.sku"></span> · <span x-text="item.domain"></span></p>
+                                    </div>
+                                    <button type="button" @click="removeProduct(item)" :disabled="products.length <= 1" title="Retirer cet article du lot"
+                                            class="shrink-0 rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
                                 </div>
-                            </div>
-                        </div>
-                    @endif
 
-                    {{-- Outil B: Photos de plusieurs articles --}}
-                    <div class="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="flex items-center gap-2 text-xs font-bold text-[#0B0F14]">
-                                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                                Photos de plusieurs articles
-                            </span>
-                            <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800" x-show="pendingImagesCount() > 0" x-cloak>
-                                <span x-text="pendingImagesCount()"></span> photo(s) à enregistrer
-                            </span>
-                        </div>
-                        <p class="text-[11px] text-slate-600">
-                            Sélectionnez plusieurs photos d'un coup (galerie du téléphone ou dossier de l'ordinateur). Elles sont associées aux articles dont le SKU ou le nom figure dans le nom du fichier, sinon dans l'ordre du tableau. Vous pouvez ensuite changer chaque photo individuellement.
-                        </p>
+                                {{-- Actions photo --}}
+                                <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium">
+                                    <button type="button" @click="openCamera(item)" class="text-[#0066FF] hover:underline">Photographier</button>
+                                    <label class="cursor-pointer text-slate-600 hover:underline">
+                                        Galerie
+                                        <input type="file" accept="image/*" @change="handleRowImage($event, item)" class="sr-only">
+                                    </label>
+                                    <button type="button" x-show="(item.current_image || item.pending_file) && !item.delete_image" x-cloak @click="markImageDeleted(item)" class="text-slate-400 hover:text-rose-600">Supprimer la photo</button>
+                                    <button type="button" x-show="item.delete_image" x-cloak @click="restoreImage(item)" class="text-[#0066FF] hover:underline">Rétablir</button>
+                                </div>
+                                <p x-show="item.upload_status === 'error'" x-cloak class="mt-1 text-[11px] font-semibold text-rose-600" x-text="item.upload_error"></p>
 
-                        <label
-                            :class="isDragging ? 'border-emerald-500 bg-emerald-100/60' : 'border-emerald-300 bg-white hover:bg-emerald-50'"
-                            class="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-5 text-center transition">
-                            <svg class="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            <span class="text-xs font-bold text-emerald-800">Choisir plusieurs photos</span>
-                            <span class="hidden text-[10px] text-slate-500 sm:block">ou glissez-déposez les images n'importe où sur la page (ou sur la miniature d'un article)</span>
-                            <input type="file" accept="image/*" multiple class="sr-only" @change="assignMultipleFiles($event.target.files); $event.target.value = ''">
-                        </label>
-
-                        <p x-show="multiAssignMessage" x-cloak class="rounded-lg bg-white px-3 py-2 text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-200" x-text="multiAssignMessage"></p>
-
-                        <div class="flex items-center gap-3 border-t border-emerald-100 pt-3">
-                            <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
-                                <template x-if="commonImagePreview">
-                                    <img :src="commonImagePreview" alt="" class="h-full w-full object-cover">
-                                </template>
-                                <template x-if="!commonImagePreview">
-                                    <svg class="h-5 w-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                </template>
-                            </div>
-                            <div class="min-w-0 flex-1 space-y-1.5">
-                                <label class="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#0066FF] hover:bg-blue-50">
-                                    Même photo pour tous…
-                                    <input type="file" accept="image/*" class="sr-only" @change="handleCommonImage($event)">
-                                </label>
-                                <label class="flex cursor-pointer select-none items-center gap-2" x-show="commonImageFile" x-cloak>
-                                    <input type="checkbox" x-model="applyCommonImageToAll" class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
-                                    <span class="text-[11px] font-semibold text-slate-700">Appliquer aux articles sans nouvelle photo</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </x-card>
-
-            {{-- 2. Grille de Modification Groupée --}}
-            <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
-                    <div>
-                        <h2 class="text-base font-bold text-[#0B0F14]">
-                            2. Tableau des Articles (<span x-text="products.length"></span>)
-                        </h2>
-                        <p class="text-xs text-slate-500">
-                            Modifiez individuellement la photo, le prix d'achat et le prix de revente. La marge est recalculée en temps réel.
-                        </p>
-                    </div>
-
-                    <div class="relative w-full sm:w-72">
-                        <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <input type="search" x-model.debounce.250ms="search" @input="visibleLimit = pageSize" placeholder="Rechercher un article (nom, SKU)…"
-                               class="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-[#0B0F14] focus:border-[#0066FF] focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
-                    </div>
-                </div>
-
-                {{-- Tableau (cartes sur mobile) --}}
-                <div class="md:overflow-x-auto">
-                    <table class="block w-full text-left text-xs md:table">
-                        <thead class="hidden border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500 md:table-header-group">
-                            <tr>
-                                <th class="w-10 px-3 py-3 text-center">#</th>
-                                <th class="w-32 px-3 py-3 text-center">Photo / Image</th>
-                                <th class="min-w-[200px] px-3 py-3">Produit & Réf.</th>
-                                <th class="min-w-[130px] px-3 py-3 text-right">Prix d'Achat (FCFA)</th>
-                                <th class="min-w-[140px] px-3 py-3 text-right">Prix de Revente (FCFA) <span class="text-rose-500">*</span></th>
-                                <th class="min-w-[140px] px-3 py-3 text-right">Marge Brute (FCFA)</th>
-                                <th class="min-w-[110px] px-3 py-3 text-right">Taux Marge (%)</th>
-                                @if($warehouses->isNotEmpty())
-                                    <th class="min-w-[130px] px-3 py-3 text-right">
-                                        Stock
-                                        <span class="block text-[9px] font-medium normal-case tracking-normal text-amber-700" x-text="currentWarehouseLabel()"></span>
-                                    </th>
-                                @endif
-                                <th class="w-12 px-3 py-3 text-center">Retirer</th>
-                            </tr>
-                        </thead>
-                        <tbody class="block divide-y divide-slate-100 md:table-row-group">
-                            <template x-for="(item, index) in visibleProducts" :key="item.id">
-                                <tr class="grid grid-cols-2 gap-x-3 gap-y-2 p-4 transition-colors hover:bg-slate-50/70 md:table-row md:p-0"
-                                    :class="item.upload_status === 'error' ? 'bg-rose-50/60' : ''">
-                                    {{-- Index --}}
-                                    <td class="hidden px-3 py-3 text-center font-mono font-bold text-slate-400 md:table-cell" x-text="index + 1"></td>
-
-                                    {{-- Colonne Image --}}
-                                    <td class="col-span-2 md:table-cell md:px-3 md:py-3 md:text-center">
-                                        <div class="flex items-center gap-3 md:flex-col md:gap-1.5">
-                                            {{-- Miniature --}}
-                                            <div @drop.stop.prevent="isDragging = false; $event.dataTransfer.files[0] && $event.dataTransfer.files[0].type.startsWith('image/') && setRowFile(item, $event.dataTransfer.files[0])"
-                                                 :class="isDragging ? 'ring-2 ring-emerald-400 ring-offset-1' : ''"
-                                                 title="Glissez une photo ici pour cet article"
-                                                 class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs md:h-14 md:w-14">
-                                                <template x-if="displayImage(item)">
-                                                    <img :src="displayImage(item)" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
-                                                </template>
-                                                <template x-if="!displayImage(item)">
-                                                    <svg class="h-6 w-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                                </template>
-
-                                                <span x-show="item.pending_file && !['uploading', 'processing'].includes(item.upload_status)" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-500 px-1 text-[8px] font-bold text-white">Nouveau</span>
-                                                <span x-show="usesCommonImage(item)" x-cloak class="absolute right-0 top-0 rounded-bl bg-sky-500 px-1 text-[8px] font-bold text-white">Commune</span>
-                                                <span x-show="item.delete_image" x-cloak class="absolute right-0 top-0 rounded-bl bg-rose-500 px-1 text-[8px] font-bold text-white">Supprimée</span>
-                                                <span x-show="item.upload_status === 'done'" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-600 px-1 text-[8px] font-bold text-white">✓</span>
-                                                <div x-show="['uploading', 'processing'].includes(item.upload_status)" x-cloak class="absolute inset-0 flex items-center justify-center bg-white/70">
-                                                    <svg class="h-5 w-5 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-                                                </div>
-                                            </div>
-
-                                            {{-- Sur mobile : nom de l'article à côté de la photo --}}
-                                            <div class="min-w-0 flex-1 md:hidden">
-                                                <div class="line-clamp-2 text-sm font-bold text-[#0B0F14]" x-text="item.name"></div>
-                                                <div class="mt-0.5 text-[10px] text-slate-400"><span class="font-mono font-semibold text-[#0066FF]" x-text="item.sku"></span> · <span x-text="item.domain"></span></div>
-                                            </div>
-
-                                            {{-- Boutons photo --}}
-                                            <div class="flex shrink-0 flex-col items-stretch gap-1 md:flex-row md:items-center">
-                                                <label class="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-center text-[11px] font-semibold text-slate-700 shadow-2xs transition hover:border-[#0066FF] hover:bg-blue-50 hover:text-[#0066FF] md:rounded md:px-2 md:py-0.5 md:text-[10px]">
-                                                    <span x-text="displayImage(item) ? 'Changer' : 'Ajouter'"></span>
-                                                    <input type="file" accept="image/*" @change="handleRowImage($event, item)" class="sr-only">
-                                                </label>
-                                                <button type="button" x-show="(item.current_image || item.pending_file) && !item.delete_image" x-cloak @click="markImageDeleted(item)"
-                                                        class="rounded-lg px-2 py-1 text-[11px] font-semibold text-slate-400 transition hover:text-rose-600 md:p-0.5" title="Supprimer la photo">
-                                                    <span class="md:hidden">Suppr. photo</span>
-                                                    <svg class="hidden h-3.5 w-3.5 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                </button>
-                                                <button type="button" x-show="item.delete_image" x-cloak @click="restoreImage(item)" class="px-1 text-[11px] text-[#0066FF] hover:underline md:text-[10px]">
-                                                    Rétablir
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <p x-show="item.upload_status === 'error'" x-cloak class="mt-1 text-[10px] font-semibold text-rose-600" x-text="item.upload_error"></p>
-                                    </td>
-
-                                    {{-- Produit & Réf (desktop) --}}
-                                    <td class="hidden px-3 py-3 md:table-cell">
-                                        <div class="line-clamp-1 text-xs font-bold text-[#0B0F14]" x-text="item.name"></div>
-                                        <div class="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
-                                            <span class="font-mono font-semibold text-[#0066FF]" x-text="item.sku"></span>
-                                            <span>•</span>
-                                            <span x-text="item.domain"></span>
-                                        </div>
-                                        <div class="mt-0.5 text-[10px] text-slate-500">
-                                            Stock : <strong class="text-[#0B0F14]" x-text="item.current_stock + ' unités'"></strong>
-                                        </div>
-                                    </td>
-
-                                    {{-- Prix d'Achat --}}
-                                    <td class="md:table-cell md:px-3 md:py-3 md:text-right">
-                                        <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Prix d'achat</span>
-                                        <input type="number" step="0.01" min="0" inputmode="decimal"
-                                            x-model.number="item.purchase_price"
-                                            placeholder="0"
-                                            class="w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none md:py-1.5 md:text-xs">
-                                    </td>
-
-                                    {{-- Prix de Revente --}}
-                                    <td class="md:table-cell md:px-3 md:py-3 md:text-right">
-                                        <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Prix de revente *</span>
-                                        <input type="number" step="0.01" min="0" required inputmode="decimal"
-                                            x-model.number="item.selling_price"
-                                            placeholder="0"
-                                            class="w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm font-bold text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none md:py-1.5 md:text-xs">
-                                    </td>
-
-                                    {{-- Marge Brute --}}
-                                    <td class="font-mono text-xs font-bold md:table-cell md:px-3 md:py-3 md:text-right">
-                                        <span class="mb-0.5 block font-sans text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Marge</span>
-                                        <span :class="calculateMargin(item) > 0 ? 'text-emerald-600' : (calculateMargin(item) === 0 ? 'text-slate-500' : 'text-rose-600')"
-                                              x-text="formatNumber(calculateMargin(item)) + ' F'"></span>
-                                    </td>
-
-                                    {{-- Taux de Marge % --}}
-                                    <td class="font-mono text-xs md:table-cell md:px-3 md:py-3 md:text-right">
-                                        <span class="mb-0.5 block font-sans text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Taux</span>
-                                        <span class="inline-block rounded px-2 py-0.5 font-bold"
-                                              :class="calculateMarginPercent(item) >= 20 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : (calculateMarginPercent(item) > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200')"
-                                              x-text="calculateMarginPercent(item) + ' %'"></span>
-                                    </td>
-
+                                {{-- Prix & stock --}}
+                                <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                    <label class="block">
+                                        <span class="block truncate text-[10px] font-medium uppercase tracking-wide text-slate-400">Achat</span>
+                                        <input type="number" step="0.01" min="0" inputmode="decimal" x-model.number="item.purchase_price" placeholder="0"
+                                               class="mt-0.5 w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm focus:border-[#0066FF] focus:outline-none">
+                                    </label>
+                                    <label class="block">
+                                        <span class="block truncate text-[10px] font-medium uppercase tracking-wide text-slate-400">Vente *</span>
+                                        <input type="number" step="0.01" min="0" required inputmode="decimal" x-model.number="item.selling_price" placeholder="0"
+                                               class="mt-0.5 w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm font-semibold focus:border-[#0066FF] focus:outline-none">
+                                    </label>
+                                    <div>
+                                        <span class="block truncate text-[10px] font-medium uppercase tracking-wide text-slate-400">Marge</span>
+                                        <p class="mt-0.5 flex h-[38px] items-center justify-end rounded-lg bg-[#F8FAFC] px-2.5 font-mono text-sm font-semibold"
+                                           :class="calculateMargin(item) > 0 ? 'text-emerald-600' : (calculateMargin(item) === 0 ? 'text-slate-400' : 'text-rose-600')">
+                                            <span x-text="calculateMarginPercent(item) + ' %'"></span>
+                                        </p>
+                                    </div>
                                     @if($warehouses->isNotEmpty())
-                                        {{-- Stock de l'entrepôt sélectionné --}}
-                                        <td class="col-span-2 md:table-cell md:px-3 md:py-3 md:text-right">
-                                            <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Stock · <span class="normal-case text-amber-700" x-text="currentWarehouseLabel()"></span></span>
+                                        <label class="block">
+                                            <span class="block truncate text-[10px] font-medium uppercase tracking-wide text-slate-400">Stock · <span class="normal-case text-amber-700" x-text="currentWarehouseLabel()"></span></span>
                                             <input type="number" min="0" step="1" inputmode="numeric"
                                                    :value="item.stocks[stockWarehouseId]"
                                                    @input="item.stocks[stockWarehouseId] = $event.target.value === '' ? item.original_stocks[stockWarehouseId] : parseInt($event.target.value, 10)"
-                                                   :class="isStockChanged(item, stockWarehouseId) ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-300' : 'border-[#E2E8F0] bg-white'"
-                                                   class="w-full rounded-lg border px-2.5 py-2 text-right font-mono text-sm font-bold text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none md:py-1.5 md:text-xs">
-                                            <div class="mt-1 text-[10px]" x-show="isStockChanged(item, stockWarehouseId)" x-cloak>
-                                                <span class="text-slate-400 line-through" x-text="item.original_stocks[stockWarehouseId]"></span>
-                                                <span class="font-semibold" :class="item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? 'text-emerald-600' : 'text-rose-600'"
-                                                      x-text="(item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? '+' : '') + (item.stocks[stockWarehouseId] - item.original_stocks[stockWarehouseId])"></span>
-                                            </div>
-                                        </td>
+                                                   :class="isStockChanged(item, stockWarehouseId) ? 'border-amber-400 bg-amber-50' : 'border-[#E2E8F0] bg-white'"
+                                                   class="mt-0.5 w-full rounded-lg border px-2.5 py-2 text-right font-mono text-sm focus:border-[#0066FF] focus:outline-none">
+                                        </label>
                                     @endif
-
-                                    {{-- Action : Retirer du lot --}}
-                                    <td class="col-span-2 flex justify-end md:table-cell md:px-3 md:py-3 md:text-center">
-                                        <button type="button" @click="removeProduct(item)" :disabled="products.length <= 1"
-                                            class="flex items-center gap-1 rounded-md p-1.5 text-[11px] font-semibold text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
-                                            title="Retirer cet article du lot">
-                                            <span class="md:hidden">Retirer du lot</span>
-                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-
-                {{-- Affichage progressif : le navigateur ne construit que les lignes visibles --}}
-                <div class="flex flex-col items-center gap-2 border-t border-slate-100 px-4 py-4 text-xs text-slate-500">
-                    <p x-show="filteredProducts.length === 0" x-cloak class="font-medium">Aucun article ne correspond à « <span x-text="search"></span> ».</p>
-                    <p x-show="filteredProducts.length > 0">
-                        <span x-text="visibleProducts.length"></span> article(s) affiché(s) sur <span x-text="filteredProducts.length"></span>
-                        <span x-show="search" x-cloak>(sur <span x-text="products.length"></span> au total)</span>
-                    </p>
-                    <div x-show="visibleProducts.length < filteredProducts.length" class="flex flex-wrap justify-center gap-2">
-                        <button type="button" @click="visibleLimit += pageSize" class="rounded-xl border border-slate-200 bg-white px-4 py-2 font-semibold text-[#0B0F14] hover:bg-slate-50">
-                            Afficher <span x-text="Math.min(pageSize, filteredProducts.length - visibleProducts.length)"></span> de plus
-                        </button>
-                    </div>
-                </div>
-
-                {{-- Barre Récapitulative Totaux --}}
-                <div class="p-4 bg-slate-50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div class="text-xs text-slate-500">
-                        Total des articles pris en compte : <strong class="text-[#0B0F14]" x-text="products.length"></strong>
-                        <span x-show="stockChangesCount() > 0" x-cloak> · <strong class="text-amber-700" x-text="stockChangesCount()"></strong> ajustement(s) de stock</span>
-                    </div>
-
-                    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold">
-                        <div class="text-slate-600">
-                            Total Prix Achat : <span class="font-bold text-[#0B0F14] font-mono" x-text="formatNumber(totalPurchasePrice()) + ' FCFA'"></span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="text-slate-600">
-                            Total Prix Revente : <span class="font-bold text-[#0066FF] font-mono" x-text="formatNumber(totalSellingPrice()) + ' FCFA'"></span>
-                        </div>
-                        <div class="text-slate-600">
-                            Marge Globale : <span class="font-bold text-emerald-600 font-mono" x-text="formatNumber(totalMargin()) + ' FCFA'"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    </li>
+                </template>
+            </ul>
 
-            {{-- Progression de l'envoi des photos --}}
-            <div x-show="isSaving && uploadTotal > 0" x-cloak class="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                <div class="flex items-center justify-between text-xs font-semibold text-[#0B0F14]">
-                    <span>Envoi des photos…</span>
-                    <span x-text="uploadDone + ' / ' + uploadTotal"></span>
-                </div>
-                <div class="mt-2 h-2 overflow-hidden rounded-full bg-blue-100">
-                    <div class="h-full rounded-full bg-[#0066FF] transition-all" :style="'width:' + (uploadTotal ? Math.round(uploadDone / uploadTotal * 100) : 0) + '%'"></div>
-                </div>
-            </div>
-
-            <div x-show="saveError" x-cloak class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-800" x-text="saveError"></div>
-
-            {{-- Actions Formulaire --}}
-            <div class="sticky bottom-0 z-10 -mx-4 flex items-center justify-end gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-4 sm:pb-0">
-                <x-button variant="secondary" href="{{ route('stock.index', ['tab' => 'disponibilite']) }}">
-                    Annuler
-                </x-button>
-
-                <button type="submit" :disabled="isSaving"
-                    class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-6 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#0052CC] disabled:cursor-wait disabled:opacity-70 sm:flex-none">
-                    <svg x-show="!isSaving" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <svg x-show="isSaving" x-cloak class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-                    <span x-text="isSaving ? 'Enregistrement…' : 'Enregistrer les modifications'"></span>
+            {{-- Affichage progressif : le navigateur ne construit que les articles visibles --}}
+            <div class="flex flex-col items-center gap-2 text-xs text-slate-500">
+                <p x-show="filteredProducts.length === 0" x-cloak class="font-medium">Aucun article ne correspond à « <span x-text="search"></span> ».</p>
+                <p x-show="filteredProducts.length > 0"><span x-text="visibleProducts.length"></span> article(s) affiché(s) sur <span x-text="filteredProducts.length"></span></p>
+                <button type="button" x-show="visibleProducts.length < filteredProducts.length" @click="visibleLimit += pageSize"
+                        class="rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 font-semibold text-[#0B0F14] hover:bg-slate-50">
+                    Afficher <span x-text="Math.min(pageSize, filteredProducts.length - visibleProducts.length)"></span> de plus
                 </button>
             </div>
+
+            {{-- ============ BARRE D'ENREGISTREMENT (toujours visible) ============ --}}
+            <div class="fixed inset-x-0 bottom-16 z-30 border-t border-[#E2E8F0] bg-white/95 px-4 py-3 backdrop-blur md:bottom-0">
+                <div class="mx-auto flex max-w-6xl items-center gap-3">
+                    <div class="min-w-0 flex-1 text-xs text-slate-500">
+                        <template x-if="isSaving && uploadTotal > 0">
+                            <div>
+                                <p class="font-semibold text-[#0B0F14]">Envoi des photos… <span x-text="uploadDone + ' / ' + uploadTotal"></span></p>
+                                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-blue-100">
+                                    <div class="h-full rounded-full bg-[#0066FF] transition-all" :style="'width:' + Math.round(uploadDone / uploadTotal * 100) + '%'"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="!(isSaving && uploadTotal > 0)">
+                            <p>
+                                <span x-show="saveError" x-cloak class="font-semibold text-rose-600" x-text="saveError"></span>
+                                <span x-show="!saveError">
+                                    <strong class="text-[#0B0F14]" x-text="pendingImagesCount() + imagesUpdatedCount"></strong> photo(s) ·
+                                    <strong class="text-[#0B0F14]" x-text="products.filter(item => isRowDirty(item)).length"></strong> article(s) modifié(s)
+                                </span>
+                            </p>
+                        </template>
+                    </div>
+                    <a href="{{ route('stock.index', ['tab' => 'disponibilite']) }}" class="hidden rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 sm:block">Annuler</a>
+                    <button type="submit" :disabled="isSaving"
+                            class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#0066FF] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#0052cc] disabled:cursor-wait disabled:opacity-70">
+                        <svg x-show="isSaving" x-cloak class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                        <span x-text="isSaving ? 'Enregistrement…' : 'Enregistrer'"></span>
+                    </button>
+                </div>
+            </div>
         </form>
+
+        {{-- ============ APPAREIL PHOTO INTÉGRÉ ============ --}}
+        <div x-show="cameraOpen" x-cloak class="fixed inset-0 z-[70] flex flex-col bg-black text-white" role="dialog" aria-modal="true" aria-label="Appareil photo">
+            {{-- Article en cours --}}
+            <div class="flex items-center gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+                <button type="button" @click="closeCamera()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Fermer">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-semibold" x-text="cameraItem() ? cameraItem().name : ''"></p>
+                    <p class="text-[11px] text-white/60">
+                        <span class="font-mono" x-text="cameraItem() ? cameraItem().sku : ''"></span>
+                        <span x-show="cameraContinuous"> · article <span x-text="cameraIndex + 1"></span> / <span x-text="products.length"></span></span>
+                    </p>
+                </div>
+                <span x-show="cameraShots > 0" x-cloak class="shrink-0 rounded-full bg-emerald-500/20 px-2.5 py-1 text-[11px] font-semibold text-emerald-300"><span x-text="cameraShots"></span> photo(s)</span>
+            </div>
+
+            {{-- Visée --}}
+            <div class="relative flex-1 overflow-hidden">
+                <video x-ref="cameraVideo" playsinline muted autoplay class="absolute inset-0 h-full w-full object-cover"></video>
+                <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div class="aspect-square w-[78%] max-w-md rounded-3xl border-2 border-white/70 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"></div>
+                </div>
+                <div x-show="cameraFlash" class="absolute inset-0 bg-white/80"></div>
+                <div x-show="cameraStarting" x-cloak class="absolute inset-0 flex items-center justify-center text-sm text-white/80">Ouverture de l'appareil photo…</div>
+                <div x-show="cameraError" x-cloak class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black p-6 text-center">
+                    <p class="text-sm" x-text="cameraError"></p>
+                    <label class="cursor-pointer rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#0B0F14]">
+                        Choisir une photo à la place
+                        <input type="file" accept="image/*" class="sr-only" @change="cameraItem() && handleRowImage($event, cameraItem()); closeCamera()">
+                    </label>
+                </div>
+            </div>
+
+            {{-- Déclencheur --}}
+            <div class="flex items-center justify-between gap-4 px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
+                <div class="h-14 w-14 overflow-hidden rounded-xl border border-white/30 bg-white/10">
+                    <template x-if="cameraLastPreview">
+                        <img :src="cameraLastPreview" alt="" class="h-full w-full object-cover">
+                    </template>
+                </div>
+                <button type="button" @click="capturePhoto()" :disabled="!cameraReady"
+                        class="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/80 disabled:opacity-40" aria-label="Prendre la photo">
+                    <span class="h-16 w-16 rounded-full bg-white transition active:scale-90"></span>
+                </button>
+                <button type="button" @click="cameraContinuous ? nextCameraItem() : closeCamera()" class="w-14 text-center text-sm font-semibold text-white/80 hover:text-white" x-text="cameraContinuous ? 'Passer' : 'Fermer'"></button>
+            </div>
+        </div>
     </div>
 
     @push('scripts')
@@ -471,6 +344,20 @@
             const processImage = (file) => window.processProductImage(file);
             // Les photos sont réduites une par une (une photo de 12 Mpx décodée occupe ~50 Mo de mémoire).
             let processingQueue = Promise.resolve();
+            // Flux vidéo de l'appareil photo intégré (hors de l'état Alpine : un MediaStream ne doit pas être rendu réactif).
+            let cameraStream = null;
+            // Envois lancés depuis l'appareil photo, attendus avant l'enregistrement final.
+            const inFlightUploads = new Set();
+            const canvasToBlob = (canvas, quality) => new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+            // Recadre au centre en carré, comme le cadre affiché dans la visée.
+            const drawVideoFrame = (video, maxDimension) => {
+                const side = Math.min(video.videoWidth, video.videoHeight);
+                const size = Math.max(1, Math.round(Math.min(side, maxDimension)));
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = size;
+                canvas.getContext('2d').drawImage(video, (video.videoWidth - side) / 2, (video.videoHeight - side) / 2, side, side, 0, 0, size, size);
+                return canvas;
+            };
 
             function normalizeForMatch(value) {
                 return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
@@ -488,6 +375,16 @@
                 customMarkupPercent: null,
                 isDragging: false,
                 multiAssignMessage: '',
+                panel: '',
+                cameraOpen: false,
+                cameraIndex: 0,
+                cameraContinuous: false,
+                cameraStarting: false,
+                cameraReady: false,
+                cameraError: '',
+                cameraFlash: false,
+                cameraShots: 0,
+                cameraLastPreview: null,
                 search: '',
                 pageSize: 50,
                 visibleLimit: 50,
@@ -648,6 +545,142 @@
                     this.multiAssignMessage = message + ' Vérifiez les miniatures avant d\'enregistrer.';
                 },
 
+                cameraItem() {
+                    return this.cameraOpen ? (this.products[this.cameraIndex] || null) : null;
+                },
+
+                /** Photographie un seul article. */
+                openCamera(item) {
+                    this.cameraIndex = Math.max(0, this.products.indexOf(item));
+                    this.cameraContinuous = false;
+                    this.startCamera();
+                },
+
+                /** Photographie les articles à la suite, en commençant par ceux qui n'ont pas de photo. */
+                openCameraSequence() {
+                    const pool = this.filteredProducts;
+                    const firstWithoutPhoto = pool.find(item => !item.pending_file && !item.current_image && item.upload_status !== 'done');
+                    this.cameraIndex = Math.max(0, this.products.indexOf(firstWithoutPhoto || pool[0]));
+                    this.cameraContinuous = true;
+                    this.startCamera();
+                },
+
+                async startCamera() {
+                    this.cameraOpen = true;
+                    this.cameraError = '';
+                    this.cameraShots = 0;
+                    this.cameraLastPreview = null;
+                    if (cameraStream) {
+                        return;
+                    }
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        this.cameraError = "L'appareil photo n'est pas disponible dans ce navigateur (une connexion sécurisée https est nécessaire).";
+                        return;
+                    }
+
+                    this.cameraStarting = true;
+                    this.cameraReady = false;
+                    try {
+                        cameraStream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } },
+                            audio: false,
+                        });
+                        if (!this.cameraOpen) {
+                            this.stopCameraStream();
+                            return;
+                        }
+                        const video = this.$refs.cameraVideo;
+                        video.srcObject = cameraStream;
+                        await video.play();
+                        this.cameraReady = true;
+                    } catch (error) {
+                        this.stopCameraStream();
+                        this.cameraError = error && error.name === 'NotAllowedError'
+                            ? "L'accès à l'appareil photo a été refusé. Autorisez-le dans les réglages du navigateur (icône à gauche de l'adresse), puis réessayez."
+                            : "Impossible d'ouvrir l'appareil photo de cet appareil.";
+                    } finally {
+                        this.cameraStarting = false;
+                    }
+                },
+
+                stopCameraStream() {
+                    if (cameraStream) {
+                        cameraStream.getTracks().forEach(track => track.stop());
+                        cameraStream = null;
+                    }
+                    if (this.$refs.cameraVideo) {
+                        this.$refs.cameraVideo.srcObject = null;
+                    }
+                    this.cameraReady = false;
+                },
+
+                closeCamera() {
+                    if (!this.cameraOpen) {
+                        return;
+                    }
+                    this.stopCameraStream();
+                    this.cameraOpen = false;
+                    if (this.cameraShots > 0) {
+                        this.multiAssignMessage = this.cameraShots + ' photo(s) prise(s) et enregistrée(s) (✓ sur la miniature).';
+                    }
+                },
+
+                /**
+                 * Capture l'image de la visée (≤ 1600 px, sans décoder de photo de 12 Mpx) et l'enregistre
+                 * aussitôt : rien n'est perdu si la page est fermée ensuite.
+                 */
+                async capturePhoto() {
+                    const item = this.cameraItem();
+                    const video = this.$refs.cameraVideo;
+                    if (!item || !this.cameraReady || !video.videoWidth) {
+                        return;
+                    }
+
+                    this.cameraFlash = true;
+                    setTimeout(() => { this.cameraFlash = false; }, 120);
+
+                    const mainCanvas = drawVideoFrame(video, 1600);
+                    const previewCanvas = drawVideoFrame(video, 200);
+                    const [mainBlob, previewBlob] = await Promise.all([canvasToBlob(mainCanvas, 0.85), canvasToBlob(previewCanvas, 0.7)]);
+                    mainCanvas.width = mainCanvas.height = 0;
+                    previewCanvas.width = previewCanvas.height = 0;
+                    if (!mainBlob) {
+                        return;
+                    }
+
+                    item.processing_token = (item.processing_token || 0) + 1;
+                    if (item.preview_image) {
+                        URL.revokeObjectURL(item.preview_image);
+                    }
+                    item.pending_file = new File([mainBlob], (item.sku || 'article') + '.jpg', { type: 'image/jpeg' });
+                    item.pending_file_ready = true;
+                    item.preview_image = URL.createObjectURL(previewBlob || mainBlob);
+                    item.delete_image = false;
+                    item.upload_error = '';
+                    this.cameraLastPreview = item.preview_image;
+                    this.cameraShots++;
+                    const upload = this.sendImageRequest(item);
+                    inFlightUploads.add(upload);
+                    upload.finally(() => inFlightUploads.delete(upload));
+
+                    if (this.cameraContinuous) {
+                        this.nextCameraItem();
+                    } else {
+                        this.closeCamera();
+                    }
+                },
+
+                nextCameraItem() {
+                    const pool = this.filteredProducts;
+                    const position = pool.indexOf(this.products[this.cameraIndex]);
+                    const next = pool[position + 1];
+                    if (!next) {
+                        this.closeCamera();
+                        return;
+                    }
+                    this.cameraIndex = this.products.indexOf(next);
+                },
+
                 markImageDeleted(item) {
                     item.processing_token = (item.processing_token || 0) + 1;
                     if (item.preview_image) {
@@ -769,8 +802,10 @@
                         return;
                     }
 
+                    this.closeCamera();
                     this.isSaving = true;
                     await processingQueue;
+                    await Promise.all([...inFlightUploads]);
                     const imageRows = this.products.filter(item => (item.pending_file && item.upload_status !== 'done') || item.delete_image || this.usesCommonImage(item));
                     this.saveError = '';
                     this.uploadDone = 0;
