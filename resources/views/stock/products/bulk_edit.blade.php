@@ -79,6 +79,8 @@
         <form action="{{ route('stock.products.bulk-update') }}" method="POST" id="bulkEditForm" x-ref="form" @submit.prevent="submitAll()" class="space-y-6">
             @csrf
             <input type="hidden" name="images_updated_count" :value="imagesUpdatedCount">
+            {{-- Champs générés à l'envoi à partir des données (les lignes non affichées sont aussi envoyées) --}}
+            <div x-ref="payload" class="hidden"></div>
 
             {{-- 1. Outils d'Application Globale & Calculateur de Marge --}}
             <x-card title="1. Outils d'Application Rapide & Paramètres Globaux">
@@ -269,10 +271,10 @@
                         </p>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs text-slate-500">
-                            Articles chargés : <strong class="text-[#0B0F14] font-bold" x-text="products.length"></strong>
-                        </span>
+                    <div class="relative w-full sm:w-72">
+                        <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="search" x-model.debounce.250ms="search" @input="visibleLimit = pageSize" placeholder="Rechercher un article (nom, SKU)…"
+                               class="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-[#0B0F14] focus:border-[#0066FF] focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
                     </div>
                 </div>
 
@@ -298,7 +300,7 @@
                             </tr>
                         </thead>
                         <tbody class="block divide-y divide-slate-100 md:table-row-group">
-                            <template x-for="(item, index) in products" :key="item.id">
+                            <template x-for="(item, index) in visibleProducts" :key="item.id">
                                 <tr class="grid grid-cols-2 gap-x-3 gap-y-2 p-4 transition-colors hover:bg-slate-50/70 md:table-row md:p-0"
                                     :class="item.upload_status === 'error' ? 'bg-rose-50/60' : ''">
                                     {{-- Index --}}
@@ -313,7 +315,7 @@
                                                  title="Glissez une photo ici pour cet article"
                                                  class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs md:h-14 md:w-14">
                                                 <template x-if="displayImage(item)">
-                                                    <img :src="displayImage(item)" alt="" class="h-full w-full object-cover">
+                                                    <img :src="displayImage(item)" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                                 </template>
                                                 <template x-if="!displayImage(item)">
                                                     <svg class="h-6 w-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -361,7 +363,6 @@
 
                                     {{-- Produit & Réf (desktop) --}}
                                     <td class="hidden px-3 py-3 md:table-cell">
-                                        <input type="hidden" :name="rowField(item, index, 'id')" :value="item.id">
                                         <div class="line-clamp-1 text-xs font-bold text-[#0B0F14]" x-text="item.name"></div>
                                         <div class="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
                                             <span class="font-mono font-semibold text-[#0066FF]" x-text="item.sku"></span>
@@ -377,7 +378,6 @@
                                     <td class="md:table-cell md:px-3 md:py-3 md:text-right">
                                         <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Prix d'achat</span>
                                         <input type="number" step="0.01" min="0" inputmode="decimal"
-                                            :name="rowField(item, index, 'purchase_price')"
                                             x-model.number="item.purchase_price"
                                             placeholder="0"
                                             class="w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none md:py-1.5 md:text-xs">
@@ -387,7 +387,6 @@
                                     <td class="md:table-cell md:px-3 md:py-3 md:text-right">
                                         <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Prix de revente *</span>
                                         <input type="number" step="0.01" min="0" required inputmode="decimal"
-                                            :name="rowField(item, index, 'selling_price')"
                                             x-model.number="item.selling_price"
                                             placeholder="0"
                                             class="w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm font-bold text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none md:py-1.5 md:text-xs">
@@ -422,16 +421,12 @@
                                                 <span class="font-semibold" :class="item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? 'text-emerald-600' : 'text-rose-600'"
                                                       x-text="(item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? '+' : '') + (item.stocks[stockWarehouseId] - item.original_stocks[stockWarehouseId])"></span>
                                             </div>
-                                            {{-- N'envoie que les quantités modifiées, tous entrepôts confondus --}}
-                                            <template x-for="wh in warehouses" :key="wh.id">
-                                                <input type="hidden" :name="isStockChanged(item, wh.id) ? 'products[' + index + '][stocks][' + wh.id + ']' : null" :disabled="!isStockChanged(item, wh.id)" :value="item.stocks[wh.id]">
-                                            </template>
                                         </td>
                                     @endif
 
                                     {{-- Action : Retirer du lot --}}
                                     <td class="col-span-2 flex justify-end md:table-cell md:px-3 md:py-3 md:text-center">
-                                        <button type="button" @click="removeProduct(index)" :disabled="products.length <= 1"
+                                        <button type="button" @click="removeProduct(item)" :disabled="products.length <= 1"
                                             class="flex items-center gap-1 rounded-md p-1.5 text-[11px] font-semibold text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
                                             title="Retirer cet article du lot">
                                             <span class="md:hidden">Retirer du lot</span>
@@ -442,6 +437,20 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+
+                {{-- Affichage progressif : le navigateur ne construit que les lignes visibles --}}
+                <div class="flex flex-col items-center gap-2 border-t border-slate-100 px-4 py-4 text-xs text-slate-500">
+                    <p x-show="filteredProducts.length === 0" x-cloak class="font-medium">Aucun article ne correspond à « <span x-text="search"></span> ».</p>
+                    <p x-show="filteredProducts.length > 0">
+                        <span x-text="visibleProducts.length"></span> article(s) affiché(s) sur <span x-text="filteredProducts.length"></span>
+                        <span x-show="search" x-cloak>(sur <span x-text="products.length"></span> au total)</span>
+                    </p>
+                    <div x-show="visibleProducts.length < filteredProducts.length" class="flex flex-wrap justify-center gap-2">
+                        <button type="button" @click="visibleLimit += pageSize" class="rounded-xl border border-slate-200 bg-white px-4 py-2 font-semibold text-[#0B0F14] hover:bg-slate-50">
+                            Afficher <span x-text="Math.min(pageSize, filteredProducts.length - visibleProducts.length)"></span> de plus
+                        </button>
+                    </div>
                 </div>
 
                 {{-- Barre Récapitulative Totaux --}}
@@ -520,6 +529,22 @@
                 isDragging: false,
                 multiAssignMessage: '',
                 shootingIndex: null,
+                search: '',
+                pageSize: 50,
+                visibleLimit: 50,
+
+                /** Articles correspondant à la recherche (les outils globaux s'y appliquent). */
+                get filteredProducts() {
+                    const term = normalizeForMatch(this.search);
+                    if (!term) {
+                        return this.products;
+                    }
+                    return this.products.filter(item => normalizeForMatch(item.name).includes(term) || normalizeForMatch(item.sku).includes(term));
+                },
+
+                get visibleProducts() {
+                    return this.filteredProducts.slice(0, this.visibleLimit);
+                },
                 isSaving: false,
                 saveError: '',
                 uploadDone: 0,
@@ -724,8 +749,9 @@
                     return this.products.filter(item => item.pending_file || item.delete_image || this.usesCommonImage(item)).length;
                 },
 
-                removeProduct(index) {
-                    if (this.products.length > 1) {
+                removeProduct(item) {
+                    const index = this.products.indexOf(item);
+                    if (this.products.length > 1 && index >= 0) {
                         this.products.splice(index, 1);
                         if (this.shootingIndex !== null && this.shootingIndex >= this.products.length) {
                             this.shootingIndex = this.products.length - 1;
@@ -739,9 +765,29 @@
                         || this.warehouses.some(wh => this.isStockChanged(item, wh.id));
                 },
 
-                /** Seules les lignes modifiées sont envoyées (évite la limite max_input_vars de PHP). */
-                rowField(item, index, field) {
-                    return this.isRowDirty(item) ? 'products[' + index + '][' + field + ']' : null;
+                /**
+                 * Les lignes modifiées (affichées ou non) sont envoyées dans un seul champ JSON :
+                 * PHP ignore silencieusement les champs au-delà de max_input_vars (1000 par défaut).
+                 */
+                buildPayload() {
+                    const changedRows = this.products.filter(item => this.isRowDirty(item)).map(item => {
+                        const stocks = {};
+                        this.warehouses.filter(wh => this.isStockChanged(item, wh.id)).forEach(wh => {
+                            stocks[wh.id] = item.stocks[wh.id];
+                        });
+                        return {
+                            id: item.id,
+                            purchase_price: item.purchase_price,
+                            selling_price: item.selling_price,
+                            stocks,
+                        };
+                    });
+
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'products_json';
+                    input.value = JSON.stringify(changedRows);
+                    this.$refs.payload.replaceChildren(input);
                 },
 
                 csrfToken() {
@@ -835,6 +881,7 @@
                     }
 
                     await this.$nextTick();
+                    this.buildPayload();
                     this.$refs.form.submit();
                 },
 
@@ -853,7 +900,7 @@
                 },
 
                 applyMarginPercent(percent) {
-                    this.products.forEach(p => {
+                    this.filteredProducts.forEach(p => {
                         const buy = parseFloat(p.purchase_price) || 0;
                         if (buy > 0) {
                             p.selling_price = Math.round(buy * (1 + (percent / 100)));
@@ -897,7 +944,7 @@
                 applyStockToAll() {
                     const qty = parseInt(this.bulkStockValue, 10);
                     if (isNaN(qty) || qty < 0 || !this.stockWarehouseId) return;
-                    this.products.forEach(p => { p.stocks[this.stockWarehouseId] = qty; });
+                    this.filteredProducts.forEach(p => { p.stocks[this.stockWarehouseId] = qty; });
                 },
 
                 resetStocks() {
