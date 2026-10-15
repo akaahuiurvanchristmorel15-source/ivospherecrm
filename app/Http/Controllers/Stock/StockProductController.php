@@ -191,6 +191,13 @@ class StockProductController extends Controller
 
     public function bulkUpdate(Request $request)
     {
+        // La page de modification groupée envoie les lignes modifiées en JSON (un seul champ),
+        // car PHP ignore les champs au-delà de max_input_vars (1000 par défaut).
+        if ($request->filled('products_json')) {
+            $decodedProducts = json_decode((string) $request->input('products_json'), true);
+            $request->merge(['products' => is_array($decodedProducts) ? array_values($decodedProducts) : []]);
+        }
+
         $validated = $request->validate([
             'common_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
             'apply_common_image_to_all' => 'nullable|boolean',

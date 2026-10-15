@@ -2,6 +2,8 @@
 
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\StockService;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\UserSeeder;
@@ -67,4 +69,29 @@ test('bulk update with only photos changed redirects with a success message', fu
     $this->post(route('stock.products.bulk-update'), ['images_updated_count' => 3])
         ->assertRedirect(route('stock.index', ['tab' => 'disponibilite']))
         ->assertSessionHas('success', 'Les photos de 3 article(s) ont été mises à jour avec succès.');
+});
+
+test('bulk update accepts the changed rows as a single json field', function () {
+    $warehouse = Warehouse::create(['name' => 'Dépôt JSON', 'code' => 'WH-JSON']);
+    $products = collect(range(1, 3))->map(fn (int $number) => Product::create([
+        'name' => "Article json {$number}",
+        'sku' => "JSON-{$number}",
+        'is_active' => true,
+        'purchase_price' => 100,
+        'selling_price' => 150,
+    ]));
+
+    $this->post(route('stock.products.bulk-update'), [
+        'products_json' => json_encode($products->map(fn (Product $product) => [
+            'id' => $product->id,
+            'purchase_price' => 100,
+            'selling_price' => 999,
+            'stocks' => [$warehouse->id => 4],
+        ])->all()),
+    ])->assertRedirect(route('stock.index', ['tab' => 'disponibilite']));
+
+    $products->each(function (Product $product) use ($warehouse) {
+        expect((float) $product->refresh()->selling_price)->toBe(999.0)
+            ->and(StockService::getStock($product->id, $warehouse->id))->toBe(4);
+    });
 });

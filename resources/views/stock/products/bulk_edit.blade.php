@@ -79,6 +79,8 @@
         <form action="{{ route('stock.products.bulk-update') }}" method="POST" id="bulkEditForm" x-ref="form" @submit.prevent="submitAll()" class="space-y-6">
             @csrf
             <input type="hidden" name="images_updated_count" :value="imagesUpdatedCount">
+            {{-- Champs générés à l'envoi à partir des données (les lignes non affichées sont aussi envoyées) --}}
+            <div x-ref="payload" class="hidden"></div>
 
             {{-- 1. Outils d'Application Globale & Calculateur de Marge --}}
             <x-card title="1. Outils d'Application Rapide & Paramètres Globaux">
@@ -269,10 +271,10 @@
                         </p>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs text-slate-500">
-                            Articles chargés : <strong class="text-[#0B0F14] font-bold" x-text="products.length"></strong>
-                        </span>
+                    <div class="relative w-full sm:w-72">
+                        <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="search" x-model.debounce.250ms="search" @input="visibleLimit = pageSize" placeholder="Rechercher un article (nom, SKU)…"
+                               class="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-[#0B0F14] focus:border-[#0066FF] focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
                     </div>
                 </div>
 
@@ -298,7 +300,7 @@
                             </tr>
                         </thead>
                         <tbody class="block divide-y divide-slate-100 md:table-row-group">
-                            <template x-for="(item, index) in products" :key="item.id">
+                            <template x-for="(item, index) in visibleProducts" :key="item.id">
                                 <tr class="grid grid-cols-2 gap-x-3 gap-y-2 p-4 transition-colors hover:bg-slate-50/70 md:table-row md:p-0"
                                     :class="item.upload_status === 'error' ? 'bg-rose-50/60' : ''">
                                     {{-- Index --}}
@@ -313,17 +315,17 @@
                                                  title="Glissez une photo ici pour cet article"
                                                  class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs md:h-14 md:w-14">
                                                 <template x-if="displayImage(item)">
-                                                    <img :src="displayImage(item)" alt="" class="h-full w-full object-cover">
+                                                    <img :src="displayImage(item)" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                                 </template>
                                                 <template x-if="!displayImage(item)">
                                                     <svg class="h-6 w-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                                 </template>
 
-                                                <span x-show="item.pending_file && item.upload_status !== 'uploading'" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-500 px-1 text-[8px] font-bold text-white">Nouveau</span>
+                                                <span x-show="item.pending_file && !['uploading', 'processing'].includes(item.upload_status)" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-500 px-1 text-[8px] font-bold text-white">Nouveau</span>
                                                 <span x-show="usesCommonImage(item)" x-cloak class="absolute right-0 top-0 rounded-bl bg-sky-500 px-1 text-[8px] font-bold text-white">Commune</span>
                                                 <span x-show="item.delete_image" x-cloak class="absolute right-0 top-0 rounded-bl bg-rose-500 px-1 text-[8px] font-bold text-white">Supprimée</span>
                                                 <span x-show="item.upload_status === 'done'" x-cloak class="absolute right-0 top-0 rounded-bl bg-emerald-600 px-1 text-[8px] font-bold text-white">✓</span>
-                                                <div x-show="item.upload_status === 'uploading'" x-cloak class="absolute inset-0 flex items-center justify-center bg-white/70">
+                                                <div x-show="['uploading', 'processing'].includes(item.upload_status)" x-cloak class="absolute inset-0 flex items-center justify-center bg-white/70">
                                                     <svg class="h-5 w-5 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
                                                 </div>
                                             </div>
@@ -339,7 +341,7 @@
                                                 <label class="flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-[#0066FF] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-2xs transition active:bg-[#0052cc] md:hidden">
                                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
                                                     Photo
-                                                    <input type="file" accept="image/*" capture="environment" @change="handleRowImage($event, item)" class="sr-only">
+                                                    <input type="file" accept="image/*" capture="environment" @change="handleRowImage($event, item, true)" class="sr-only">
                                                 </label>
                                                 <label class="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-center text-[11px] font-semibold text-slate-700 shadow-2xs transition hover:border-[#0066FF] hover:bg-blue-50 hover:text-[#0066FF] md:rounded md:px-2 md:py-0.5 md:text-[10px]">
                                                     <span class="md:hidden">Galerie</span>
@@ -361,7 +363,6 @@
 
                                     {{-- Produit & Réf (desktop) --}}
                                     <td class="hidden px-3 py-3 md:table-cell">
-                                        <input type="hidden" :name="rowField(item, index, 'id')" :value="item.id">
                                         <div class="line-clamp-1 text-xs font-bold text-[#0B0F14]" x-text="item.name"></div>
                                         <div class="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
                                             <span class="font-mono font-semibold text-[#0066FF]" x-text="item.sku"></span>
@@ -377,7 +378,6 @@
                                     <td class="md:table-cell md:px-3 md:py-3 md:text-right">
                                         <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Prix d'achat</span>
                                         <input type="number" step="0.01" min="0" inputmode="decimal"
-                                            :name="rowField(item, index, 'purchase_price')"
                                             x-model.number="item.purchase_price"
                                             placeholder="0"
                                             class="w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none md:py-1.5 md:text-xs">
@@ -387,7 +387,6 @@
                                     <td class="md:table-cell md:px-3 md:py-3 md:text-right">
                                         <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">Prix de revente *</span>
                                         <input type="number" step="0.01" min="0" required inputmode="decimal"
-                                            :name="rowField(item, index, 'selling_price')"
                                             x-model.number="item.selling_price"
                                             placeholder="0"
                                             class="w-full rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-right font-mono text-sm font-bold text-[#0B0F14] transition focus:border-[#0066FF] focus:outline-none md:py-1.5 md:text-xs">
@@ -422,16 +421,12 @@
                                                 <span class="font-semibold" :class="item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? 'text-emerald-600' : 'text-rose-600'"
                                                       x-text="(item.stocks[stockWarehouseId] > item.original_stocks[stockWarehouseId] ? '+' : '') + (item.stocks[stockWarehouseId] - item.original_stocks[stockWarehouseId])"></span>
                                             </div>
-                                            {{-- N'envoie que les quantités modifiées, tous entrepôts confondus --}}
-                                            <template x-for="wh in warehouses" :key="wh.id">
-                                                <input type="hidden" :name="isStockChanged(item, wh.id) ? 'products[' + index + '][stocks][' + wh.id + ']' : null" :disabled="!isStockChanged(item, wh.id)" :value="item.stocks[wh.id]">
-                                            </template>
                                         </td>
                                     @endif
 
                                     {{-- Action : Retirer du lot --}}
                                     <td class="col-span-2 flex justify-end md:table-cell md:px-3 md:py-3 md:text-center">
-                                        <button type="button" @click="removeProduct(index)" :disabled="products.length <= 1"
+                                        <button type="button" @click="removeProduct(item)" :disabled="products.length <= 1"
                                             class="flex items-center gap-1 rounded-md p-1.5 text-[11px] font-semibold text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
                                             title="Retirer cet article du lot">
                                             <span class="md:hidden">Retirer du lot</span>
@@ -442,6 +437,20 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+
+                {{-- Affichage progressif : le navigateur ne construit que les lignes visibles --}}
+                <div class="flex flex-col items-center gap-2 border-t border-slate-100 px-4 py-4 text-xs text-slate-500">
+                    <p x-show="filteredProducts.length === 0" x-cloak class="font-medium">Aucun article ne correspond à « <span x-text="search"></span> ».</p>
+                    <p x-show="filteredProducts.length > 0">
+                        <span x-text="visibleProducts.length"></span> article(s) affiché(s) sur <span x-text="filteredProducts.length"></span>
+                        <span x-show="search" x-cloak>(sur <span x-text="products.length"></span> au total)</span>
+                    </p>
+                    <div x-show="visibleProducts.length < filteredProducts.length" class="flex flex-wrap justify-center gap-2">
+                        <button type="button" @click="visibleLimit += pageSize" class="rounded-xl border border-slate-200 bg-white px-4 py-2 font-semibold text-[#0B0F14] hover:bg-slate-50">
+                            Afficher <span x-text="Math.min(pageSize, filteredProducts.length - visibleProducts.length)"></span> de plus
+                        </button>
+                    </div>
                 </div>
 
                 {{-- Barre Récapitulative Totaux --}}
@@ -500,6 +509,8 @@
         function bulkEditManager(config) {
             const UPLOAD_CONCURRENCY = 2;
             const compressImage = (file) => window.compressProductImage(file);
+            // Les photos sont réduites une par une (une photo de 12 Mpx décodée occupe ~50 Mo de mémoire).
+            let processingQueue = Promise.resolve();
 
             function normalizeForMatch(value) {
                 return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
@@ -518,6 +529,22 @@
                 isDragging: false,
                 multiAssignMessage: '',
                 shootingIndex: null,
+                search: '',
+                pageSize: 50,
+                visibleLimit: 50,
+
+                /** Articles correspondant à la recherche (les outils globaux s'y appliquent). */
+                get filteredProducts() {
+                    const term = normalizeForMatch(this.search);
+                    if (!term) {
+                        return this.products;
+                    }
+                    return this.products.filter(item => normalizeForMatch(item.name).includes(term) || normalizeForMatch(item.sku).includes(term));
+                },
+
+                get visibleProducts() {
+                    return this.filteredProducts.slice(0, this.visibleLimit);
+                },
                 isSaving: false,
                 saveError: '',
                 uploadDone: 0,
@@ -541,15 +568,38 @@
                     return this.applyCommonImageToAll && !!this.commonImageFile && !item.pending_file && !item.delete_image && item.upload_status !== 'done';
                 },
 
-                setRowFile(item, file) {
-                    if (item.preview_image) {
-                        URL.revokeObjectURL(item.preview_image);
-                    }
+                /**
+                 * Réduit la photo dès sa sélection (évite de saturer la mémoire du téléphone avec des
+                 * miniatures en pleine résolution, ce qui faisait planter l'onglet), puis l'envoie
+                 * immédiatement si demandé (photos prises avec l'appareil photo).
+                 */
+                setRowFile(item, file, autoUpload = false) {
+                    const token = (item.processing_token || 0) + 1;
+                    item.processing_token = token;
                     item.pending_file = file;
-                    item.preview_image = URL.createObjectURL(file);
                     item.delete_image = false;
-                    item.upload_status = '';
+                    item.upload_status = 'processing';
                     item.upload_error = '';
+
+                    processingQueue = processingQueue.then(async () => {
+                        const compressed = await compressImage(file);
+                        if (item.processing_token !== token) {
+                            return;
+                        }
+                        if (item.preview_image) {
+                            URL.revokeObjectURL(item.preview_image);
+                        }
+                        item.pending_file = compressed;
+                        item.preview_image = URL.createObjectURL(compressed);
+                        item.upload_status = '';
+                        if (autoUpload) {
+                            await this.sendImageRequest(item);
+                        }
+                    }).catch(() => {
+                        item.upload_status = '';
+                    });
+
+                    return processingQueue;
                 },
 
                 handleCommonImage(event) {
@@ -567,10 +617,10 @@
                     event.target.value = '';
                 },
 
-                handleRowImage(event, item) {
+                handleRowImage(event, item, autoUpload = false) {
                     const file = event.target.files[0];
                     if (file) {
-                        this.setRowFile(item, file);
+                        this.setRowFile(item, file, autoUpload);
                     }
                     event.target.value = '';
                 },
@@ -656,7 +706,7 @@
                     event.target.value = '';
                     const item = this.shootingItem();
                     if (file && item) {
-                        this.setRowFile(item, file);
+                        this.setRowFile(item, file, true);
                         this.nextShootingItem();
                     }
                 },
@@ -673,14 +723,15 @@
                 },
 
                 stopShooting() {
-                    const taken = this.products.filter(item => item.pending_file).length;
+                    const taken = this.products.filter(item => item.pending_file || item.upload_status === 'done').length;
                     this.shootingIndex = null;
                     if (taken > 0) {
-                        this.multiAssignMessage = taken + ' photo(s) prête(s) à enregistrer. Vérifiez les miniatures puis appuyez sur « Enregistrer ».';
+                        this.multiAssignMessage = taken + ' photo(s) prise(s) : elles sont enregistrées automatiquement (✓ sur la miniature).';
                     }
                 },
 
                 markImageDeleted(item) {
+                    item.processing_token = (item.processing_token || 0) + 1;
                     if (item.preview_image) {
                         URL.revokeObjectURL(item.preview_image);
                     }
@@ -698,8 +749,9 @@
                     return this.products.filter(item => item.pending_file || item.delete_image || this.usesCommonImage(item)).length;
                 },
 
-                removeProduct(index) {
-                    if (this.products.length > 1) {
+                removeProduct(item) {
+                    const index = this.products.indexOf(item);
+                    if (this.products.length > 1 && index >= 0) {
                         this.products.splice(index, 1);
                         if (this.shootingIndex !== null && this.shootingIndex >= this.products.length) {
                             this.shootingIndex = this.products.length - 1;
@@ -713,9 +765,29 @@
                         || this.warehouses.some(wh => this.isStockChanged(item, wh.id));
                 },
 
-                /** Seules les lignes modifiées sont envoyées (évite la limite max_input_vars de PHP). */
-                rowField(item, index, field) {
-                    return this.isRowDirty(item) ? 'products[' + index + '][' + field + ']' : null;
+                /**
+                 * Les lignes modifiées (affichées ou non) sont envoyées dans un seul champ JSON :
+                 * PHP ignore silencieusement les champs au-delà de max_input_vars (1000 par défaut).
+                 */
+                buildPayload() {
+                    const changedRows = this.products.filter(item => this.isRowDirty(item)).map(item => {
+                        const stocks = {};
+                        this.warehouses.filter(wh => this.isStockChanged(item, wh.id)).forEach(wh => {
+                            stocks[wh.id] = item.stocks[wh.id];
+                        });
+                        return {
+                            id: item.id,
+                            purchase_price: item.purchase_price,
+                            selling_price: item.selling_price,
+                            stocks,
+                        };
+                    });
+
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'products_json';
+                    input.value = JSON.stringify(changedRows);
+                    this.$refs.payload.replaceChildren(input);
                 },
 
                 csrfToken() {
@@ -782,8 +854,9 @@
                         return;
                     }
 
-                    const imageRows = this.products.filter(item => item.pending_file || item.delete_image || this.usesCommonImage(item));
                     this.isSaving = true;
+                    await processingQueue;
+                    const imageRows = this.products.filter(item => (item.pending_file && item.upload_status !== 'done') || item.delete_image || this.usesCommonImage(item));
                     this.saveError = '';
                     this.uploadDone = 0;
                     this.uploadTotal = imageRows.length;
@@ -808,6 +881,7 @@
                     }
 
                     await this.$nextTick();
+                    this.buildPayload();
                     this.$refs.form.submit();
                 },
 
@@ -826,7 +900,7 @@
                 },
 
                 applyMarginPercent(percent) {
-                    this.products.forEach(p => {
+                    this.filteredProducts.forEach(p => {
                         const buy = parseFloat(p.purchase_price) || 0;
                         if (buy > 0) {
                             p.selling_price = Math.round(buy * (1 + (percent / 100)));
@@ -870,7 +944,7 @@
                 applyStockToAll() {
                     const qty = parseInt(this.bulkStockValue, 10);
                     if (isNaN(qty) || qty < 0 || !this.stockWarehouseId) return;
-                    this.products.forEach(p => { p.stocks[this.stockWarehouseId] = qty; });
+                    this.filteredProducts.forEach(p => { p.stocks[this.stockWarehouseId] = qty; });
                 },
 
                 resetStocks() {
