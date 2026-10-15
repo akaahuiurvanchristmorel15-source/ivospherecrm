@@ -194,7 +194,8 @@ class StockProductController extends Controller
         $validated = $request->validate([
             'common_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120',
             'apply_common_image_to_all' => 'nullable|boolean',
-            'products' => 'required|array|min:1',
+            'images_updated_count' => 'nullable|integer|min:0',
+            'products' => 'nullable|array',
             'products.*.id' => 'required|exists:products,id',
             'products.*.purchase_price' => 'nullable|numeric|min:0',
             'products.*.selling_price' => 'required|numeric|min:0',
@@ -205,6 +206,15 @@ class StockProductController extends Controller
         ]);
 
         $activeWarehouseIds = Warehouse::active()->pluck('id')->all();
+
+        $imagesUpdatedCount = (int) ($validated['images_updated_count'] ?? 0);
+
+        if (empty($validated['products'])) {
+            return redirect()->route('stock.index', ['tab' => 'disponibilite'])
+                ->with('success', $imagesUpdatedCount > 0
+                    ? "Les photos de {$imagesUpdatedCount} article(s) ont été mises à jour avec succès."
+                    : 'Aucune modification à enregistrer.');
+        }
 
         $commonImagePath = null;
         if ($request->hasFile('common_image') && $request->boolean('apply_common_image_to_all')) {
@@ -229,18 +239,18 @@ class StockProductController extends Controller
                 if ($request->hasFile("products.{$index}.image")) {
                     $file = $request->file("products.{$index}.image");
                     if ($file && $file->isValid()) {
-                        if ($product->image && Storage::disk('public')->exists($product->image)) {
-                            Storage::disk('public')->delete($product->image);
-                        }
+                        $this->deleteProductImageIfUnused($product);
                         $updateData['image'] = $file->store('products', 'public');
                     }
                 } elseif (! empty($itemData['delete_image'])) {
-                    if ($product->image && Storage::disk('public')->exists($product->image)) {
-                        Storage::disk('public')->delete($product->image);
-                    }
+                    $this->deleteProductImageIfUnused($product);
                     $updateData['image'] = null;
                 } elseif ($commonImagePath) {
-                    $updateData['image'] = $commonImagePath;
+                    // Copie dédiée par article : remplacer la photo d'un article ne doit pas effacer celle des autres.
+                    $copyPath = 'products/'.Str::random(40).'.'.pathinfo($commonImagePath, PATHINFO_EXTENSION);
+                    Storage::disk('public')->copy($commonImagePath, $copyPath);
+                    $this->deleteProductImageIfUnused($product);
+                    $updateData['image'] = $copyPath;
                 }
 
                 $product->update($updateData);
@@ -250,9 +260,14 @@ class StockProductController extends Controller
             }
         });
 
+        if ($commonImagePath) {
+            Storage::disk('public')->delete($commonImagePath);
+        }
+
         ActivityLogger::log('bulk_updated_stock_products', "Mise à jour groupée des prix, images et stocks de {$updatedCount} article(s) ({$stockAdjustmentsCount} ajustement(s) de stock)", null);
 
         $stockMessage = $stockAdjustmentsCount > 0 ? " {$stockAdjustmentsCount} ajustement(s) de stock enregistré(s)." : '';
+        $stockMessage .= $imagesUpdatedCount > 0 ? " {$imagesUpdatedCount} photo(s) mise(s) à jour." : '';
 
         return redirect()->route('stock.index', ['tab' => 'disponibilite'])
             ->with('success', "Les informations (prix d'achat, prix de revente et images) de {$updatedCount} article(s) ont été mises à jour avec succès.{$stockMessage}");
@@ -438,17 +453,13 @@ class StockProductController extends Controller
         }
 
         if ($request->boolean('delete_image')) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
+            $this->deleteProductImageIfUnused($product);
             $validated['image'] = null;
         }
 
         $imageFile = $request->file('image') ?? $request->file('image_camera');
         if ($imageFile) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
+            $this->deleteProductImageIfUnused($product);
             $validated['image'] = $imageFile->store('products', 'public');
         }
 
@@ -518,9 +529,7 @@ class StockProductController extends Controller
         $name = $product->name;
 
         DB::transaction(function () use ($product) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
+            $this->deleteProductImageIfUnused($product);
             $product->warehouseStocks()->delete();
             $product->movements()->delete();
             $product->batches()->delete();
@@ -553,9 +562,7 @@ class StockProductController extends Controller
 
         DB::transaction(function () use ($products) {
             foreach ($products as $product) {
-                if ($product->image) {
-                    Storage::disk('public')->delete($product->image);
-                }
+                $this->deleteProductImageIfUnused($product);
                 $product->warehouseStocks()->delete();
                 $product->movements()->delete();
                 $product->batches()->delete();
@@ -645,9 +652,7 @@ class StockProductController extends Controller
         ]);
 
         if ($request->boolean('delete_image')) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
+            $this->deleteProductImageIfUnused($product);
             $product->update(['image' => null]);
 
             ActivityLogger::log('updated_stock_product_image', "Suppression de la photo de l'article {$product->name}", $product);
@@ -675,9 +680,7 @@ class StockProductController extends Controller
             return back()->with('error', 'Aucun fichier image sélectionné.');
         }
 
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
-        }
+        $this->deleteProductImageIfUnused($product);
 
         $path = $imageFile->store('products', 'public');
         $product->update(['image' => $path]);
@@ -693,6 +696,24 @@ class StockProductController extends Controller
         }
 
         return back()->with('success', "Photo de l'article \"{$product->name}\" mise à jour avec succès.");
+    }
+
+    /**
+     * Supprime le fichier image de l'article s'il n'est utilisé par aucun autre article.
+     */
+    private function deleteProductImageIfUnused(Product $product): void
+    {
+        if (! $product->image) {
+            return;
+        }
+
+        $isSharedWithOtherProducts = Product::where('image', $product->image)
+            ->whereKeyNot($product->id)
+            ->exists();
+
+        if (! $isSharedWithOtherProducts) {
+            Storage::disk('public')->delete($product->image);
+        }
     }
 
     /**

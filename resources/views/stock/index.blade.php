@@ -536,6 +536,15 @@
                     @endif
                 </div>
 
+                {{-- Sélection (mobile) --}}
+                <div class="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-2 md:hidden">
+                    <label class="flex items-center gap-2 text-xs font-medium text-[#0B0F14]">
+                        <input type="checkbox" @change="toggleSelectAll()" :checked="isAllSelected" class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
+                        Tout sélectionner
+                    </label>
+                    <span class="text-[11px] text-[#64748B]">puis « Prix &amp; photos »</span>
+                </div>
+
                 {{-- Barre de sélection --}}
                 <div x-show="selectedProductIds.length > 0" x-cloak
                      class="flex flex-col gap-2 bg-[#0B0F14] px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
@@ -547,7 +556,7 @@
                             <template x-for="id in selectedProductIds" :key="id">
                                 <input type="hidden" name="product_ids[]" :value="id">
                             </template>
-                            <button type="submit" class="rounded-lg bg-[#0066FF] px-3 py-1.5 text-xs font-semibold hover:bg-[#0052cc]">Modifier</button>
+                            <button type="submit" class="rounded-lg bg-[#0066FF] px-3 py-1.5 text-xs font-semibold hover:bg-[#0052cc]">Prix &amp; photos</button>
                         </form>
                         <button type="button" @click="$dispatch('open-bulk-delete-products', { product_ids: selectedProductIds })" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold hover:bg-rose-700">Supprimer</button>
                     </div>

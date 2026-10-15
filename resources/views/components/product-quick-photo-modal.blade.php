@@ -63,7 +63,7 @@
             </div>
 
             {{-- Formulaire d'upload / Capture photo --}}
-            <form :action="actionUrl" method="POST" enctype="multipart/form-data" @submit="isSubmitting = true">
+            <form :action="actionUrl" method="POST" enctype="multipart/form-data" @submit="if (isCompressing) { $event.preventDefault(); return; } isSubmitting = true">
                 @csrf
                 <input type="hidden" name="delete_image" :value="deleteImage ? '1' : '0'">
 
@@ -191,7 +191,7 @@
 
                         <button 
                             type="submit" 
-                            :disabled="isSubmitting || (!hasNewImage && !deleteImage)" 
+                            :disabled="isSubmitting || isCompressing || (!hasNewImage && !deleteImage)" 
                             :class="{'opacity-50 cursor-not-allowed': (!hasNewImage && !deleteImage) || isSubmitting}"
                             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition active:scale-95"
                         >
@@ -205,6 +205,7 @@
     </div>
 </div>
 
+<x-image-compressor-script />
 <script>
     function productQuickPhotoModal() {
         return {
@@ -218,6 +219,7 @@
             hasNewImage: false,
             deleteImage: false,
             actionUrl: '',
+            isCompressing: false,
 
             open(detail) {
                 this.productId = detail.id || null;
@@ -242,8 +244,9 @@
                 this.deleteImage = false;
             },
 
-            onImageSelected(event, source) {
-                const file = event.target.files[0];
+            async onImageSelected(event, source) {
+                const input = event.target;
+                const file = input.files[0];
                 if (!file) return;
 
                 this.deleteImage = false;
@@ -260,6 +263,23 @@
                     this.$refs.fileInput.value = '';
                 } else if (source === 'file' && this.$refs.cameraInput) {
                     this.$refs.cameraInput.value = '';
+                }
+
+                // Photo de téléphone (plusieurs Mo) réduite avant envoi pour rester sous la limite du serveur
+                if (window.compressProductImage && typeof DataTransfer !== 'undefined') {
+                    this.isCompressing = true;
+                    try {
+                        const compressed = await window.compressProductImage(file);
+                        if (compressed !== file && input.files[0] === file) {
+                            const transfer = new DataTransfer();
+                            transfer.items.add(compressed);
+                            input.files = transfer.files;
+                        }
+                    } catch (error) {
+                        // Le fichier d'origine est conservé
+                    } finally {
+                        this.isCompressing = false;
+                    }
                 }
             },
 
