@@ -264,9 +264,10 @@
                 this.isCompressing = true;
                 let previewFile = file;
                 try {
-                    if (window.compressProductImage) {
-                        const compressed = await window.compressProductImage(file);
-                        previewFile = compressed;
+                    if (window.processProductImage) {
+                        const processed = await window.processProductImage(file, 1600, 800);
+                        const compressed = processed.file;
+                        previewFile = processed.preview;
                         if (compressed !== file && input.files[0] === file && typeof DataTransfer !== 'undefined') {
                             const transfer = new DataTransfer();
                             transfer.items.add(compressed);

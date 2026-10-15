@@ -13,6 +13,7 @@ use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Services\ActivityLogger;
+use App\Services\ProductThumbnailService;
 use App\Services\QrCodeService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
@@ -699,6 +700,7 @@ class StockProductController extends Controller
                 'success' => true,
                 'message' => "Photo de l'article \"{$product->name}\" mise à jour avec succès.",
                 'image_url' => asset('storage/'.$path),
+                'thumbnail_url' => $product->thumbnail_url,
             ]);
         }
 
@@ -720,6 +722,7 @@ class StockProductController extends Controller
 
         if (! $isSharedWithOtherProducts) {
             Storage::disk('public')->delete($product->image);
+            ProductThumbnailService::delete($product->image);
         }
     }
 

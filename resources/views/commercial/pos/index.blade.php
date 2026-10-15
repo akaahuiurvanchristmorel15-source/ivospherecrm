@@ -440,7 +440,7 @@
                             product_id: product.id,
                             name: product.name,
                             sku: product.sku,
-                            image: product.image,
+                            image: product.thumbnail_url,
                             warehouse_labels: this.warehouseLabelsOf(product),
                             available_stock: available,
                             unit_price: parseFloat(product.selling_price),
@@ -626,7 +626,7 @@
 
                             <div class="relative aspect-[4/3] overflow-hidden bg-slate-50">
                                 <template x-if="product.image">
-                                    <img :src="'/storage/' + product.image" :alt="product.name" loading="lazy" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105">
+                                    <img :src="product.thumbnail_url" :alt="product.name" loading="lazy" decoding="async" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105">
                                 </template>
                                 <template x-if="!product.image">
                                     <div class="flex h-full w-full items-center justify-center bg-slate-100 text-slate-300">
@@ -746,7 +746,7 @@
                                 <template x-for="(item, index) in cart" :key="item.product_id">
                                     <li class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                                         <template x-if="item.image">
-                                            <img :src="'/storage/' + item.image" alt="" class="h-12 w-12 shrink-0 rounded-lg border border-slate-200 bg-white object-cover">
+                                            <img :src="item.image" alt="" class="h-12 w-12 shrink-0 rounded-lg border border-slate-200 bg-white object-cover">
                                         </template>
                                         <template x-if="!item.image">
                                             <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-300">

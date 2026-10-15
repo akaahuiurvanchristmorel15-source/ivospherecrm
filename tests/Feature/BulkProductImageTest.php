@@ -3,6 +3,7 @@
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\ProductThumbnailService;
 use App\Services\StockService;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -94,4 +95,38 @@ test('bulk update accepts the changed rows as a single json field', function () 
         expect((float) $product->refresh()->selling_price)->toBe(999.0)
             ->and(StockService::getStock($product->id, $warehouse->id))->toBe(4);
     });
+});
+
+test('uploading a photo creates a small thumbnail used by the lists', function () {
+    $product = Product::create(['name' => 'Classeur', 'sku' => 'CLA-1', 'is_active' => true]);
+
+    $this->postJson(route('stock.products.quick-image', $product), [
+        'image' => UploadedFile::fake()->image('classeur.jpg', 2400, 1800),
+    ])->assertOk();
+
+    $thumbnailPath = ProductThumbnailService::thumbnailPathFor($product->refresh()->image);
+
+    Storage::disk('public')->assertExists($thumbnailPath);
+    [$width, $height] = getimagesize(Storage::disk('public')->path($thumbnailPath));
+
+    expect([$width, $height])->toBe([320, 240])
+        ->and($product->thumbnail_url)->toBe(asset('storage/'.$thumbnailPath));
+});
+
+test('thumbnail url falls back to the original photo until the thumbnail exists', function () {
+    Storage::disk('public')->put('products/ancienne.jpg', 'image');
+    $product = Product::create(['name' => 'Agenda', 'sku' => 'AGE-1', 'is_active' => true]);
+    $product->forceFill(['image' => 'products/ancienne.jpg'])->saveQuietly();
+
+    expect($product->thumbnail_url)->toBe(asset('storage/products/ancienne.jpg'));
+});
+
+test('thumbnail command creates the missing thumbnails of existing photos', function () {
+    UploadedFile::fake()->image('ancienne.jpg', 1600, 1200)->storeAs('products', 'ancienne.jpg', 'public');
+    $product = Product::create(['name' => 'Agenda', 'sku' => 'AGE-1', 'is_active' => true]);
+    $product->forceFill(['image' => 'products/ancienne.jpg'])->saveQuietly();
+
+    $this->artisan('products:generate-thumbnails')->assertSuccessful();
+
+    Storage::disk('public')->assertExists(ProductThumbnailService::thumbnailPathFor('products/ancienne.jpg'));
 });

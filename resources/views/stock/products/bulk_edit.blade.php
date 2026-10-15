@@ -8,7 +8,7 @@
                 'name' => $p->name,
                 'sku' => $p->sku,
                 'domain' => $p->domain?->name ?? 'Général',
-                'current_image' => $p->image ? asset('storage/' . $p->image) : '',
+                'current_image' => $p->thumbnail_url ?? '',
                 'preview_image' => null,
                 'pending_file' => null,
                 'delete_image' => false,
@@ -468,6 +468,7 @@
         function bulkEditManager(config) {
             const UPLOAD_CONCURRENCY = 2;
             const compressImage = (file) => window.compressProductImage(file);
+            const processImage = (file) => window.processProductImage(file);
             // Les photos sont réduites une par une (une photo de 12 Mpx décodée occupe ~50 Mo de mémoire).
             let processingQueue = Promise.resolve();
 
@@ -534,20 +535,22 @@
                     const token = (item.processing_token || 0) + 1;
                     item.processing_token = token;
                     item.pending_file = file;
+                    item.pending_file_ready = false;
                     item.delete_image = false;
                     item.upload_status = 'processing';
                     item.upload_error = '';
 
                     processingQueue = processingQueue.then(async () => {
-                        const compressed = await compressImage(file);
+                        const processed = await processImage(file);
                         if (item.processing_token !== token) {
                             return;
                         }
                         if (item.preview_image) {
                             URL.revokeObjectURL(item.preview_image);
                         }
-                        item.pending_file = compressed;
-                        item.preview_image = URL.createObjectURL(compressed);
+                        item.pending_file = processed.file;
+                        item.pending_file_ready = true;
+                        item.preview_image = URL.createObjectURL(processed.preview);
                         item.upload_status = '';
                     }).catch(() => {
                         item.upload_status = '';
@@ -556,7 +559,7 @@
                     return processingQueue;
                 },
 
-                handleCommonImage(event) {
+                async handleCommonImage(event) {
                     const file = event.target.files[0];
                     if (!file) {
                         return;
@@ -564,11 +567,12 @@
                     if (this.commonImagePreview) {
                         URL.revokeObjectURL(this.commonImagePreview);
                     }
-                    this.commonImageFile = file;
-                    this.compressedCommonImage = null;
-                    this.commonImagePreview = URL.createObjectURL(file);
-                    this.applyCommonImageToAll = true;
                     event.target.value = '';
+                    const processed = await processImage(file);
+                    this.commonImageFile = processed.file;
+                    this.compressedCommonImage = processed.file;
+                    this.commonImagePreview = URL.createObjectURL(processed.preview);
+                    this.applyCommonImageToAll = true;
                 },
 
                 handleRowImage(event, item) {
@@ -711,7 +715,7 @@
                         formData.append('delete_image', '1');
                     } else {
                         if (item.pending_file) {
-                            formData.append('image', await compressImage(item.pending_file));
+                            formData.append('image', item.pending_file_ready ? item.pending_file : await compressImage(item.pending_file));
                         } else {
                             if (!this.compressedCommonImage) {
                                 this.compressedCommonImage = await compressImage(this.commonImageFile);
@@ -746,7 +750,7 @@
                         if (item.preview_image) {
                             URL.revokeObjectURL(item.preview_image);
                         }
-                        item.current_image = data.image_url || '';
+                        item.current_image = data.thumbnail_url || data.image_url || '';
                         item.preview_image = null;
                         item.pending_file = null;
                         item.delete_image = false;

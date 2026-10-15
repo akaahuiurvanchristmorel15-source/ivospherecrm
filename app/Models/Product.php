@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\ProductThumbnailService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -24,6 +26,7 @@ class Product extends Model
         'available_stock',
         'ean',
         'formatted_ean',
+        'thumbnail_url',
     ];
 
     protected static function booted(): void
@@ -31,6 +34,12 @@ class Product extends Model
         static::creating(function (Product $product) {
             if (empty($product->barcode)) {
                 $product->barcode = static::generateEan13();
+            }
+        });
+
+        static::saved(function (Product $product) {
+            if ($product->image && ($product->wasRecentlyCreated || $product->wasChanged('image'))) {
+                ProductThumbnailService::generate($product->image);
             }
         });
 
@@ -51,6 +60,20 @@ class Product extends Model
                 $product->unit = 'pièce';
             }
         });
+    }
+
+    /**
+     * URL de la miniature (320 px) pour les listes ; la photo d'origine si la miniature n'existe pas encore.
+     */
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        if (! $this->image) {
+            return null;
+        }
+
+        $thumbnailPath = ProductThumbnailService::thumbnailPathFor($this->image);
+
+        return asset('storage/'.(Storage::disk('public')->exists($thumbnailPath) ? $thumbnailPath : $this->image));
     }
 
     /**
