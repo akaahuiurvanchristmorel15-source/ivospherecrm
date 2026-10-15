@@ -21,5 +21,14 @@ class StockSeeder extends Seeder
         foreach ($warehousesData as $data) {
             Warehouse::firstOrCreate(['code' => $data['code']], $data);
         }
+
+        // Le DatabaseSeeder désactive les événements de modèle : attribuer ici les étiquettes (n° + couleur).
+        Warehouse::whereNull('label_number')->orderBy('id')->get()->each(function (Warehouse $warehouse) {
+            $labelNumber = Warehouse::nextLabelNumber();
+            $warehouse->update([
+                'label_number' => $labelNumber,
+                'label_color' => $warehouse->label_color ?: Warehouse::defaultLabelColor($labelNumber),
+            ]);
+        });
     }
 }

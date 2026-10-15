@@ -1,7 +1,6 @@
 <x-layouts.app title="Gestion des Stocks & Entrepôts (WMS)">
     <div x-data="{
         activeTab: '{{ request('tab', 'synthese') }}',
-        showMoreKpis: false,
         showActions: false,
         search: '',
         filterStatus: 'all',
@@ -41,7 +40,7 @@
         {{-- ============ EN-TÊTE ============ --}}
         <header class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-                <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">
+                <p class="hidden text-[11px] font-medium uppercase tracking-wider text-[#64748B] sm:block">
                     Ivosphere WMS · {{ $activeWarehousesCount }} entrepôt(s) actif(s)
                 </p>
                 <h1 class="mt-0.5 text-xl font-semibold tracking-tight text-[#0B0F14] sm:text-2xl">Gestion des Stocks</h1>
@@ -94,396 +93,182 @@
             @endforeach
         </nav>
 
-        {{-- ============ KPI ============ --}}
-        <section class="space-y-3">
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                    <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Stock physique</p>
-                    <p class="mt-2 text-2xl font-semibold tabular-nums text-[#0B0F14]">
-                        {{ number_format($totalStockItems, 0, ',', ' ') }}
-                        <span class="text-xs font-normal text-slate-400">unités</span>
-                    </p>
-                    <p class="mt-1 text-[11px] text-[#64748B]">{{ $totalProductsCount }} références</p>
-                </div>
-
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                    <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Valeur (achat)</p>
-                    <p class="mt-2 text-2xl font-semibold tabular-nums text-[#0B0F14]">
-                        @if($availableStockValue >= 1000000)
-                            {{ number_format($availableStockValue / 1000000, 1, ',', ' ') }}M
-                        @else
-                            {{ number_format($availableStockValue, 0, ',', ' ') }}
-                        @endif
-                        <span class="text-xs font-normal text-slate-400">FCFA</span>
-                    </p>
-                    <p class="mt-1 text-[11px] text-[#64748B]">
-                        Vente :
-                        @if($potentialSellingValue >= 1000000)
-                            {{ number_format($potentialSellingValue / 1000000, 1, ',', ' ') }}M FCFA
-                        @else
-                            {{ number_format($potentialSellingValue, 0, ',', ' ') }} FCFA
-                        @endif
-                    </p>
-                </div>
-
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                    <p class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-700">
-                        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Stock faible
-                    </p>
-                    <p class="mt-2 text-2xl font-semibold tabular-nums text-amber-600">{{ $lowStockCount }}</p>
-                    <p class="mt-1 text-[11px] text-[#64748B]">Sous le seuil d'alerte</p>
-                </div>
-
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                    <p class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-rose-700">
-                        <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Ruptures
-                    </p>
-                    <p class="mt-2 text-2xl font-semibold tabular-nums text-rose-600">{{ $outOfStockCount }}</p>
-                    <p class="mt-1 text-[11px] text-[#64748B]">Articles épuisés</p>
-                </div>
+        {{-- ============ CHIFFRES CLÉS ============ --}}
+        <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                <p class="text-xs text-[#64748B]">Stock physique</p>
+                <p class="mt-1 text-2xl font-semibold tabular-nums text-[#0B0F14]">{{ number_format($totalStockItems, 0, ',', ' ') }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-400">unités · {{ $totalProductsCount }} articles</p>
             </div>
 
-            <button type="button" @click="showMoreKpis = !showMoreKpis"
-                    class="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#0B0F14]">
-                <span x-text="showMoreKpis ? 'Masquer les flux' : 'Voir les flux (entrées, sorties, surstock)'"></span>
-                <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-180': showMoreKpis }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                <p class="text-xs text-[#64748B]">Valeur du stock</p>
+                <p class="mt-1 text-2xl font-semibold tabular-nums text-[#0B0F14]">
+                    {{ $availableStockValue >= 1000000 ? number_format($availableStockValue / 1000000, 1, ',', ' ') . ' M' : number_format($availableStockValue, 0, ',', ' ') }}
+                </p>
+                <p class="mt-0.5 text-[11px] text-slate-400">FCFA au prix d'achat</p>
+            </div>
+
+            <button type="button" @click="activeTab = 'disponibilite'; filterStatus = 'low_stock'"
+                    class="rounded-2xl border border-[#E2E8F0] bg-white p-4 text-left transition hover:border-amber-300 hover:bg-amber-50/40">
+                <p class="flex items-center gap-1.5 text-xs text-amber-700"><span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Stock faible</p>
+                <p class="mt-1 text-2xl font-semibold tabular-nums text-amber-600">{{ $lowStockCount }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-400">Voir les articles →</p>
             </button>
 
-            <div x-show="showMoreKpis" x-cloak class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-                    <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Entrées</p>
-                    <p class="mt-1 text-xl font-semibold tabular-nums">{{ $entriesCount }}</p>
-                </div>
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-                    <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Sorties</p>
-                    <p class="mt-1 text-xl font-semibold tabular-nums">{{ $exitsCount }}</p>
-                </div>
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-                    <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Transferts</p>
-                    <p class="mt-1 text-xl font-semibold tabular-nums">{{ $transfersCount }}</p>
-                </div>
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-                    <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Immobilisation</p>
-                    <p class="mt-1 text-xl font-semibold tabular-nums">{{ number_format($immobilizedCostValue, 0, ',', ' ') }} <span class="text-xs font-normal text-slate-400">FCFA</span></p>
-                    <p class="text-[11px] text-[#64748B]">Surstock : {{ $overstockCount }}</p>
-                </div>
-            </div>
+            <button type="button" @click="activeTab = 'disponibilite'; filterStatus = 'out_of_stock'"
+                    class="rounded-2xl border border-[#E2E8F0] bg-white p-4 text-left transition hover:border-rose-300 hover:bg-rose-50/40">
+                <p class="flex items-center gap-1.5 text-xs text-rose-700"><span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Ruptures</p>
+                <p class="mt-1 text-2xl font-semibold tabular-nums text-rose-600">{{ $outOfStockCount }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-400">Voir les articles →</p>
+            </button>
         </section>
 
         {{-- ============ ONGLETS ============ --}}
         <nav class="no-scrollbar -mx-1 flex gap-1 overflow-x-auto border-b border-[#E2E8F0] px-1">
             @foreach([
-                'synthese' => ['Synthèse', 'Synthèse'],
-                'disponibilite' => ['Catalogue', 'Catalogue & Disponibilité'],
-                'transferts' => ['Transferts', 'Transferts & Inventaires'],
-                'achats' => ['Achats', "Achats & Réceptions"],
-                'tracabilite' => ['Traçabilité', 'Lots & Maintenance'],
-            ] as $key => [$short, $long])
+                'synthese' => 'Synthèse',
+                'disponibilite' => 'Catalogue',
+                'transferts' => 'Transferts',
+                'achats' => 'Achats',
+                'tracabilite' => 'Traçabilité',
+            ] as $key => $label)
                 <button type="button" @click="activeTab = '{{ $key }}'"
                         :class="activeTab === '{{ $key }}' ? 'border-[#0066FF] text-[#0B0F14]' : 'border-transparent text-[#64748B] hover:text-[#0B0F14]'"
-                        class="shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium transition">
-                    <span class="sm:hidden">{{ $short }}</span>
-                    <span class="hidden sm:inline">{{ $long }}</span>
+                        class="shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition">
+                    {{ $label }}
                 </button>
             @endforeach
         </nav>
 
         {{-- ==================== TAB 1 : SYNTHÈSE ==================== --}}
-        <div x-show="activeTab === 'synthese'" class="space-y-6">
+        <div x-show="activeTab === 'synthese'" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
 
-            {{-- Booster de revenus --}}
-            <section class="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <h2 class="text-sm font-semibold text-[#0B0F14]">Booster de revenus · Produits vedettes</h2>
-                        <p class="mt-0.5 text-xs text-[#64748B]">Prix, packs synergie et protection anti-rupture sur vos top ventes.</p>
-                    </div>
-                    <dl class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                        <div class="rounded-xl bg-[#F5F7FA] px-3 py-1.5">
-                            <dt class="text-[10px] font-medium uppercase tracking-wider text-[#64748B]">CA top ventes</dt>
-                            <dd class="text-xs font-semibold text-[#0B0F14]">{{ number_format($revenueMetrics['total_top_revenue'] ?? 0, 0, ',', ' ') }} F</dd>
-                        </div>
-                        <div class="rounded-xl bg-emerald-50 px-3 py-1.5">
-                            <dt class="text-[10px] font-medium uppercase tracking-wider text-emerald-700">Gain prix potentiel</dt>
-                            <dd class="text-xs font-semibold text-emerald-800">+{{ number_format($revenueMetrics['total_potential_gain_price'] ?? 0, 0, ',', ' ') }} F/m</dd>
-                        </div>
-                        <div class="rounded-xl bg-amber-50 px-3 py-1.5">
-                            <dt class="text-[10px] font-medium uppercase tracking-wider text-amber-800">Cash dormant</dt>
-                            <dd class="text-xs font-semibold text-amber-900">{{ number_format($revenueMetrics['total_dormant_cash_unlockable'] ?? 0, 0, ',', ' ') }} F</dd>
-                        </div>
-                        @if(($revenueMetrics['at_risk_turnover'] ?? 0) > 0)
-                            <div class="rounded-xl bg-rose-50 px-3 py-1.5">
-                                <dt class="text-[10px] font-medium uppercase tracking-wider text-rose-700">Risque rupture CA</dt>
-                                <dd class="text-xs font-semibold text-rose-800">{{ number_format($revenueMetrics['at_risk_turnover'], 0, ',', ' ') }} F</dd>
-                            </div>
-                        @endif
-                    </dl>
-                </div>
-
-                <div class="mt-4">
-                    @if(isset($topSellersAnalyzed) && $topSellersAnalyzed->isNotEmpty())
-                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            @foreach($topSellersAnalyzed as $item)
-                                @php $p = $item['product']; $critical = in_array($item['risk_level'], ['rupture', 'critique']); @endphp
-                                <article x-data="{ lever: 'price' }" class="flex flex-col rounded-xl border border-[#E2E8F0] p-3.5">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div class="min-w-0">
-                                            <h3 class="truncate text-sm font-semibold text-[#0B0F14]" title="{{ $p->name }}">
-                                                <span class="text-[#64748B]">#{{ $item['rank'] }}</span> {{ $p->name }}
-                                            </h3>
-                                            <p class="truncate text-[11px] text-[#64748B]">{{ $p->domain?->name ?? 'Général' }} · {{ $p->sku }}</p>
-                                        </div>
-                                        <span class="shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-semibold {{ $item['risk_badge_class'] }}">{{ $item['risk_label'] }}</span>
-                                    </div>
-
-                                    <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                                        <div class="rounded-lg bg-[#F5F7FA] p-2">
-                                            <span class="block text-[10px] uppercase tracking-wider text-[#64748B]">Volume & CA</span>
-                                            <span class="font-semibold">{{ $item['exit_volume'] }} sorties</span>
-                                            <span class="block text-[10px] text-[#64748B]">{{ number_format($item['revenue_generated'], 0, ',', ' ') }} F</span>
-                                        </div>
-                                        <div class="rounded-lg bg-[#F5F7FA] p-2">
-                                            <span class="block text-[10px] uppercase tracking-wider text-[#64748B]">Prix & marge</span>
-                                            <span class="font-semibold">{{ number_format($item['selling_price'], 0, ',', ' ') }} F</span>
-                                            <span class="block text-[10px] font-medium text-emerald-700">{{ $item['margin_percent'] }}% ({{ number_format($item['margin_unit'], 0, ',', ' ') }} F)</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-3 flex gap-1 rounded-lg bg-[#F5F7FA] p-1 text-[11px]">
-                                        <button type="button" @click="lever = 'price'" :class="lever === 'price' ? 'bg-white text-[#0066FF] font-semibold shadow-sm' : 'text-[#64748B]'" class="flex-1 rounded-md py-1 transition">Prix</button>
-                                        <button type="button" @click="lever = 'security'" :class="lever === 'security' ? 'bg-white text-[#0066FF] font-semibold shadow-sm' : 'text-[#64748B]'" class="flex-1 rounded-md py-1 transition">Anti-rupture</button>
-                                    </div>
-
-                                    {{-- Levier prix --}}
-                                    <div x-show="lever === 'price'" class="mt-3 space-y-2">
-                                        <p class="text-[11px] text-[#64748B]">
-                                            <strong class="text-[#0B0F14]">+5% → {{ number_format($item['pricing_lever']['opt_price_5'], 0, ',', ' ') }} FCFA</strong><br>
-                                            Gain estimé +{{ number_format($item['pricing_lever']['projected_monthly_gain_5'], 0, ',', ' ') }} F/mois · marge {{ $item['pricing_lever']['new_margin_percent_5'] }}%
-                                        </p>
-                                        <form action="{{ route('stock.revenue-booster.optimize-price') }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="product_id" value="{{ $p->id }}">
-                                            <input type="hidden" name="selling_price" value="{{ $item['pricing_lever']['opt_price_5'] }}">
-                                            <input type="hidden" name="reason" value="Optimisation tarifaire recommandée IA (+5% sur produit vedette)">
-                                            <button type="submit" class="w-full rounded-lg bg-[#0066FF] py-2 text-xs font-semibold text-white hover:bg-[#0052cc]">Appliquer le prix (+5%)</button>
-                                        </form>
-                                    </div>
-
-                                    {{-- Levier anti-rupture --}}
-                                    <div x-show="lever === 'security'" x-cloak class="mt-3 space-y-2">
-                                        <p class="text-[11px] {{ $critical ? 'text-rose-800' : 'text-[#64748B]' }}">
-                                            <strong class="text-[#0B0F14]">Autonomie : {{ $item['days_of_coverage'] }} j</strong> · {{ $p->current_stock }} unités<br>
-                                            @if($critical)
-                                                Manque à gagner estimé : <strong>{{ number_format($item['potential_stockout_loss'], 0, ',', ' ') }} FCFA</strong>
-                                            @else
-                                                Réappro préventif recommandé (45 jours).
-                                            @endif
-                                        </p>
-                                        <form action="{{ route('stock.revenue-booster.secure-stock') }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="product_id" value="{{ $p->id }}">
-                                            <input type="hidden" name="requested_quantity" value="{{ $item['anti_stockout_lever']['recommended_reorder_qty'] }}">
-                                            <input type="hidden" name="reason" value="Bouclier Anti-Rupture : Produit vedette {{ $p->name }} pour sécuriser {{ number_format($item['anti_stockout_lever']['secured_revenue_forecast'], 0, ',', ' ') }} FCFA de CA.">
-                                            <button type="submit" class="w-full rounded-lg {{ $critical ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#0066FF] hover:bg-[#0052cc]' }} py-2 text-xs font-semibold text-white">Réappro VIP (+{{ $item['anti_stockout_lever']['recommended_reorder_qty'] }} unités)</button>
-                                        </form>
-                                    </div>
-                                </article>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="py-8 text-center text-xs text-[#64748B]">Aucun historique de sortie suffisant pour analyser les produits vedettes.</p>
+            {{-- À réapprovisionner --}}
+            <section class="rounded-2xl border border-[#E2E8F0] bg-white">
+                <header class="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+                    <h2 class="text-sm font-semibold text-[#0B0F14]">À réapprovisionner</h2>
+                    @if($replenishmentSuggestions->count() > 5)
+                        <button type="button" @click="activeTab = 'disponibilite'; filterStatus = 'low_stock'" class="text-xs font-medium text-[#0066FF] hover:underline">
+                            Voir les {{ $replenishmentSuggestions->count() }} →
+                        </button>
                     @endif
-                </div>
+                </header>
+                <ul class="divide-y divide-[#E2E8F0]">
+                    @forelse($replenishmentSuggestions->take(5) as $item)
+                        <li class="flex items-center gap-3 px-4 py-2.5">
+                            <span class="h-2 w-2 shrink-0 rounded-full {{ $item->current_stock <= 0 ? 'bg-rose-500' : 'bg-amber-500' }}"></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-[#0B0F14]">{{ $item->name }}</p>
+                                <p class="text-[11px] text-slate-500">
+                                    {{ $item->current_stock <= 0 ? 'Rupture' : 'Reste ' . $item->current_stock }} · min {{ $item->min_stock }}
+                                </p>
+                            </div>
+                            <form action="{{ route('stock.purchase-requests.store') }}" method="POST" class="shrink-0">
+                                @csrf
+                                <input type="hidden" name="product_id" value="{{ $item->id }}">
+                                <input type="hidden" name="requested_quantity" value="{{ $item->suggested_order_qty }}">
+                                <input type="hidden" name="priority" value="{{ $item->current_stock <= 0 ? 'urgente' : 'haute' }}">
+                                <input type="hidden" name="reason" value="Suggestion IA : Stock actuel ({{ $item->current_stock }}) sous le seuil min ({{ $item->min_stock }})">
+                                <button type="submit" class="rounded-lg border border-[#E2E8F0] px-2.5 py-1.5 text-xs font-medium text-[#0066FF] hover:border-[#0066FF] hover:bg-blue-50"
+                                        title="Créer une demande d'achat">
+                                    Commander +{{ $item->suggested_order_qty }}
+                                </button>
+                            </form>
+                        </li>
+                    @empty
+                        <li class="px-4 py-8 text-center text-xs text-slate-400">Tous les articles sont au-dessus de leur seuil minimum.</li>
+                    @endforelse
+                </ul>
             </section>
 
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                <div class="space-y-6 lg:col-span-7">
+            {{-- Derniers mouvements --}}
+            <section class="rounded-2xl border border-[#E2E8F0] bg-white">
+                <header class="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+                    <h2 class="text-sm font-semibold text-[#0B0F14]">Derniers mouvements</h2>
+                    <a href="{{ route('stock.movements.index') }}" class="text-xs font-medium text-[#0066FF] hover:underline">Voir tout →</a>
+                </header>
+                <ul class="divide-y divide-[#E2E8F0]">
+                    @forelse($recentMovements->take(6) as $move)
+                        @php
+                            $isPositive = in_array($move->type, ['entree', 'retour']);
+                            $isNegative = $move->type === 'sortie';
+                            $typeLabel = match($move->type) {
+                                'entree' => 'Entrée', 'retour' => 'Retour', 'sortie' => 'Sortie', 'transfert' => 'Transfert', 'ajustement' => 'Ajustement',
+                                default => ucfirst($move->type),
+                            };
+                        @endphp
+                        <li class="flex items-center gap-3 px-4 py-2.5">
+                            <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold {{ $isPositive ? 'text-emerald-600' : ($isNegative ? 'text-rose-600' : 'text-[#0066FF]') }}">
+                                {{ $isPositive ? '+' : ($isNegative ? '−' : '') }}{{ $move->quantity }}
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-[#0B0F14]">{{ $move->product?->name ?? 'Produit' }}</p>
+                                <p class="truncate text-[11px] text-slate-500">
+                                    {{ $typeLabel }} · {{ $move->warehouse?->name }}@if($move->destinationWarehouse) → {{ $move->destinationWarehouse->name }}@endif
+                                </p>
+                            </div>
+                            <span class="shrink-0 text-[11px] text-slate-400">{{ $move->created_at?->locale('fr')->diffForHumans(short: true) }}</span>
+                        </li>
+                    @empty
+                        <li class="px-4 py-8 text-center text-xs text-slate-400">Aucun mouvement enregistré.</li>
+                    @endforelse
+                </ul>
+            </section>
 
-                    {{-- Suggestions d'approvisionnement --}}
-                    <section class="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
-                        <div class="flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-[#0B0F14]">Approvisionnement & alertes</h2>
-                            <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-[#0066FF]">{{ $replenishmentSuggestions->count() }} suggestions</span>
-                        </div>
-
-                        <div class="mt-3 divide-y divide-[#E2E8F0]">
-                            @forelse($replenishmentSuggestions->take(6) as $item)
-                                <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div class="min-w-0">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <h3 class="truncate text-sm font-semibold text-[#0B0F14]">{{ $item->name }}</h3>
-                                            <span class="font-mono text-[10px] text-slate-500">{{ $item->sku }}</span>
-                                            @if($item->current_stock <= 0)
-                                                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">Rupture</span>
-                                            @else
-                                                <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Faible</span>
-                                            @endif
-                                        </div>
-                                        <p class="mt-1 text-[11px] text-[#64748B]">
-                                            Actuel <strong class="{{ $item->current_stock <= 0 ? 'text-rose-600' : 'text-[#0B0F14]' }}">{{ $item->current_stock }}</strong>
-                                            · Min {{ $item->min_stock }} · Cible {{ $item->effective_max_stock }}
-                                            · <strong class="text-[#0066FF]">Suggestion +{{ $item->suggested_order_qty }} {{ $item->unit ?? 'pièce' }}</strong>
-                                        </p>
-                                    </div>
-                                    <form action="{{ route('stock.purchase-requests.store') }}" method="POST" class="shrink-0">
-                                        @csrf
-                                        <input type="hidden" name="product_id" value="{{ $item->id }}">
-                                        <input type="hidden" name="requested_quantity" value="{{ $item->suggested_order_qty }}">
-                                        <input type="hidden" name="priority" value="{{ $item->current_stock <= 0 ? 'urgente' : 'haute' }}">
-                                        <input type="hidden" name="reason" value="Suggestion IA : Stock actuel ({{ $item->current_stock }}) sous le seuil min ({{ $item->min_stock }})">
-                                        <button type="submit" class="w-full rounded-lg bg-[#0066FF] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0052cc] sm:w-auto">
-                                            Créer demande d'achat ({{ $item->suggested_order_qty }})
-                                        </button>
-                                    </form>
+            {{-- Produits vedettes --}}
+            <section class="rounded-2xl border border-[#E2E8F0] bg-white lg:col-span-2">
+                <header class="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+                    <h2 class="text-sm font-semibold text-[#0B0F14]">Produits vedettes</h2>
+                    <span class="text-[11px] text-slate-400">Les plus vendus</span>
+                </header>
+                <ul class="divide-y divide-[#E2E8F0]">
+                    @forelse(($topSellersAnalyzed ?? collect())->take(5) as $item)
+                        @php $p = $item['product']; $critical = in_array($item['risk_level'], ['rupture', 'critique']); @endphp
+                        <li class="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+                            <div class="flex min-w-0 flex-1 items-center gap-3">
+                                <span class="w-5 shrink-0 text-center text-xs font-semibold text-slate-400">{{ $item['rank'] }}</span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-medium text-[#0B0F14]">{{ $p->name }}</p>
+                                    <p class="text-[11px] text-slate-500">
+                                        {{ $item['exit_volume'] }} vendus · {{ number_format($item['revenue_generated'], 0, ',', ' ') }} F
+                                        · reste {{ $p->current_stock }}
+                                        @if($critical)<span class="font-semibold text-rose-600"> · {{ $item['risk_label'] }}</span>@endif
+                                    </p>
                                 </div>
-                            @empty
-                                <p class="py-6 text-center text-xs text-slate-400">Tous les stocks sont au-dessus des seuils minimums.</p>
-                            @endforelse
-                        </div>
-                    </section>
-
-                    {{-- Rotation & dormants --}}
-                    <section class="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
-                        <h2 class="text-sm font-semibold text-[#0B0F14]">Rotation des stocks</h2>
-                        <div class="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2">
-                            <div>
-                                <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-[#64748B]">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Plus vendus
-                                </h3>
-                                <ul class="mt-2 divide-y divide-[#E2E8F0]">
-                                    @forelse($topSellingProducts->take(4) as $top)
-                                        <li class="flex items-center justify-between gap-2 py-2">
-                                            <div class="min-w-0">
-                                                <p class="truncate text-xs font-medium text-[#0B0F14]">{{ $top->name }}</p>
-                                                <p class="text-[11px] text-slate-400">{{ $top->domain?->name ?? 'Général' }}</p>
-                                            </div>
-                                            <span class="shrink-0 text-xs font-semibold text-[#0066FF]">{{ $top->exit_volume }} sorties</span>
-                                        </li>
-                                    @empty
-                                        <li class="py-4 text-center text-xs text-slate-400">Aucune sortie enregistrée.</li>
-                                    @endforelse
-                                </ul>
                             </div>
-                            <div>
-                                <h3 class="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-[#64748B]">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Dormants (&gt; 90 j)
-                                </h3>
-                                <ul class="mt-2 divide-y divide-[#E2E8F0]">
-                                    @forelse($dormantProducts->take(4) as $dormant)
-                                        <li class="flex items-center justify-between gap-2 py-2">
-                                            <div class="min-w-0">
-                                                <p class="truncate text-xs font-medium text-[#0B0F14]">{{ $dormant->name }}</p>
-                                                <p class="text-[11px] text-slate-400">Immobilisé : {{ number_format($dormant->current_stock * ($dormant->purchase_price ?: $dormant->selling_price * 0.65), 0, ',', ' ') }} FCFA</p>
-                                            </div>
-                                            <span class="shrink-0 text-xs font-semibold text-amber-700">{{ $dormant->days_without_movement }} j</span>
-                                        </li>
-                                    @empty
-                                        <li class="py-4 text-center text-xs text-slate-400">Aucun produit dormant.</li>
-                                    @endforelse
-                                </ul>
+                            <div class="flex shrink-0 gap-2 pl-8 sm:pl-0">
+                                <form action="{{ route('stock.revenue-booster.secure-stock') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="product_id" value="{{ $p->id }}">
+                                    <input type="hidden" name="requested_quantity" value="{{ $item['anti_stockout_lever']['recommended_reorder_qty'] }}">
+                                    <input type="hidden" name="reason" value="Bouclier Anti-Rupture : Produit vedette {{ $p->name }} pour sécuriser {{ number_format($item['anti_stockout_lever']['secured_revenue_forecast'], 0, ',', ' ') }} FCFA de CA.">
+                                    <button type="submit" class="rounded-lg border px-2.5 py-1.5 text-xs font-medium {{ $critical ? 'border-rose-200 text-rose-700 hover:bg-rose-50' : 'border-[#E2E8F0] text-[#0066FF] hover:border-[#0066FF] hover:bg-blue-50' }}"
+                                            title="Demande d'achat prioritaire pour éviter la rupture">
+                                        Réappro +{{ $item['anti_stockout_lever']['recommended_reorder_qty'] }}
+                                    </button>
+                                </form>
+                                <form action="{{ route('stock.revenue-booster.optimize-price') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="product_id" value="{{ $p->id }}">
+                                    <input type="hidden" name="selling_price" value="{{ $item['pricing_lever']['opt_price_5'] }}">
+                                    <input type="hidden" name="reason" value="Optimisation tarifaire recommandée IA (+5% sur produit vedette)">
+                                    <button type="submit" class="rounded-lg border border-[#E2E8F0] px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                                            title="Passer le prix de {{ number_format($item['selling_price'], 0, ',', ' ') }} F à {{ number_format($item['pricing_lever']['opt_price_5'], 0, ',', ' ') }} F">
+                                        Prix +5 %
+                                    </button>
+                                </form>
                             </div>
-                        </div>
-                    </section>
-                </div>
-
-                {{-- Derniers mouvements --}}
-                <aside class="lg:col-span-5">
-                    <section class="h-full rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
-                        <div class="flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-[#0B0F14]">Derniers mouvements</h2>
-                            <a href="{{ route('stock.movements.index') }}" class="text-xs font-medium text-[#0066FF] hover:underline">Voir tout →</a>
-                        </div>
-
-                        <ul class="mt-3 divide-y divide-[#E2E8F0]">
-                            @forelse($recentMovements->take(7) as $move)
-                                @php
-                                    $isPositive = in_array($move->type, ['entree', 'retour']);
-                                    $isNegative = $move->type === 'sortie';
-                                    $badgeClass = match($move->type) {
-                                        'entree', 'retour' => 'bg-emerald-50 text-emerald-700',
-                                        'sortie' => 'bg-rose-50 text-rose-700',
-                                        'transfert' => 'bg-blue-50 text-[#0066FF]',
-                                        default => 'bg-slate-100 text-slate-700',
-                                    };
-                                    $typeLabel = match($move->type) {
-                                        'entree' => 'Entrée', 'retour' => 'Retour', 'sortie' => 'Sortie', 'transfert' => 'Transfert',
-                                        default => ucfirst($move->type),
-                                    };
-                                @endphp
-                                <li class="flex items-start justify-between gap-3 py-2.5">
-                                    <div class="min-w-0">
-                                        <div class="flex items-center gap-2">
-                                            <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold {{ $badgeClass }}">{{ $typeLabel }}</span>
-                                            <span class="truncate text-xs font-medium text-[#0B0F14]">{{ $move->product?->name ?? 'Produit' }}</span>
-                                        </div>
-                                        <p class="mt-1 truncate text-[11px] text-slate-500">
-                                            {{ $move->warehouse?->name }}@if($move->destinationWarehouse) → {{ $move->destinationWarehouse->name }}@endif
-                                            · {{ $move->stock_before }} → <strong class="text-slate-700">{{ $move->stock_after }}</strong>
-                                        </p>
-                                        @if($move->reason_motif || $move->reference)
-                                            <p class="truncate text-[10px] text-slate-400">
-                                                {{ str_replace('_', ' ', $move->reason_motif ?? 'standard') }}@if($move->reference) · <span class="font-mono">{{ $move->reference }}</span>@endif
-                                            </p>
-                                        @endif
-                                    </div>
-                                    <div class="shrink-0 text-right">
-                                        <span class="font-mono text-xs font-semibold {{ $isPositive ? 'text-emerald-600' : ($isNegative ? 'text-rose-600' : 'text-[#0066FF]') }}">
-                                            {{ $isPositive ? '+' : ($isNegative ? '-' : '') }}{{ $move->quantity }}
-                                        </span>
-                                        <span class="block max-w-[80px] truncate text-[10px] text-slate-400">{{ $move->user?->name ?? 'Système' }}</span>
-                                    </div>
-                                </li>
-                            @empty
-                                <li class="py-6 text-center text-xs text-slate-400">Aucun mouvement enregistré.</li>
-                            @endforelse
-                        </ul>
-                    </section>
-                </aside>
-            </div>
+                        </li>
+                    @empty
+                        <li class="px-4 py-8 text-center text-xs text-slate-400">Pas encore assez de ventes pour identifier les produits vedettes.</li>
+                    @endforelse
+                </ul>
+            </section>
         </div>
 
         {{-- ==================== TAB 2 : CATALOGUE ==================== --}}
         <div x-show="activeTab === 'disponibilite'" x-cloak class="space-y-5">
-
-            {{-- Entrepôts --}}
-            <section>
-                <div class="mb-2 flex items-center justify-between">
-                    <h3 class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Entrepôts ({{ $warehouses->count() }})</h3>
-                    <a href="{{ route('stock.warehouses.index') }}" class="text-xs font-medium text-[#0066FF] hover:underline">Gérer →</a>
-                </div>
-                <div class="no-scrollbar flex gap-2.5 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible lg:grid-cols-5">
-                    @foreach($warehouses as $wh)
-                        <div class="min-w-[180px] shrink-0 rounded-xl border border-[#E2E8F0] bg-white p-3 md:min-w-0">
-                            <div class="flex items-center justify-between">
-                                <span class="flex items-center gap-1.5">
-                                    <x-warehouse-label :warehouse="$wh" />
-                                    <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-[#0B0F14]">{{ $wh->code }}</span>
-                                </span>
-                                <div class="flex items-center gap-1.5">
-                                    <a href="{{ route('stock.warehouses.show', $wh) }}" class="text-slate-400 hover:text-[#0066FF]" title="Consulter">
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                    </a>
-                                    <button type="button" class="text-slate-400 hover:text-rose-600" title="Supprimer"
-                                            @click="$dispatch('open-delete-warehouse', {
-                                                id: {{ $wh->id }},
-                                                name: '{{ addslashes($wh->name) }}',
-                                                code: '{{ $wh->code }}',
-                                                totalStock: {{ (int) $wh->warehouseStocks->sum('physical_quantity') }},
-                                                productCount: {{ (int) $wh->warehouseStocks->where('physical_quantity', '>', 0)->count() }}
-                                            })">
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <a href="{{ route('stock.warehouses.show', $wh) }}" class="mt-2 block truncate text-xs font-semibold text-[#0B0F14] hover:text-[#0066FF]">{{ $wh->name }}</a>
-                            <p class="mt-0.5 text-[11px] text-slate-500">
-                                Physique <strong class="text-[#0B0F14]">{{ $wh->warehouseStocks->sum('physical_quantity') }}</strong>
-                                · Réservé <strong class="text-amber-700">{{ $wh->warehouseStocks->sum('reserved_quantity') }}</strong>
-                            </p>
-                        </div>
-                    @endforeach
-                </div>
-            </section>
 
             {{-- Catalogue --}}
             <section class="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
@@ -493,13 +278,18 @@
                             <h2 class="text-sm font-semibold text-[#0B0F14]">Catalogue produits</h2>
                             <p class="text-[11px] text-[#64748B]">Disponible = Physique − Réservé</p>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2 text-xs font-medium">
-                            <a href="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}"
-                               :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
-                               data-base="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}" target="_blank" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Imprimer PDF</a>
-                            <a href="{{ route('stock.products.print-catalog', array_merge(request()->except('warehouse_id'), ['per_warehouse' => 1])) }}" target="_blank" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">PDF par entrepôt</a>
-                            <a href="{{ route('stock.products.bulk-edit') }}" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Prix & images</a>
-                            <a href="{{ route('stock.products.bulk-create') }}" class="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[#0B0F14] hover:bg-slate-50">Ajout groupé</a>
+                        <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                            <button type="button" @click="open = !open" class="flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs font-medium text-[#0B0F14] hover:bg-slate-50">
+                                Imprimer / exporter
+                                <svg class="h-3.5 w-3.5 text-[#64748B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition class="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white py-1 text-xs shadow-lg">
+                                <a href="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}"
+                                   :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
+                                   data-base="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}" target="_blank" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Catalogue PDF</a>
+                                <a href="{{ route('stock.products.print-catalog', array_merge(request()->except('warehouse_id'), ['per_warehouse' => 1])) }}" target="_blank" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Catalogue PDF par entrepôt</a>
+                                <a href="{{ route('stock.export') }}" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Export CSV</a>
+                            </div>
                         </div>
                     </div>
 
@@ -521,7 +311,7 @@
                     {{-- Filtre par entrepôt --}}
                     @if($warehouses->isNotEmpty())
                         <div class="flex items-start gap-2">
-                            <span class="hidden shrink-0 py-1.5 text-[11px] font-medium text-[#64748B] sm:inline">Entrepôt</span>
+                            <a href="{{ route('stock.warehouses.index') }}" class="hidden shrink-0 py-1.5 text-[11px] font-medium text-[#64748B] hover:text-[#0066FF] sm:inline" title="Gérer les entrepôts">Entrepôt</a>
                             <div class="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 text-[11px] sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filtrer par entrepôt">
                                 <button type="button" @click="filterWarehouse = ''" :aria-pressed="filterWarehouse === ''"
                                         :class="filterWarehouse === '' ? 'bg-[#0B0F14] text-white' : 'bg-[#F5F7FA] text-slate-600 hover:text-[#0B0F14]'"
@@ -570,13 +360,12 @@
 
                 {{-- En-tête de colonnes (desktop) --}}
                 <div class="hidden items-center gap-3 border-b border-[#E2E8F0] bg-[#F5F7FA] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] md:grid md:grid-cols-12">
-                    <div class="col-span-5 flex items-center gap-3">
+                    <div class="col-span-6 flex items-center gap-3">
                         <input type="checkbox" @change="toggleSelectAll()" :checked="isAllSelected" class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]" title="Tout sélectionner">
-                        <span>Produit</span>
+                        <span>Article · stock par entrepôt</span>
                     </div>
-                    <div class="col-span-2 text-right">Physique / Réservé</div>
-                    <div class="col-span-1 text-right text-[#0066FF]">Dispo</div>
-                    <div class="col-span-2 text-right">Prix</div>
+                    <div class="col-span-2 text-right">Disponible</div>
+                    <div class="col-span-2 text-right">Prix de vente</div>
                     <div class="col-span-2 text-right">Actions</div>
                 </div>
 
@@ -637,7 +426,7 @@
                              class="px-4 py-3 transition-colors hover:bg-slate-50/60 md:grid md:grid-cols-12 md:items-center md:gap-3">
 
                             {{-- Produit --}}
-                            <div class="flex items-center gap-3 md:col-span-5">
+                            <div class="flex items-center gap-3 md:col-span-6">
                                 <input type="checkbox" :value="{{ $product->id }}" x-model.number="selectedProductIds"
                                        class="shrink-0 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
 
@@ -654,63 +443,42 @@
                                 </button>
 
                                 <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="truncate text-sm font-semibold text-[#0B0F14]">{{ $product->name }}</span>
-                                        @if(($product->exit_volume ?? 0) >= 15 || ($product->rotation_class ?? '') === 'tres_vendu')
-                                            <span class="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">⭐ Top</span>
-                                        @endif
-                                    </div>
-                                    <p class="truncate font-mono text-[10px] text-slate-500">
-                                        <span class="font-semibold text-[#0066FF]">{{ $product->sku }}</span> · EAN {{ $product->formatted_ean }}
+                                    <p class="truncate text-sm font-semibold text-[#0B0F14]">{{ $product->name }}</p>
+                                    <p class="truncate text-[11px] text-slate-500">
+                                        <span class="font-mono font-semibold text-[#0066FF]">{{ $product->sku }}</span> · {{ $product->domain?->name ?? 'Général' }}
                                     </p>
-                                    <p class="truncate text-[11px] text-slate-400">
-                                        {{ strtoupper($product->domain?->name ?? 'Général') }} · {{ $product->brand?->name ?? 'IVOSPHERE' }} · {{ $product->unit ?? 'pièce' }}
-                                    </p>
-                                </div>
-
-                                {{-- Dispo (mobile) --}}
-                                <span class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold md:hidden
-                                    {{ $avail <= 0 ? 'bg-rose-50 text-rose-700' : ($avail <= $minVal ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800') }}">
-                                    {{ $avail <= 0 ? 'Rupture' : 'Dispo ' . $avail }}
-                                </span>
-                            </div>
-
-                            {{-- Stock --}}
-                            <div class="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-[#F5F7FA] p-2 text-center text-xs md:contents">
-                                <div class="md:col-span-2 md:text-right">
-                                    <span class="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 md:hidden">Physique / Réservé</span>
-                                    <span class="font-semibold text-[#0B0F14]">{{ $product->current_stock }}</span>
-                                    <span class="text-slate-400"> / </span>
-                                    <span class="font-semibold text-amber-700">{{ $product->reserved_stock }}</span>
-                                    <span class="block text-[10px] text-slate-400">Min {{ $product->min_stock }} · Max {{ $product->effective_max_stock }} · Cmd +{{ $product->incoming_stock }}</span>
                                     @if($product->warehouseStocks->where('physical_quantity', '>', 0)->isNotEmpty())
-                                        <div class="mt-1 flex flex-wrap gap-1 md:justify-end">
-                                            @foreach($product->warehouseStocks as $ws)
-                                                @if($ws->physical_quantity > 0)
-                                                    <span class="inline-flex items-center gap-1 rounded py-px pl-px pr-1.5 text-[10px] transition-colors" title="{{ $ws->warehouse?->name }}"
-                                                          :class="filterWarehouse === '{{ $ws->warehouse_id }}' ? 'bg-[#0066FF] text-white ring-1 ring-[#0066FF]' : 'bg-slate-100 text-slate-600'">
-                                                        <x-warehouse-label :warehouse="$ws->warehouse" size="xs" />
-                                                        {{ $ws->warehouse?->code ?: Str::limit($ws->warehouse?->name, 8) }}: <strong :class="filterWarehouse === '{{ $ws->warehouse_id }}' ? 'text-white' : 'text-[#0B0F14]'" class="text-[#0B0F14]">{{ $ws->physical_quantity }}</strong>
-                                                    </span>
-                                                @endif
+                                        <div class="mt-1 flex flex-wrap gap-1">
+                                            @foreach($product->warehouseStocks->where('physical_quantity', '>', 0) as $ws)
+                                                <span class="inline-flex items-center gap-1 rounded-md py-px pl-px pr-1.5 text-[10px] font-semibold transition-colors" title="{{ $ws->warehouse?->name }}"
+                                                      :class="filterWarehouse === '{{ $ws->warehouse_id }}' ? 'bg-[#0066FF] text-white' : 'bg-slate-100 text-slate-700'">
+                                                    <x-warehouse-label :warehouse="$ws->warehouse" size="xs" />{{ $ws->physical_quantity }}
+                                                </span>
                                             @endforeach
                                         </div>
                                     @endif
                                 </div>
+                            </div>
 
-                                <div class="hidden md:col-span-1 md:block md:text-right">
-                                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold {{ $avail <= 0 ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-[#0066FF]' }}">{{ $avail }}</span>
-                                </div>
+                            {{-- Disponible --}}
+                            <div class="mt-2 flex items-center justify-between gap-3 pl-[4.25rem] md:col-span-2 md:mt-0 md:block md:pl-0 md:text-right">
+                                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold
+                                    {{ $avail <= 0 ? 'bg-rose-50 text-rose-700' : ($avail <= $minVal ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800') }}">
+                                    {{ $avail <= 0 ? 'Rupture' : $avail . ' dispo' }}
+                                </span>
+                                @if($product->reserved_stock > 0)
+                                    <span class="text-[10px] text-amber-700 md:mt-0.5 md:block">{{ $product->reserved_stock }} réservé(s)</span>
+                                @endif
+                                <span class="text-sm font-semibold text-[#0B0F14] md:hidden">{{ number_format((float) $product->selling_price, 0, ',', ' ') }} F</span>
+                            </div>
 
-                                <div class="md:col-span-2 md:text-right">
-                                    <span class="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 md:hidden">Prix vente</span>
-                                    <span class="font-semibold text-[#0B0F14]">{{ number_format((float) $product->selling_price, 0, ',', ' ') }} F</span>
-                                    <span class="block text-[10px] text-slate-400">Coût {{ number_format((float) ($product->purchase_price ?: $product->selling_price * 0.65), 0, ',', ' ') }} F</span>
-                                </div>
+                            {{-- Prix --}}
+                            <div class="hidden md:col-span-2 md:block md:text-right">
+                                <span class="text-sm font-semibold text-[#0B0F14]">{{ number_format((float) $product->selling_price, 0, ',', ' ') }} F</span>
                             </div>
 
                             {{-- Actions --}}
-                            <div class="mt-2 flex items-center gap-4 text-xs font-medium md:col-span-2 md:mt-0 md:justify-end md:gap-1.5">
+                            <div class="mt-2 flex items-center gap-4 pl-[4.25rem] text-xs font-medium md:col-span-2 md:mt-0 md:justify-end md:gap-1.5 md:pl-0">
                                 <button type="button" @click="$dispatch('open-stock-adjust', {{ Js::from($adjustPayload) }})"
                                         class="text-emerald-600 hover:underline md:rounded-lg md:p-1.5 md:hover:bg-emerald-50 md:hover:no-underline" title="Ajuster le stock">
                                     <svg class="hidden h-4 w-4 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
