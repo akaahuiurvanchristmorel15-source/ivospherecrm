@@ -103,8 +103,8 @@
 
             <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
                 <p class="text-xs text-[#64748B]">Valeur du stock</p>
-                <p class="mt-1 text-2xl font-semibold tabular-nums text-[#0B0F14]">
-                    {{ $availableStockValue >= 1000000 ? number_format($availableStockValue / 1000000, 1, ',', ' ') . ' M' : number_format($availableStockValue, 0, ',', ' ') }}
+                <p class="mt-1 break-words font-semibold tabular-nums text-[#0B0F14] {{ $availableStockValue >= 10000000 ? 'text-lg sm:text-2xl' : 'text-2xl' }}">
+                    {{ number_format($availableStockValue, 0, ',', ' ') }}
                 </p>
                 <p class="mt-0.5 text-[11px] text-slate-400">FCFA au prix d'achat</p>
             </div>
