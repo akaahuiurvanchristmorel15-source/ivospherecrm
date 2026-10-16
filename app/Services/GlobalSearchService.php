@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\SupportTicket;
 use App\Models\TechProject;
+use App\Support\TenantContext;
 
 class GlobalSearchService
 {
@@ -120,58 +121,61 @@ class GlobalSearchService
             })->all();
         }
 
-        // 6. Contrats
-        $contracts = Contract::where('reference', 'like', "%{$term}%")
-            ->orWhere('name', 'like', "%{$term}%")
-            ->orWhere('party_name', 'like', "%{$term}%")
-            ->take(5)
-            ->get();
+        // Contrats, support et projets : modules propres à Ivosphere, absents des espaces abonnés.
+        if (TenantContext::isMain()) {
+            // 6. Contrats
+            $contracts = Contract::where('reference', 'like', "%{$term}%")
+                ->orWhere('name', 'like', "%{$term}%")
+                ->orWhere('party_name', 'like', "%{$term}%")
+                ->take(5)
+                ->get();
 
-        if ($contracts->isNotEmpty()) {
-            $results['Contrats'] = $contracts->map(function ($ctr) {
-                return [
-                    'id' => $ctr->id,
-                    'title' => "{$ctr->reference} — {$ctr->name}",
-                    'subtitle' => "Tiers : {$ctr->party_name} ({$ctr->type})",
-                    'url' => route('contracts.show', $ctr->id),
-                    'badge' => 'Contrat',
-                ];
-            })->all();
-        }
+            if ($contracts->isNotEmpty()) {
+                $results['Contrats'] = $contracts->map(function ($ctr) {
+                    return [
+                        'id' => $ctr->id,
+                        'title' => "{$ctr->reference} — {$ctr->name}",
+                        'subtitle' => "Tiers : {$ctr->party_name} ({$ctr->type})",
+                        'url' => route('contracts.show', $ctr->id),
+                        'badge' => 'Contrat',
+                    ];
+                })->all();
+            }
 
-        // 7. Support Tickets
-        $tickets = SupportTicket::where('ticket_number', 'like', "%{$term}%")
-            ->orWhere('subject', 'like', "%{$term}%")
-            ->take(5)
-            ->get();
+            // 7. Support Tickets
+            $tickets = SupportTicket::where('ticket_number', 'like', "%{$term}%")
+                ->orWhere('subject', 'like', "%{$term}%")
+                ->take(5)
+                ->get();
 
-        if ($tickets->isNotEmpty()) {
-            $results['Support'] = $tickets->map(function ($tk) {
-                return [
-                    'id' => $tk->id,
-                    'title' => "{$tk->ticket_number} — {$tk->subject}",
-                    'subtitle' => "Statut : {$tk->status} — Priorité : {$tk->priority}",
-                    'url' => route('support.show', $tk->id),
-                    'badge' => 'Ticket',
-                ];
-            })->all();
-        }
+            if ($tickets->isNotEmpty()) {
+                $results['Support'] = $tickets->map(function ($tk) {
+                    return [
+                        'id' => $tk->id,
+                        'title' => "{$tk->ticket_number} — {$tk->subject}",
+                        'subtitle' => "Statut : {$tk->status} — Priorité : {$tk->priority}",
+                        'url' => route('support.show', $tk->id),
+                        'badge' => 'Ticket',
+                    ];
+                })->all();
+            }
 
-        // 8. Projets Tech
-        $techProjects = TechProject::where('name', 'like', "%{$term}%")
-            ->take(5)
-            ->get();
+            // 8. Projets Tech
+            $techProjects = TechProject::where('name', 'like', "%{$term}%")
+                ->take(5)
+                ->get();
 
-        if ($techProjects->isNotEmpty()) {
-            $results['Projets TECH'] = $techProjects->map(function ($tp) {
-                return [
-                    'id' => $tp->id,
-                    'title' => $tp->name,
-                    'subtitle' => "Avancement : {$tp->progress}% — {$tp->status}",
-                    'url' => route('tech.projects.show', $tp->id),
-                    'badge' => 'Projet',
-                ];
-            })->all();
+            if ($techProjects->isNotEmpty()) {
+                $results['Projets TECH'] = $techProjects->map(function ($tp) {
+                    return [
+                        'id' => $tp->id,
+                        'title' => $tp->name,
+                        'subtitle' => "Avancement : {$tp->progress}% — {$tp->status}",
+                        'url' => route('tech.projects.show', $tp->id),
+                        'badge' => 'Projet',
+                    ];
+                })->all();
+            }
         }
 
         return $results;

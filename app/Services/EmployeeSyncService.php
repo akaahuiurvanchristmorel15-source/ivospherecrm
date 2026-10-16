@@ -14,8 +14,13 @@ class EmployeeSyncService
      * Synchronise un compte utilisateur vers une fiche employé correspondante.
      * Si l'employé n'existe pas, il est automatiquement créé avec matricule, poste et département.
      */
-    public function syncUserToEmployee(User $user, array $extra = []): Employee
+    public function syncUserToEmployee(User $user, array $extra = []): ?Employee
     {
+        // Les comptes des espaces abonnés ne sont pas des collaborateurs d'Ivosphere (RH non partagée).
+        if (! $user->belongsToMainTenant()) {
+            return null;
+        }
+
         // 1. Chercher la fiche employé existante par user_id ou email
         $employee = Employee::where('user_id', $user->id)
             ->orWhere('email', $user->email)

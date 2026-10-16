@@ -52,6 +52,11 @@ class NotificationService
     {
         $query = SmartAlert::query()->with(['domain', 'assignee']);
 
+        // Les alertes intelligentes concernent Ivosphere : aucune pour les espaces abonnés.
+        if (! $user->belongsToMainTenant()) {
+            return $query->whereRaw('1 = 0');
+        }
+
         // Si l'utilisateur n'est pas admin et n'a pas accès à tous les domaines,
         // on filtre par les domaines auxquels il est rattaché
         if (! $user->isAdmin() && ! $user->all_domains) {

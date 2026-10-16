@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\EmployeeSyncService;
+use App\Support\TenantAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -69,6 +70,12 @@ class UserController extends Controller
      */
     public function store(Request $request, EmployeeSyncService $syncService): RedirectResponse
     {
+        $tenant = TenantAccess::tenantOf($request->user());
+        $maxUsers = $tenant && ! $tenant->is_main ? $tenant->plan?->max_users : null;
+        if ($maxUsers !== null && User::count() >= $maxUsers) {
+            return back()->withInput()->with('error', "Votre abonnement {$tenant->plan->name} est limité à {$maxUsers} utilisateur(s). Passez à un plan supérieur pour en ajouter.");
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],

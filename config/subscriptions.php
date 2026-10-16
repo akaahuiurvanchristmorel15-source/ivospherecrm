@@ -1,0 +1,158 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modules vendus dans les plans d'abonnement
+    |--------------------------------------------------------------------------
+    |
+    | Chaque module donne accès à des pages (noms de routes, « * » en fin de motif).
+    | Un module « ready » = false n'est pas encore isolé par espace : les plans qui
+    | le contiennent restent « bientôt disponibles ».
+    |
+    */
+
+    'modules' => [
+        'pos' => [
+            'label' => 'Système de vente POS',
+            'description' => 'Caisse tactile, scan des codes-barres, encaissement espèces / mobile money / carte.',
+            'routes' => ['commercial.pos.*', 'commercial.customers.*'],
+            'ready' => true,
+        ],
+        'facturation' => [
+            'label' => 'Facturation',
+            'description' => 'Devis, commandes, factures PDF et suivi des règlements clients.',
+            'routes' => ['commercial.quotations.*', 'commercial.orders.*', 'commercial.invoices.*', 'commercial.payments.*', 'commercial.customers.*'],
+            'ready' => true,
+        ],
+        'stock' => [
+            'label' => 'Gestion de stock',
+            'description' => 'Catalogue, entrepôts, mouvements, inventaires, alertes, photos des articles.',
+            'routes' => ['stock.*', 'commercial.products.*', 'commercial.suppliers.*'],
+            'ready' => true,
+        ],
+        'journal_securite' => [
+            'label' => 'Journal et sécurité',
+            'description' => "Journal d'activité, utilisateurs et rôles de l'espace, mot de passe.",
+            'routes' => ['admin.users.*', 'admin.logs.*'],
+            'ready' => true,
+        ],
+        'direction' => [
+            'label' => 'Direction',
+            'description' => 'Tableaux de bord de pilotage, indicateurs et analyses.',
+            'routes' => [],
+            'ready' => false,
+        ],
+        'services_collaboration' => [
+            'label' => 'Services et collaboration',
+            'description' => 'Messagerie interne, documents partagés (GED), tickets de support.',
+            'routes' => [],
+            'ready' => false,
+        ],
+        'administration_securite' => [
+            'label' => 'Administration et sécurité',
+            'description' => "Utilisateurs, rôles, journal d'activité et paramètres de l'entreprise.",
+            'routes' => ['admin.users.*', 'admin.logs.*'],
+            'ready' => true,
+        ],
+    ],
+
+    /*
+    | Tables séparées par espace dont les règles de validation « exists » / « unique » sont
+    | limitées à l'espace courant (les e-mails des utilisateurs restent uniques partout).
+    */
+    'tenant_validated_tables' => [
+        'domains', 'activity_logs', 'categories', 'brands', 'suppliers', 'products', 'product_variants',
+        'product_batches', 'warehouses', 'warehouse_stocks', 'stock_movements', 'stock_alerts',
+        'stock_transfers', 'physical_inventories', 'physical_inventory_items', 'purchase_requests',
+        'supplier_receptions', 'equipment', 'equipment_maintenances', 'customers', 'quotations',
+        'quotation_items', 'orders', 'order_items', 'invoices', 'invoice_items', 'payments',
+    ],
+
+    /*
+    | Pages accessibles à tout utilisateur d'un espace abonné, quel que soit son plan.
+    */
+    'always_allowed_routes' => [
+        'space.*', 'offres.*', 'password.*', 'logout', 'api.search', 'livewire.*',
+    ],
+
+    /*
+    | Pages accessibles même quand l'abonnement est expiré ou en attente de paiement.
+    */
+    'billing_routes' => ['space.*', 'offres.*', 'password.*', 'logout'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Plans proposés (valeurs initiales, modifiables dans l'administration)
+    |--------------------------------------------------------------------------
+    */
+
+    'plans' => [
+        [
+            'code' => 'commercial_caisse',
+            'family' => 'commercial',
+            'name' => 'Commercial Caisse',
+            'tagline' => 'Tout pour vendre et gérer votre boutique.',
+            'modules' => ['pos', 'facturation', 'stock', 'journal_securite'],
+            'price_monthly' => 15000,
+            'price_yearly' => 150000,
+            'max_users' => 3,
+            'sort_order' => 1,
+        ],
+        [
+            'code' => 'entreprise_petal',
+            'family' => 'entreprise',
+            'name' => 'Entreprise Pétal',
+            'tagline' => 'Le pilotage de votre entreprise.',
+            'modules' => ['direction'],
+            'price_monthly' => 25000,
+            'price_yearly' => 250000,
+            'max_users' => 5,
+            'sort_order' => 2,
+        ],
+        [
+            'code' => 'entreprise_plus',
+            'family' => 'entreprise',
+            'name' => 'Entreprise Plus',
+            'tagline' => 'Pilotage et travail en équipe.',
+            'modules' => ['direction', 'services_collaboration'],
+            'price_monthly' => 45000,
+            'price_yearly' => 450000,
+            'max_users' => 15,
+            'sort_order' => 3,
+        ],
+        [
+            'code' => 'entreprise_business',
+            'family' => 'entreprise',
+            'name' => 'Entreprise Business',
+            'tagline' => 'La suite complète, caisse comprise.',
+            'modules' => ['direction', 'services_collaboration', 'administration_securite', 'pos', 'facturation', 'stock', 'journal_securite'],
+            'price_monthly' => 75000,
+            'price_yearly' => 750000,
+            'max_users' => 50,
+            'sort_order' => 4,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Paiement en ligne
+    |--------------------------------------------------------------------------
+    |
+    | « simulation » : page de paiement factice, pour les tests en local uniquement.
+    | « cinetpay »   : paiement réel (Wave, Orange Money, MTN, Moov, carte) via CinetPay.
+    |
+    */
+
+    'payment' => [
+        'provider' => env('SUBSCRIPTION_PAYMENT_PROVIDER', env('APP_ENV') === 'production' ? 'cinetpay' : 'simulation'),
+        'currency' => 'XOF',
+        'cinetpay' => [
+            'api_key' => env('CINETPAY_API_KEY'),
+            'site_id' => env('CINETPAY_SITE_ID'),
+            'secret_key' => env('CINETPAY_SECRET_KEY'),
+            'base_url' => env('CINETPAY_BASE_URL', 'https://api-checkout.cinetpay.com/v2'),
+        ],
+    ],
+];

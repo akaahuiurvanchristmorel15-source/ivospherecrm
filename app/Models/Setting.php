@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use App\Models\Scopes\TenantScope;
+use App\Support\TenantContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     /**
      * @var list<string>
@@ -21,11 +25,21 @@ class Setting extends Model
     ];
 
     /**
+     * Paramètres de l'espace courant ; ceux d'Ivosphere pour un visiteur non connecté.
+     *
+     * @return Builder<static>
+     */
+    public static function forCurrentTenant(): Builder
+    {
+        return static::withoutGlobalScope(TenantScope::class)->where('tenant_id', TenantContext::idForNewRecord());
+    }
+
+    /**
      * Get a setting by key.
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        $setting = static::where('key', $key)->first();
+        $setting = static::forCurrentTenant()->where('key', $key)->first();
         if (! $setting) {
             return $default;
         }
@@ -46,8 +60,8 @@ class Setting extends Model
     {
         $formattedValue = is_array($value) ? json_encode($value) : (string) $value;
 
-        return static::updateOrCreate(
-            ['key' => $key],
+        return static::forCurrentTenant()->updateOrCreate(
+            ['key' => $key, 'tenant_id' => TenantContext::idForNewRecord()],
             [
                 'value' => $formattedValue,
                 'group' => $group,
