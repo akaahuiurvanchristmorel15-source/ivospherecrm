@@ -144,6 +144,10 @@ button[data-submitting]:has(> svg:only-child)::before {
    ========================================================================== */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Pages publiques d'abonnement (offres, inscription) : thème nuit propre à ces pages,
+   indépendant du thème .dark de l'application. */
+@custom-variant night (&:where([data-offer-theme=night], [data-offer-theme=night] *));
+
 @media screen {
     :root.dark {
         color-scheme: dark;

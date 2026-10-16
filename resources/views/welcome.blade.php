@@ -97,7 +97,7 @@
     // Réalisations : à fournir par le contrôleur → [['title'=>..., 'pole'=>'print', 'status'=>'done|ongoing', 'image'=>'chemin/storage.jpg'], ...]
     $projects = collect($projects ?? []);
 
-    $field = 'block w-full rounded-xl border border-white/15 bg-white/5 px-3.5 py-3 text-base text-white placeholder:text-white/40 transition focus:border-white/60 focus:outline-none focus:ring-2 focus:ring-white/20 sm:text-sm';
+    $field = 'block w-full rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-base text-[#0B0F14] placeholder:text-black/30 transition focus:border-black/40 focus:outline-none focus:ring-4 focus:ring-black/5 sm:text-sm night:border-white/10 night:bg-white/[0.04] night:text-white night:placeholder:text-white/25 night:focus:border-white/40 night:focus:ring-white/10';
     $quoteRoute = Route::has('quote.store') ? route('quote.store') : null;
 
     // Délai d'apparition en cascade (plafonné pour ne jamais faire attendre le visiteur)
@@ -109,19 +109,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <x-pwa-meta theme-color="#FFFFFF" />
+    <x-pwa-meta theme-color="#000000" />
     <title>IVOSPHERE — Impression, sport, numérique, évènements et assurance</title>
     <meta name="description" content="IVOSPHERE regroupe cinq pôles de services professionnels : impression, matériel sportif, solutions numériques, photo et évènements, assurance. Demandez votre devis.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    {{-- Les contenus ne sont masqués pour l'animation que si JavaScript fonctionne --}}
-    <script>document.documentElement.classList.add('js')</script>
+    {{-- Les contenus ne sont masqués pour l'animation que si JavaScript fonctionne ; thème (nuit par défaut) appliqué avant l'affichage --}}
+    <script>
+        document.documentElement.classList.add('js');
+        (function () {
+            var theme = 'night';
+            try { theme = localStorage.getItem('ivo-offer-theme') || 'night'; } catch (e) {}
+            document.documentElement.setAttribute('data-offer-theme', theme);
+        })();
+    </script>
     <style>
         [x-cloak]{display:none !important}
-        .font-display{font-family:'Bricolage Grotesque','Inter',system-ui,sans-serif}
+        .font-display{font-family:'Inter',system-ui,sans-serif;letter-spacing:-0.035em}
 
         /* ── Animations au défilement ─────────────────────────────── */
         .js [data-reveal]{
@@ -138,18 +145,13 @@
         .js [data-reveal].is-visible{opacity:1;transform:none}
 
         /* Lien actif dans la navigation (suivi du défilement) */
-        [data-nav]{position:relative}
-        [data-nav]::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:2px;border-radius:2px;background:#0066FF;transform:scaleX(0);transform-origin:left;transition:transform .3s cubic-bezier(.22,1,.36,1)}
-        [data-nav][aria-current="true"]{color:#0B0F14}
-        [data-nav][aria-current="true"]::after{transform:scaleX(1)}
+        [data-nav][aria-current="true"]{color:#0B0F14;background:rgba(0,0,0,.06)}
+        [data-offer-theme=night] [data-nav][aria-current="true"]{color:#fff;background:rgba(255,255,255,.1)}
 
         /* ── Card stack (Détail des prestations) ───────────────────── */
         [data-stack-card]{transform-origin:center top;will-change:transform}
 
-        /* ── Scroll horizontal épinglé (Pourquoi IVOSPHERE) ────────────
-           Par défaut (mobile, mouvement réduit, sans JS) : carrousel natif à glisser.
-           Avec la classe .hs-active (ajoutée par le JS sur grand écran) :
-           la section est épinglée et le défilement vertical fait avancer la piste. */
+        /* ── Scroll horizontal épinglé (Pourquoi IVOSPHERE) ──────────── */
         .hs-track{position:relative;display:flex;gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-inline:max(1rem,calc((100vw - 80rem)/2 + 1rem))}
         .hs-track::-webkit-scrollbar{display:none}
         .hs-card{flex:0 0 min(82vw,22rem);scroll-snap-align:center}
@@ -167,7 +169,6 @@
         @media (prefers-reduced-motion: reduce){
             html{scroll-behavior:auto !important}
             .js [data-reveal]{opacity:1 !important;transform:none !important;transition:none !important}
-            [data-nav]::after{transition:none}
             [data-stack-card]{transform:none !important}
             [data-magnetic-arrow]{transform:none !important}
         }
@@ -176,124 +177,155 @@
     @livewireStyles
 </head>
 
-<body class="bg-white font-sans text-[#0B0F14] antialiased" x-data="{ menu: false }" @keydown.escape.window="menu = false">
+<body class="bg-[#F5F7FA] font-sans text-[#0B0F14] antialiased transition-colors night:bg-black night:text-white"
+      x-data="{
+          menu: false,
+          night: document.documentElement.getAttribute('data-offer-theme') === 'night',
+          toggleTheme() {
+              this.night = ! this.night;
+              const theme = this.night ? 'night' : 'day';
+              document.documentElement.setAttribute('data-offer-theme', theme);
+              try { localStorage.setItem('ivo-offer-theme', theme); } catch (e) {}
+          }
+      }"
+      @keydown.escape.window="menu = false">
 
-    <a href="#contenu" class="sr-only rounded-lg bg-[#0066FF] px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60]">Aller au contenu</a>
+    <a href="#contenu" class="sr-only rounded-full bg-[#0B0F14] px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60]">Aller au contenu</a>
 
-    {{-- ═══ En-tête (fixe : reste visible pendant tout le défilement) ═══ --}}
-    <header id="site-header" class="sticky top-0 z-40 border-b border-[#E2E8F0] bg-white/90 backdrop-blur transition-shadow duration-300">
-        <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-            <a href="#accueil" class="shrink-0" aria-label="IVOSPHERE, retour à l'accueil">
-                <img src="{{ asset('images/logo.png') }}" alt="IVOSPHERE" class="h-9 w-auto">
+    {{-- ═══ Navigation en pilule flottante ═══ --}}
+    <header id="site-header" class="fixed inset-x-0 top-4 z-40 flex flex-col items-center px-4">
+        <nav class="flex max-w-full items-center gap-1 rounded-full border border-black/10 bg-white/70 p-1.5 pl-2 shadow-xl shadow-black/5 backdrop-blur-xl night:border-white/15 night:bg-black/60 night:shadow-black/50" aria-label="Navigation principale">
+            <a href="#accueil" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5" aria-label="IVOSPHERE, retour à l'accueil">
+                <img src="{{ asset('images/logo-emblem.png') }}" alt="" class="h-5 w-auto">
             </a>
-
-            <nav class="hidden items-center gap-7 text-sm font-medium text-[#64748B] lg:flex" aria-label="Navigation principale">
+            <div class="hidden items-center lg:flex">
                 @foreach($navLinks as $href => $label)
-                    <a href="{{ $href }}" data-nav class="transition-colors hover:text-[#0B0F14]">{{ $label }}</a>
+                    <a href="{{ $href }}" data-nav class="rounded-full px-3 py-1.5 text-xs text-black/55 transition hover:text-black night:text-white/55 night:hover:text-white">{{ $label }}</a>
                 @endforeach
-                <a href="{{ route('offres.index') }}" class="inline-flex items-center gap-1.5 font-semibold text-[#0066FF] transition-colors hover:text-[#0052CC]">
+                <a href="{{ route('offres.index') }}" class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[#0B0F14] night:text-white">
                     Abonnements
-                    <span class="rounded-md bg-[#0066FF]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase">Nouveau</span>
+                    <span class="rounded-full bg-[#0066FF] px-1.5 py-px text-[9px] font-bold uppercase text-white">Nouveau</span>
                 </a>
-            </nav>
-
-            <div class="flex items-center gap-2">
-                @if(Route::has('login'))
-                    <a href="{{ route('login') }}" class="hidden rounded-xl px-3 py-2 text-sm font-medium text-[#64748B] hover:text-[#0B0F14] sm:block">Espace employé</a>
-                @endif
-                <a href="#devis" class="hidden rounded-xl bg-[#0066FF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0052CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 sm:inline-flex">Demander un devis</a>
-                <button type="button" @click="menu = !menu" :aria-expanded="menu" aria-controls="menu-mobile" aria-label="Menu"
-                        class="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#0B0F14] lg:hidden">
-                    <svg x-show="!menu" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
-                    <svg x-show="menu" x-cloak class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
             </div>
-        </div>
-
-        {{-- Progression de la lecture --}}
-        <span id="scroll-progress" class="pointer-events-none absolute -bottom-px left-0 h-0.5 w-full origin-left scale-x-0 bg-[#0066FF]" aria-hidden="true"></span>
+            <button type="button" @click="toggleTheme()" class="flex h-8 w-8 items-center justify-center rounded-full text-black/60 transition hover:bg-black/5 night:text-white/70 night:hover:bg-white/10"
+                    :aria-label="night ? 'Passer en mode jour' : 'Passer en mode nuit'" :title="night ? 'Mode jour' : 'Mode nuit'">
+                <svg x-show="night" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
+                <svg x-show="! night" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+            </button>
+            <a href="#devis" class="ml-0.5 flex h-8 items-center whitespace-nowrap rounded-full bg-[#0B0F14] px-4 text-xs font-semibold text-white transition hover:bg-black night:bg-white night:text-black night:hover:bg-white/90">Devis</a>
+            <button type="button" @click="menu = !menu" :aria-expanded="menu" aria-controls="menu-mobile" aria-label="Menu"
+                    class="flex h-8 w-8 items-center justify-center rounded-full text-black/70 hover:bg-black/5 night:text-white/80 night:hover:bg-white/10 lg:hidden">
+                <svg x-show="!menu" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16"/></svg>
+                <svg x-show="menu" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </nav>
 
         <nav id="menu-mobile" x-show="menu" x-cloak x-transition.opacity.duration.150ms @click="menu = false"
-             class="border-t border-[#E2E8F0] bg-white px-4 pb-5 pt-3 lg:hidden" aria-label="Navigation mobile">
-            <ul class="space-y-1 text-base font-medium">
+             class="mt-2 w-full max-w-sm rounded-3xl border border-black/10 bg-white/90 p-3 shadow-2xl backdrop-blur-xl night:border-white/15 night:bg-black/85 lg:hidden" aria-label="Navigation mobile">
+            <ul class="space-y-0.5 text-sm font-medium">
                 @foreach($navLinks as $href => $label)
-                    <li><a href="{{ $href }}" class="block rounded-lg px-3 py-3 text-[#0B0F14] active:bg-[#F5F7FA]">{{ $label }}</a></li>
+                    <li><a href="{{ $href }}" class="block rounded-2xl px-4 py-3 text-[#0B0F14] active:bg-black/5 night:text-white night:active:bg-white/10">{{ $label }}</a></li>
                 @endforeach
-                <li><a href="{{ route('offres.index') }}" class="block rounded-lg px-3 py-3 font-semibold text-[#0066FF] active:bg-[#F5F7FA]">Abonnements</a></li>
+                <li><a href="{{ route('offres.index') }}" class="block rounded-2xl px-4 py-3 font-semibold text-[#0066FF] night:text-[#7AB0FF]">Abonnements</a></li>
             </ul>
-            <a href="#devis" class="mt-3 flex items-center justify-center rounded-xl bg-[#0066FF] px-4 py-3 text-sm font-semibold text-white">Demander un devis</a>
             @if(Route::has('login'))
-                <a href="{{ route('login') }}" class="mt-2 flex items-center justify-center rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm font-semibold text-[#0B0F14]">Espace employé</a>
+                <a href="{{ route('login') }}" class="mt-2 flex items-center justify-center rounded-full border border-black/15 px-4 py-3 text-sm font-semibold night:border-white/15">Espace employé</a>
             @endif
         </nav>
     </header>
 
-    <main id="contenu">
+    <main id="contenu" class="relative overflow-x-clip">
+        <div class="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[1000px] -translate-x-1/2 rounded-full bg-[#0066FF]/[0.07] blur-3xl night:bg-white/[0.06]" aria-hidden="true"></div>
 
-        {{-- ═══ 1. Hero : fade / slide + parallax léger ═══ --}}
+        {{-- ═══ 1. Hero ═══ --}}
         <section id="accueil" x-data="heroSlider(2)" @visibilitychange.window="document.hidden ? stop() : start()"
-                 class="relative isolate scroll-mt-16 overflow-hidden border-b border-[#E2E8F0] bg-white">
+                 class="relative isolate scroll-mt-16 overflow-hidden">
 
             {{-- Photos de l'équipe en fond, fondu enchaîné et léger décalage au défilement --}}
             <div data-parallax class="pointer-events-none absolute inset-x-0 -bottom-10 -top-10 -z-10 select-none will-change-transform" aria-hidden="true">
                 <img src="{{ asset('images/team-ivosphere-1.jpg') }}" alt=""
                      class="absolute inset-0 h-full w-full object-cover object-[center_28%] transition-all duration-1000 ease-out"
-                     :class="active === 0 ? 'opacity-50 lg:opacity-65 scale-100' : 'opacity-0 scale-105'" loading="eager">
+                     :class="active === 0 ? 'opacity-40 scale-100' : 'opacity-0 scale-105'" loading="eager">
                 <img src="{{ asset('images/team-ivosphere-2.jpg') }}" alt=""
                      class="absolute inset-0 h-full w-full object-cover object-[center_22%] transition-all duration-1000 ease-out"
-                     :class="active === 1 ? 'opacity-50 lg:opacity-65 scale-100' : 'opacity-0 scale-105'" loading="lazy">
-
-                {{-- Voiles garantissant la lisibilité du texte --}}
-                <div class="absolute inset-0 bg-gradient-to-r from-white via-white/90 to-white/70 lg:via-white/80 lg:to-white/35"></div>
-                <div class="absolute inset-0 bg-gradient-to-b from-white/70 via-transparent to-white/95"></div>
+                     :class="active === 1 ? 'opacity-40 scale-100' : 'opacity-0 scale-105'" loading="lazy">
+                <div class="absolute inset-0 bg-gradient-to-r from-[#F5F7FA] via-[#F5F7FA]/90 to-[#F5F7FA]/60 night:from-black night:via-black/85 night:to-black/50"></div>
+                <div class="absolute inset-0 bg-gradient-to-b from-[#F5F7FA]/60 via-transparent to-[#F5F7FA] night:from-black/60 night:to-black"></div>
             </div>
 
-            <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-12 lg:gap-12 lg:px-8 lg:py-28">
-                <div class="lg:col-span-7">
-                    <h1 data-reveal="up" class="font-display text-4xl font-bold leading-[1.08] tracking-tight text-[#0B0F14] sm:text-5xl lg:text-6xl">
-                        Des solutions professionnelles pour donner vie à vos projets
-                    </h1>
-                    <p data-reveal="up" style="--d:120ms" class="mt-6 max-w-xl text-base leading-relaxed text-[#475569] sm:text-lg">
-                        IVOSPHERE réunit cinq pôles de services : impression, matériel sportif, solutions numériques, photo et évènements, assurance. Un seul partenaire, des prestations adaptées à votre besoin.
-                    </p>
-                    <div data-reveal="up" style="--d:240ms" class="mt-8 grid gap-3 sm:flex sm:flex-wrap">
-                        <a href="#prestations" class="inline-flex items-center justify-center rounded-xl bg-[#0B0F14] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#0066FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2">Découvrir nos services</a>
-                        <a href="#devis" class="inline-flex items-center justify-center rounded-xl border border-[#CBD5E1] bg-white/90 px-6 py-3.5 text-sm font-semibold text-[#0B0F14] shadow-sm backdrop-blur transition hover:border-[#0B0F14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2">Demander un devis</a>
+            <div class="mx-auto max-w-7xl px-4 pb-10 pt-32 sm:px-6 sm:pt-40 lg:px-8">
+                <div class="grid grid-cols-1 items-end gap-10 lg:grid-cols-12">
+                    <div class="lg:col-span-7">
+                        <span data-reveal="up" class="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                            Cinq pôles · Un seul partenaire
+                        </span>
+                        <h1 data-reveal="up" style="--d:80ms" class="mt-6 font-display text-4xl font-extrabold leading-[1.02] sm:text-6xl lg:text-7xl">
+                            Des solutions professionnelles pour donner vie à vos projets
+                        </h1>
+                        <p data-reveal="up" style="--d:160ms" class="mt-6 max-w-xl text-base leading-relaxed text-black/55 sm:text-lg night:text-white/55">
+                            IVOSPHERE réunit cinq pôles de services : impression, matériel sportif, solutions numériques, photo et évènements, assurance. Un seul partenaire, des prestations adaptées à votre besoin.
+                        </p>
+                        <div data-reveal="up" style="--d:240ms" class="mt-8 grid gap-3 sm:flex sm:flex-wrap">
+                            <a href="#prestations" class="inline-flex h-12 items-center justify-center rounded-full bg-[#0B0F14] px-7 text-sm font-semibold text-white transition hover:bg-black night:bg-white night:text-black night:hover:bg-white/90">Découvrir nos services</a>
+                            <a href="#devis" class="inline-flex h-12 items-center justify-center rounded-full border border-black/15 bg-white/60 px-7 text-sm font-semibold backdrop-blur transition hover:border-black/40 night:border-white/15 night:bg-white/5 night:hover:border-white/40">Demander un devis</a>
+                        </div>
+
+                        {{-- Choix de la photo d'équipe --}}
+                        <div data-reveal="up" style="--d:320ms" class="mt-8 flex items-center gap-3" role="group" aria-label="Photos de l'équipe IVOSPHERE">
+                            @foreach([1, 2] as $n)
+                                <button type="button" @click="go({{ $n - 1 }})" :aria-pressed="active === {{ $n - 1 }}" aria-label="Afficher la photo d'équipe {{ $n }}"
+                                        class="flex h-8 items-center focus-visible:outline-none">
+                                    <span class="block h-1.5 rounded-full transition-all duration-300"
+                                          :class="active === {{ $n - 1 }} ? 'w-8 bg-[#0B0F14] night:bg-white' : 'w-4 bg-black/20 hover:bg-black/40 night:bg-white/25 night:hover:bg-white/50'"></span>
+                                </button>
+                            @endforeach
+                            <span class="text-xs text-black/45 night:text-white/45">L'équipe IVOSPHERE</span>
+                        </div>
                     </div>
 
-                    {{-- Choix de la photo d'équipe --}}
-                    <div data-reveal="up" style="--d:340ms" class="mt-8 flex items-center gap-3" role="group" aria-label="Photos de l'équipe IVOSPHERE">
-                        @foreach([1, 2] as $n)
-                            <button type="button" @click="go({{ $n - 1 }})" :aria-pressed="active === {{ $n - 1 }}" aria-label="Afficher la photo d'équipe {{ $n }}"
-                                    class="flex h-8 items-center focus-visible:outline-none">
-                                <span class="block h-1.5 rounded-full transition-all duration-300"
-                                      :class="active === {{ $n - 1 }} ? 'w-8 bg-[#0066FF]' : 'w-4 bg-[#94A3B8]/60 hover:bg-[#94A3B8]'"></span>
-                            </button>
-                        @endforeach
-                        <span class="text-xs text-[#64748B]">L'équipe IVOSPHERE</span>
+                    {{-- Les 5 pôles en un coup d'œil --}}
+                    <div class="lg:col-span-5" data-reveal="up" style="--d:200ms">
+                        <div class="rounded-[28px] border border-black/[0.08] bg-white/55 p-5 backdrop-blur-2xl night:border-white/10 night:bg-white/[0.04]">
+                            <p class="px-1 text-[11px] font-medium uppercase tracking-wider text-black/40 night:text-white/40">Nos pôles</p>
+                            <ul class="mt-3 space-y-1.5">
+                                @foreach($poles as $key => $p)
+                                    <li>
+                                        <a href="#pole-{{ $key }}" class="group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition hover:bg-black/[0.04] night:hover:bg-white/[0.06]">
+                                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style="background: {{ $p['color'] }}22; color: {{ $p['color'] }}">
+                                                <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">@foreach($p['icon'] as $path)<path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/>@endforeach</svg>
+                                            </span>
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block truncate text-sm font-semibold">{{ $p['name'] }}</span>
+                                                <span class="block truncate text-xs text-black/45 night:text-white/45">{{ $p['tagline'] }}</span>
+                                            </span>
+                                            <svg class="h-4 w-4 shrink-0 text-black/30 transition group-hover:translate-x-0.5 group-hover:text-black night:text-white/30 night:group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                
             </div>
+
+            {{-- Nom géant en filigrane --}}
+            <p class="pointer-events-none select-none text-center font-display text-[19vw] font-extrabold leading-[0.8] text-black/[0.06] night:text-white/[0.07] lg:text-[250px]" aria-hidden="true">IVOSPHERE</p>
         </section>
 
-        {{-- ═══ 2. Nos prestations : Bento Grid + Scroll Reveal + Hover Lift + Icon Animation + Magnetic Arrow + Horizontal Scroll mobile ═══ --}}
-        <section id="prestations" class="scroll-mt-16 bg-[#F5F7FA] py-16 sm:py-24" aria-labelledby="prestations-titre"
-                 x-data="bentoSection()">
+        {{-- ═══ 2. Nos prestations : Bento Grid ═══ --}}
+        <section id="prestations" class="relative scroll-mt-24 py-20 sm:py-28" aria-labelledby="prestations-titre" x-data="bentoSection()">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div data-reveal="up" class="max-w-2xl">
-                        <h2 id="prestations-titre" class="mt-3 font-display text-3xl font-bold tracking-tight text-[#0B0F14] sm:text-4xl">Nos prestations</h2>
-                        <p class="mt-3 text-base text-[#64748B] sm:text-lg">Cinq domaines d'expertise pour répondre à vos besoins professionnels.</p>
-                    </div>
+                <div data-reveal="up" class="text-center">
+                    <span class="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">Prestations</span>
+                    <h2 id="prestations-titre" class="mt-5 font-display text-3xl font-extrabold sm:text-5xl">Nos prestations</h2>
+                    <p class="mx-auto mt-4 max-w-xl text-base text-black/50 night:text-white/50">Cinq domaines d'expertise pour répondre à vos besoins professionnels.</p>
                 </div>
 
-                {{-- Track Bento : défilement horizontal fluide sur mobile (snap-x), Bento Grid 12 colonnes dès sm --}}
                 <div @scroll.passive="handleScroll($event)"
-                     class="bento-mobile-track -mx-4 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 pt-2 sm:mx-0 sm:mt-10 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-12 lg:gap-5">
+                     class="bento-mobile-track -mx-4 mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 pt-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-12 lg:gap-5">
                     @foreach($poles as $key => $p)
                         @php
-                            // Répartition Bento 12 colonnes sur grand écran (7 + 5 = 12, 4 + 4 + 4 = 12)
                             $bentoSpan = match($loop->index) {
                                 0 => 'lg:col-span-7 sm:col-span-2',
                                 1 => 'lg:col-span-5 sm:col-span-1',
@@ -305,221 +337,172 @@
                         @endphp
                         <a href="#pole-{{ $key }}"
                            data-reveal="up" {!! $d($loop->index, 90) !!}
-                           x-data="magneticCard()"
-                           @mousemove="move($event)"
-                           @mouseleave="leave()"
-                           class="bento-card-mobile group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white p-6 transition-all duration-300 ease-out hover:-translate-y-2 hover:border-slate-400 hover:shadow-2xl hover:shadow-slate-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] sm:p-7 {{ $bentoSpan }}">
+                           x-data="magneticCard()" @mousemove="move($event)" @mouseleave="leave()"
+                           class="bento-card-mobile group relative flex flex-col justify-between overflow-hidden rounded-[28px] border border-black/[0.08] bg-white/55 p-6 backdrop-blur-2xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-black/20 hover:bg-white/80 focus-visible:outline-none sm:p-7 night:border-white/10 night:bg-white/[0.04] night:hover:border-white/25 night:hover:bg-white/[0.07] {{ $bentoSpan }}">
 
-                            {{-- Halo lumineux d'accentuation coloré au survol --}}
-                            <div class="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-20"
-                                 style="background: {{ $p['color'] }}" aria-hidden="true"></div>
+                            <div class="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-25" style="background: {{ $p['color'] }}" aria-hidden="true"></div>
 
-                            {{-- Filigrane SVG oversize en arrière-plan --}}
-                            <div class="pointer-events-none absolute -bottom-6 -right-6 h-36 w-36 opacity-[0.03] transition-all duration-500 group-hover:scale-110 group-hover:opacity-[0.08]" aria-hidden="true">
-                                <svg class="h-full w-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
-                                    @foreach($p['icon'] as $path)<path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/>@endforeach
-                                </svg>
-                            </div>
-
-                            {{-- En-tête de carte : Icône avec animation au survol + Badge de pôle --}}
                             <div>
                                 <div class="flex items-center justify-between gap-3">
-                                    <span class="relative flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-md"
-                                          style="background: {{ $p['color'] }}1A; color: {{ $p['color'] }}">
-                                        <svg class="h-6 w-6 transition-transform duration-300 ease-out group-hover:scale-105" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+                                          style="background: {{ $p['color'] }}22; color: {{ $p['color'] }}">
+                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                             @foreach($p['icon'] as $path)<path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/>@endforeach
                                         </svg>
                                     </span>
-
-                                    <span class="inline-flex items-center gap-1.5 rounded-full border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1 text-xs font-semibold text-[#64748B] transition-colors group-hover:border-slate-300 group-hover:text-[#0B0F14]">
-                                        <span class="h-1.5 w-1.5 rounded-full" style="background: {{ $p['color'] }}"></span>
-                                        <span>Pôle 0{{ $loop->iteration }}</span>
-                                    </span>
+                                    <span class="rounded-full border border-black/10 px-3 py-1 text-[11px] font-medium text-black/45 night:border-white/15 night:text-white/50">Pôle 0{{ $loop->iteration }}</span>
                                 </div>
 
-                                {{-- Titre & Accroche --}}
-                                <h3 class="mt-5 font-display text-xl font-bold tracking-tight text-[#0B0F14] transition-colors group-hover:text-[#0B0F14] sm:text-2xl">
-                                    {{ $p['name'] }}
-                                </h3>
-                                <p class="mt-1 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{{ $p['tagline'] }}</p>
-                                <p class="mt-3 text-sm leading-relaxed text-[#64748B]">{{ $p['intro'] }}</p>
+                                <h3 class="mt-6 font-display text-xl font-bold sm:text-2xl">{{ $p['name'] }}</h3>
+                                <p class="mt-1 text-xs font-medium uppercase tracking-wider text-black/40 night:text-white/40">{{ $p['tagline'] }}</p>
+                                <p class="mt-3 text-sm leading-relaxed text-black/55 night:text-white/55">{{ $p['intro'] }}</p>
 
-                                {{-- Badges services inclus (enrichissement Bento) --}}
-                                <div class="mt-4 flex flex-wrap gap-1.5">
+                                <div class="mt-5 flex flex-wrap gap-1.5">
                                     @foreach(array_slice($p['services'], 0, $loop->index === 0 ? 3 : 2) as $s)
-                                        <span class="inline-flex items-center gap-1 rounded-lg border border-[#E2E8F0]/80 bg-[#F5F7FA] px-2.5 py-1 text-xs font-medium text-[#475569] transition-colors group-hover:border-slate-300 group-hover:bg-white">
-                                            <svg class="h-3 w-3 shrink-0" style="color: {{ $p['color'] }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                            <span>{{ $s }}</span>
+                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-black/[0.05] px-3 py-1 text-xs text-black/65 night:bg-white/[0.06] night:text-white/70">
+                                            <span class="h-1.5 w-1.5 rounded-full" style="background: {{ $p['color'] }}"></span>{{ $s }}
                                         </span>
                                     @endforeach
                                 </div>
                             </div>
 
-                            {{-- Pied de carte avec Magnetic Arrow --}}
-                            <div class="mt-6 flex items-center justify-between border-t border-[#E2E8F0]/80 pt-4">
-                                <span class="text-sm font-semibold text-[#0B0F14] transition-colors group-hover:text-[#0066FF]">
-                                    Voir le détail
-                                </span>
-
+                            <div class="mt-7 flex items-center justify-between">
+                                <span class="text-sm font-semibold">Voir le détail</span>
                                 <span data-magnetic-arrow
-                                      class="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#E2E8F0] bg-[#F5F7FA] text-[#0B0F14] transition-all duration-200 ease-out group-hover:border-[#0066FF] group-hover:bg-[#0066FF] group-hover:text-white group-hover:shadow-md"
+                                      class="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 transition-all duration-200 group-hover:border-transparent group-hover:bg-[#0B0F14] group-hover:text-white night:border-white/15 night:group-hover:bg-white night:group-hover:text-black"
                                       :style="{ transform: `translate3d(${mx}px, ${my}px, 0)` }">
-                                    <svg class="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                                    </svg>
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                                 </span>
                             </div>
                         </a>
                     @endforeach
                 </div>
 
-                {{-- Pagination bullets sur mobile --}}
                 <div class="mt-4 flex items-center justify-center gap-1.5 sm:hidden" aria-hidden="true">
                     @for($i = 1; $i <= 5; $i++)
                         <span class="h-1.5 rounded-full transition-all duration-300"
-                              :class="currentSlide === {{ $i }} ? 'w-6 bg-[#0066FF]' : 'w-1.5 bg-[#CBD5E1]'"></span>
+                              :class="currentSlide === {{ $i }} ? 'w-6 bg-[#0B0F14] night:bg-white' : 'w-1.5 bg-black/20 night:bg-white/25'"></span>
                     @endfor
                 </div>
             </div>
         </section>
 
-        {{-- ═══ 3. Détail des prestations : CARD STACK ═══
-             Chaque pôle est une carte « collante » : en défilant, la carte suivante vient
-             recouvrir la précédente, qui se réduit légèrement et s'assombrit.
-             Empilement actif dès md ; sur mobile, les cartes restent simplement l'une sous l'autre. --}}
-        <section class="bg-[#F5F7FA] pb-16 sm:pb-24" aria-labelledby="detail-titre">
+        {{-- ═══ 3. Détail des prestations : CARD STACK ═══ --}}
+        <section class="pb-20 sm:pb-28" aria-labelledby="detail-titre">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <h2 id="detail-titre" data-reveal="up" class="font-display text-3xl font-bold tracking-tight sm:text-4xl">Détail des prestations</h2>
+                <h2 id="detail-titre" data-reveal="up" class="font-display text-3xl font-extrabold sm:text-5xl">Détail des prestations</h2>
 
-                <div class="mt-10 pb-4">
+                <div class="mt-12 pb-4">
                     @foreach($poles as $key => $p)
                         <article id="pole-{{ $key }}" data-stack-card
-                                 style="--stack-top: calc(5rem + {{ $loop->index * 0.75 }}rem)"
-                                 class="relative mb-6 grid scroll-mt-20 gap-6 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-[0_-10px_30px_-14px_rgba(11,15,20,.18)] sm:p-10 md:sticky md:top-[var(--stack-top)] lg:grid-cols-12 lg:gap-12">
+                                 style="--stack-top: calc(6rem + {{ $loop->index * 0.75 }}rem)"
+                                 class="relative mb-6 grid scroll-mt-24 gap-6 rounded-[28px] border border-black/[0.08] bg-white p-6 shadow-[0_-10px_30px_-14px_rgba(11,15,20,.18)] sm:p-10 md:sticky md:top-[var(--stack-top)] lg:grid-cols-12 lg:gap-12 night:border-white/10 night:bg-[#0c0c0d] night:shadow-[0_-10px_30px_-14px_rgba(0,0,0,.8)]">
 
                             <div class="lg:col-span-5">
-                                <span data-reveal="bar" class="mb-4 block h-1 w-12 rounded-full" style="background: {{ $p['color'] }}"></span>
+                                <span data-reveal="bar" class="mb-5 block h-1 w-12 rounded-full" style="background: {{ $p['color'] }}"></span>
                                 <div data-reveal="up" style="--d:100ms">
-                                    <h3 class="font-display text-2xl font-bold tracking-tight">{{ $p['name'] }}</h3>
-                                    <p class="mt-3 max-w-md text-base leading-relaxed text-[#64748B]">{{ $p['intro'] }}</p>
+                                    <h3 class="font-display text-2xl font-bold sm:text-3xl">{{ $p['name'] }}</h3>
+                                    <p class="mt-3 max-w-md text-base leading-relaxed text-black/55 night:text-white/55">{{ $p['intro'] }}</p>
+                                    <ul class="mt-6 space-y-2.5">
+                                        @foreach($p['services'] as $s)
+                                            <li class="flex items-center gap-3 text-sm">
+                                                <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0B0F14] text-white night:bg-white night:text-black">
+                                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                </span>
+                                                {{ $s }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 </div>
                             </div>
 
-                            <div class="lg:col-span-7 flex flex-col justify-between">
-                                {{-- Galerie de 3 visuels par pôle (administrable via Paramètres) --}}
-                                <div>
-                                    <div class="mb-3 flex items-center justify-between">
-                                        <span class="rounded-md bg-[#F5F7FA] px-2 py-0.5 text-[11px] font-medium text-[#64748B]">
-                                            {{ $p['short'] }}
-                                        </span>
-                                    </div>
+                            <div class="flex flex-col justify-between lg:col-span-7">
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-3.5">
+                                    @foreach($p['gallery'] as $img)
+                                        <div data-reveal="up" {!! $d($loop->index + 1, 90) !!}
+                                             class="group/img relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl border border-black/[0.08] bg-black/[0.03] transition-all duration-300 hover:-translate-y-1 night:border-white/10 night:bg-white/[0.04]">
+                                            @if(!empty($img['image']))
+                                                <img src="{{ Str::startsWith($img['image'], ['http://', 'https://', '/']) ? $img['image'] : asset($img['image']) }}"
+                                                     alt="{{ $img['title'] ?? $p['name'] }}"
+                                                     class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover/img:scale-105" loading="lazy">
+                                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                            @else
+                                                <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-black/35 night:text-white/35">
+                                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                    <span class="mt-2 text-xs font-semibold text-black/70 night:text-white/70">{{ $img['title'] ?? 'Visuel 0' . $loop->iteration }}</span>
+                                                </div>
+                                            @endif
 
-                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-3.5">
-                                        @foreach($p['gallery'] as $img)
-                                            <div data-reveal="up" {!! $d($loop->index + 1, 90) !!}
-                                                 class="group/img relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F5F7FA] transition-all duration-300 hover:-translate-y-1 hover:border-slate-400 hover:shadow-lg">
-                                                @if(!empty($img['image']))
-                                                    <img src="{{ Str::startsWith($img['image'], ['http://', 'https://', '/']) ? $img['image'] : asset($img['image']) }}"
-                                                         alt="{{ $img['title'] ?? $p['name'] }}"
-                                                         class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover/img:scale-105" loading="lazy">
-                                                    <div class="absolute inset-0 bg-gradient-to-t from-[#0B0F14]/80 via-[#0B0F14]/20 to-transparent"></div>
-                                                @else
-                                                    {{-- Placeholder élégant en attente des photos --}}
-                                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#F8FAFC] to-[#EDF2F7] p-4 text-center text-slate-400 transition-colors group-hover/img:text-[#0066FF]">
-                                                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-                                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                                            </svg>
-                                                        </span>
-                                                        <span class="mt-2 text-xs font-semibold text-[#0B0F14]">{{ $img['title'] ?? 'Visuel 0' . $loop->iteration }}</span>
-                                                        <span class="mt-0.5 text-[10px] text-[#94A3B8]">Configurable dans Paramètres</span>
-                                                    </div>
-                                                @endif
-
-                                                @if(!empty($img['title']) && !empty($img['image']))
-                                                    <div class="relative z-10 p-3">
-                                                        <span class="inline-block rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white backdrop-blur">
-                                                            {{ $img['title'] }}
-                                                        </span>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
+                                            @if(!empty($img['title']) && !empty($img['image']))
+                                                <div class="relative z-10 p-3">
+                                                    <span class="inline-block rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur">{{ $img['title'] }}</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
                                 </div>
 
-                                <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0]/80 pt-4">
+                                <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
                                     <a href="#devis" @click="$dispatch('choose-pole', '{{ $key }}')" data-reveal="up" style="--d:400ms"
-                                       class="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0066FF] hover:text-[#0052CC] hover:underline">
-                                        <span>Demander un devis {{ $p['short'] }}</span>
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                       class="inline-flex h-11 items-center gap-2 rounded-full bg-[#0B0F14] px-5 text-sm font-semibold text-white transition hover:bg-black night:bg-white night:text-black night:hover:bg-white/90">
+                                        Demander un devis {{ $p['short'] }}
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
                                     </a>
 
                                     @auth
                                         @if(auth()->user()->role === 'administrateur')
-                                            <a href="{{ route('admin.settings.index') }}#pole-showcase-images" class="text-xs text-[#64748B] hover:text-[#0B0F14] hover:underline">
-                                                Gérer ces visuels dans les paramètres
-                                            </a>
+                                            <a href="{{ route('admin.settings.index') }}#pole-showcase-images" class="text-xs text-black/45 hover:underline night:text-white/45">Gérer ces visuels dans les paramètres</a>
                                         @endif
                                     @endauth
                                 </div>
                             </div>
 
-                            {{-- Voile qui s'assombrit quand la carte suivante la recouvre --}}
-                            <span data-stack-shade class="pointer-events-none absolute inset-0 rounded-3xl bg-[#0B0F14] opacity-0" aria-hidden="true"></span>
+                            <span data-stack-shade class="pointer-events-none absolute inset-0 rounded-[28px] bg-black opacity-0" aria-hidden="true"></span>
                         </article>
                     @endforeach
                 </div>
             </div>
         </section>
 
-        {{-- ═══ 4. Pourquoi choisir IVOSPHERE : SCROLL HORIZONTAL ÉPINGLÉ ═══
-             Sur grand écran, la section reste fixée et le défilement vertical fait glisser les
-             cartes vers la gauche. Sur mobile / mouvement réduit : carrousel à glisser au doigt. --}}
-        <section id="pourquoi" data-hscroll class="relative scroll-mt-16 bg-[#0B0F14] text-white" aria-labelledby="pourquoi-titre">
-            <div class="hs-pin py-16 sm:py-24">
+        {{-- ═══ 4. Pourquoi choisir IVOSPHERE : SCROLL HORIZONTAL ÉPINGLÉ ═══ --}}
+        <section id="pourquoi" data-hscroll class="relative scroll-mt-16" aria-labelledby="pourquoi-titre">
+            <div class="hs-pin py-20 sm:py-28">
                 <div class="mx-auto flex w-full max-w-7xl items-end justify-between gap-6 px-4 sm:px-6 lg:px-8">
-                    <h2 id="pourquoi-titre" data-reveal="up" class="max-w-2xl font-display text-3xl font-bold tracking-tight sm:text-4xl">Pourquoi choisir IVOSPHERE ?</h2>
-                    <p class="hs-meta shrink-0 font-display text-sm text-white/50" aria-hidden="true"><span data-hs-count class="text-white">01</span> / {{ str_pad(count($reasons), 2, '0', STR_PAD_LEFT) }}</p>
+                    <h2 id="pourquoi-titre" data-reveal="up" class="max-w-2xl font-display text-3xl font-extrabold sm:text-5xl">Pourquoi choisir IVOSPHERE ?</h2>
+                    <p class="hs-meta shrink-0 text-sm text-black/40 night:text-white/40" aria-hidden="true"><span data-hs-count class="text-[#0B0F14] night:text-white">01</span> / {{ str_pad(count($reasons), 2, '0', STR_PAD_LEFT) }}</p>
                 </div>
 
-                <ul data-hs-track class="hs-track mt-10 lg:mt-14">
+                <ul data-hs-track class="hs-track mt-12 lg:mt-14">
                     @foreach($reasons as [$title, $text])
-                        <li class="hs-card flex min-h-[15rem] flex-col rounded-2xl border border-white/15 bg-white/5 p-6 sm:p-7">
-                            <span class="font-display text-sm font-semibold text-[#6AA5FF]">{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</span>
-                            <h3 class="mt-auto pt-10 font-display text-xl font-semibold">{{ $title }}</h3>
-                            <p class="mt-2 text-sm leading-relaxed text-white/65">{{ $text }}</p>
+                        <li class="hs-card flex min-h-[16rem] flex-col rounded-[28px] border border-black/[0.08] bg-white/55 p-6 backdrop-blur-2xl sm:p-7 night:border-white/10 night:bg-white/[0.04]">
+                            <span class="font-display text-5xl font-extrabold text-black/10 night:text-white/15">{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</span>
+                            <h3 class="mt-auto pt-10 font-display text-xl font-bold">{{ $title }}</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-black/55 night:text-white/55">{{ $text }}</p>
                         </li>
                     @endforeach
                 </ul>
 
                 <div class="hs-meta mx-auto mt-10 w-full max-w-7xl px-4 sm:px-6 lg:px-8" aria-hidden="true">
-                    <div class="h-px w-full bg-white/15"><span data-hs-bar class="block h-px origin-left scale-x-0 bg-white"></span></div>
+                    <div class="h-px w-full bg-black/10 night:bg-white/15"><span data-hs-bar class="block h-px origin-left scale-x-0 bg-[#0B0F14] night:bg-white"></span></div>
                 </div>
             </div>
         </section>
 
-        {{-- ═══ 5. Notre processus : REVEAL ═══ --}}
-        <section id="processus" class="scroll-mt-16 bg-white py-16 sm:py-24" aria-labelledby="processus-titre">
+        {{-- ═══ 5. Notre processus ═══ --}}
+        <section id="processus" class="scroll-mt-24 py-20 sm:py-28" aria-labelledby="processus-titre">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div data-reveal="up" class="max-w-2xl">
-                    <h2 id="processus-titre" class="font-display text-3xl font-bold tracking-tight sm:text-4xl">Notre processus</h2>
-                    <p class="mt-3 text-base text-[#64748B] sm:text-lg">Six étapes, de votre première demande au suivi après livraison.</p>
+                <div data-reveal="up" class="text-center">
+                    <span class="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">Processus</span>
+                    <h2 id="processus-titre" class="mt-5 font-display text-3xl font-extrabold sm:text-5xl">Notre processus</h2>
+                    <p class="mx-auto mt-4 max-w-xl text-base text-black/50 night:text-white/50">Six étapes, de votre première demande au suivi après livraison.</p>
                 </div>
 
-                <ol class="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-6 lg:gap-5">
+                <ol class="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($steps as $i => [$title, $text])
-                        <li class="relative">
-                            @if(! $loop->last)
-                                {{-- Le trait se dessine d'étape en étape --}}
-                                <span data-reveal="bar-y" {!! $d($i, 140) !!} class="absolute left-5 top-12 h-[calc(100%-1rem)] w-px bg-[#CBD5E1] sm:hidden" aria-hidden="true"></span>
-                                <span data-reveal="bar" {!! $d($i, 140) !!} class="absolute left-12 right-[-0.75rem] top-5 hidden h-px bg-[#CBD5E1] lg:block" aria-hidden="true"></span>
-                            @endif
-                            <span data-reveal="scale" {!! $d($i, 140) !!} class="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#0B0F14] bg-white text-sm font-bold">{{ $i + 1 }}</span>
-                            <div data-reveal="up" {!! $d($i, 140) !!}>
-                                <h3 class="mt-4 font-display text-base font-semibold">{{ $title }}</h3>
-                                <p class="mt-1.5 text-sm leading-relaxed text-[#64748B]">{{ $text }}</p>
-                            </div>
+                        <li data-reveal="up" {!! $d($i, 100) !!} class="rounded-[28px] border border-black/[0.08] bg-white/55 p-6 backdrop-blur-2xl night:border-white/10 night:bg-white/[0.04]">
+                            <span class="font-display text-5xl font-extrabold text-black/10 night:text-white/15">0{{ $i + 1 }}</span>
+                            <h3 class="mt-6 text-base font-semibold">{{ $title }}</h3>
+                            <p class="mt-1.5 text-sm leading-relaxed text-black/55 night:text-white/55">{{ $text }}</p>
                         </li>
                     @endforeach
                 </ol>
@@ -527,20 +510,19 @@
         </section>
 
         {{-- ═══ 6. Réalisations ═══ --}}
-        <section id="realisations" class="scroll-mt-16 bg-[#F5F7FA] py-16 sm:py-24" aria-labelledby="realisations-titre"
-                 x-data="{ filter: 'all' }">
+        <section id="realisations" class="scroll-mt-24 pb-20 sm:pb-28" aria-labelledby="realisations-titre" x-data="{ filter: 'all' }">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div data-reveal="up" class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                     <div class="max-w-2xl">
-                        <h2 id="realisations-titre" class="font-display text-3xl font-bold tracking-tight sm:text-4xl">Réalisations et projets</h2>
-                        <p class="mt-3 text-base text-[#64748B] sm:text-lg">Un aperçu de nos travaux dans chacun de nos pôles.</p>
+                        <h2 id="realisations-titre" class="font-display text-3xl font-extrabold sm:text-5xl">Réalisations et projets</h2>
+                        <p class="mt-4 text-base text-black/50 night:text-white/50">Un aperçu de nos travaux dans chacun de nos pôles.</p>
                     </div>
                     @if($projects->isNotEmpty())
-                        <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]" role="group" aria-label="Filtrer les projets">
+                        <div class="-mx-1 flex gap-1 overflow-x-auto rounded-full border border-black/10 bg-white/60 p-1 [scrollbar-width:none] night:border-white/10 night:bg-white/5" role="group" aria-label="Filtrer les projets">
                             @foreach(['all' => 'Galerie', 'done' => 'Projets réalisés', 'ongoing' => 'Prestations en cours'] as $value => $label)
                                 <button type="button" @click="filter = '{{ $value }}'" :aria-pressed="filter === '{{ $value }}'"
-                                        :class="filter === '{{ $value }}' ? 'bg-[#0B0F14] text-white' : 'bg-white text-[#64748B] hover:text-[#0B0F14]'"
-                                        class="shrink-0 rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]">{{ $label }}</button>
+                                        :class="filter === '{{ $value }}' ? 'bg-[#0B0F14] text-white night:bg-white night:text-black' : 'text-black/55 night:text-white/55'"
+                                        class="shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors">{{ $label }}</button>
                             @endforeach
                         </div>
                     @endif
@@ -551,143 +533,149 @@
                         @foreach($projects as $project)
                             @php $pole = $poles[$project['pole'] ?? ''] ?? null; @endphp
                             <li x-show="filter === 'all' || filter === '{{ $project['status'] ?? 'done' }}'" data-reveal="scale" {!! $d($loop->index % 3, 90) !!}
-                                class="group overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
-                                <div class="aspect-[4/3] overflow-hidden bg-[#E2E8F0]">
+                                class="group overflow-hidden rounded-3xl border border-black/[0.08] bg-white/55 night:border-white/10 night:bg-white/[0.04]">
+                                <div class="aspect-[4/3] overflow-hidden bg-black/5 night:bg-white/5">
                                     @if(!empty($project['image']))
                                         <img src="{{ asset('storage/' . $project['image']) }}" alt="{{ $project['title'] }}" loading="lazy" class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
                                     @endif
                                 </div>
-                                <div class="p-3.5 sm:p-4">
-                                    <p class="text-sm font-semibold text-[#0B0F14]">{{ $project['title'] }}</p>
-                                    <p class="mt-1 flex items-center gap-2 text-xs text-[#64748B]">
+                                <div class="p-4">
+                                    <p class="text-sm font-semibold">{{ $project['title'] }}</p>
+                                    <p class="mt-1 flex items-center gap-2 text-xs text-black/50 night:text-white/50">
                                         @if($pole)<span class="h-2 w-2 rounded-full" style="background: {{ $pole['color'] }}"></span>{{ $pole['short'] }}@endif
-                                        @if(($project['status'] ?? 'done') === 'ongoing')<span class="rounded bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-700">En cours</span>@endif
+                                        @if(($project['status'] ?? 'done') === 'ongoing')<span class="rounded-full bg-amber-400/15 px-2 py-0.5 font-semibold text-amber-600 night:text-amber-300">En cours</span>@endif
                                     </p>
                                 </div>
                             </li>
                         @endforeach
                     </ul>
                 @else
-                    <div data-reveal="up" class="mt-10 rounded-2xl border border-dashed border-[#CBD5E1] bg-white px-6 py-14 text-center">
-                        <p class="font-display text-lg font-semibold">Nos réalisations arrivent bientôt</p>
-                        <p class="mx-auto mt-2 max-w-md text-sm text-[#64748B]">Vous souhaitez voir des exemples de travaux dans un pôle précis ? Demandez-nous des références, nous vous les envoyons.</p>
-                        <a href="#devis" class="mt-5 inline-flex rounded-xl bg-[#0B0F14] px-5 py-3 text-sm font-semibold text-white hover:bg-[#0066FF]">Demander des références</a>
+                    <div data-reveal="up" class="mt-10 rounded-[28px] border border-dashed border-black/15 bg-white/40 px-6 py-16 text-center night:border-white/15 night:bg-white/[0.02]">
+                        <p class="font-display text-xl font-bold">Nos réalisations arrivent bientôt</p>
+                        <p class="mx-auto mt-2 max-w-md text-sm text-black/50 night:text-white/50">Vous souhaitez voir des exemples de travaux dans un pôle précis ? Demandez-nous des références, nous vous les envoyons.</p>
+                        <a href="#devis" class="mt-6 inline-flex h-11 items-center rounded-full bg-[#0B0F14] px-6 text-sm font-semibold text-white night:bg-white night:text-black">Demander des références</a>
                     </div>
                 @endif
             </div>
         </section>
 
-        {{-- ═══ 7. Appel à l'action ═══ --}}
-        <section id="devis" class="scroll-mt-16 bg-[#0066FF] py-16 text-white sm:py-24" aria-labelledby="devis-titre"
-                 x-data="{ pole: '' }" @choose-pole.window="pole = $event.detail">
-            <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:gap-16 lg:px-8">
+        {{-- ═══ 7. Devis ═══ --}}
+        <section id="devis" class="scroll-mt-24 pb-24 sm:pb-32" aria-labelledby="devis-titre" x-data="{ pole: '' }" @choose-pole.window="pole = $event.detail">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="grid gap-5 rounded-[32px] border border-black/[0.08] bg-gradient-to-b from-white to-white/40 p-5 sm:p-10 lg:grid-cols-12 lg:gap-12 night:border-white/10 night:from-white/[0.08] night:to-white/[0.02]">
+                    <div class="lg:col-span-5" data-reveal="up">
+                        <h2 id="devis-titre" class="font-display text-3xl font-extrabold sm:text-5xl">Vous avez un projet ? Parlons-en.</h2>
+                        <p class="mt-4 max-w-md text-base leading-relaxed text-black/55 night:text-white/55">Décrivez votre besoin en quelques lignes. Nous vous répondons avec une proposition claire et un devis détaillé.</p>
 
-                <div class="lg:col-span-5" data-reveal="up">
-                    <h2 id="devis-titre" class="font-display text-3xl font-bold tracking-tight sm:text-4xl">Vous avez un projet ? Parlons-en.</h2>
-                    <p class="mt-4 max-w-md text-base leading-relaxed text-white/80">Décrivez votre besoin en quelques lignes. Nous vous répondons avec une proposition claire et un devis détaillé.</p>
-
-                    <ul class="mt-8 space-y-4 text-sm">
-                        @if($phone)
-                            <li><a href="tel:{{ preg_replace('/\s+/', '', $phone) }}" class="flex items-center gap-3 font-semibold hover:underline"><span class="w-24 shrink-0 font-normal text-white/70">Téléphone</span>{{ $phone }}</a></li>
-                        @endif
-                        @if($whatsapp)
-                            <li><a href="https://wa.me/{{ preg_replace('/\D+/', '', $whatsapp) }}" target="_blank" rel="noopener" class="flex items-center gap-3 font-semibold hover:underline"><span class="w-24 shrink-0 font-normal text-white/70">WhatsApp</span>{{ $whatsapp }}</a></li>
-                        @endif
-                        @if($email)
-                            <li><a href="mailto:{{ $email }}" class="flex items-center gap-3 font-semibold hover:underline"><span class="w-24 shrink-0 font-normal text-white/70">Email</span><span class="break-all">{{ $email }}</span></a></li>
-                        @endif
-                        @if($address)
-                            <li class="flex items-start gap-3"><span class="w-24 shrink-0 text-white/70">Adresse</span><span class="font-semibold">{{ $address }}</span></li>
-                        @endif
-                    </ul>
-                </div>
-
-                <div class="lg:col-span-7" data-reveal="up" style="--d:120ms">
-                    @if(session('quote_sent'))
-                        <div role="status" class="rounded-2xl bg-white p-6 text-[#0B0F14] sm:p-8">
-                            <p class="font-display text-xl font-semibold">Demande envoyée</p>
-                            <p class="mt-2 text-sm text-[#64748B]">Merci. Nous revenons vers vous très vite avec une réponse à votre demande.</p>
-                        </div>
-                    @else
-                        <form method="POST" action="{{ $quoteRoute ?? '#' }}" class="rounded-2xl bg-[#0B0F14] p-5 sm:p-8" novalidate>
-                            @csrf
-                            <div class="hidden" aria-hidden="true"><label>Ne pas remplir<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-
-                            @if($errors->any())
-                                <div role="alert" class="mb-5 rounded-xl border border-rose-300/40 bg-rose-500/10 p-3.5 text-sm text-rose-100">
-                                    <ul class="space-y-0.5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
-                                </div>
+                        <ul class="mt-8 space-y-4 text-sm">
+                            @if($phone)
+                                <li><a href="tel:{{ preg_replace('/\s+/', '', $phone) }}" class="flex items-center gap-3 font-semibold hover:underline"><span class="w-24 shrink-0 font-normal text-black/45 night:text-white/45">Téléphone</span>{{ $phone }}</a></li>
                             @endif
+                            @if($whatsapp)
+                                <li><a href="https://wa.me/{{ preg_replace('/\D+/', '', $whatsapp) }}" target="_blank" rel="noopener" class="flex items-center gap-3 font-semibold hover:underline"><span class="w-24 shrink-0 font-normal text-black/45 night:text-white/45">WhatsApp</span>{{ $whatsapp }}</a></li>
+                            @endif
+                            @if($email)
+                                <li><a href="mailto:{{ $email }}" class="flex items-center gap-3 font-semibold hover:underline"><span class="w-24 shrink-0 font-normal text-black/45 night:text-white/45">Email</span><span class="break-all">{{ $email }}</span></a></li>
+                            @endif
+                            @if($address)
+                                <li class="flex items-start gap-3"><span class="w-24 shrink-0 text-black/45 night:text-white/45">Adresse</span><span class="font-semibold">{{ $address }}</span></li>
+                            @endif
+                        </ul>
+                    </div>
 
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label for="q-name" class="mb-1.5 block text-sm font-semibold">Nom et prénom</label>
-                                    <input id="q-name" name="name" type="text" required autocomplete="name" value="{{ old('name') }}" class="{{ $field }}">
-                                </div>
-                                <div>
-                                    <label for="q-phone" class="mb-1.5 block text-sm font-semibold">Téléphone</label>
-                                    <input id="q-phone" name="phone" type="tel" required autocomplete="tel" inputmode="tel" value="{{ old('phone') }}" class="{{ $field }}">
-                                </div>
-                                <div>
-                                    <label for="q-email" class="mb-1.5 block text-sm font-semibold">Email <span class="font-normal text-white/50">(facultatif)</span></label>
-                                    <input id="q-email" name="email" type="email" autocomplete="email" inputmode="email" value="{{ old('email') }}" class="{{ $field }}">
-                                </div>
-                                <div>
-                                    <label for="q-pole" class="mb-1.5 block text-sm font-semibold">Pôle concerné</label>
-                                    <select id="q-pole" name="pole" x-model="pole" class="{{ $field }}">
-                                        <option value="" class="text-[#0B0F14]">Je ne sais pas encore</option>
-                                        @foreach($poles as $key => $p)
-                                            <option value="{{ $key }}" class="text-[#0B0F14]">{{ $p['name'] }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <label for="q-message" class="mb-1.5 block text-sm font-semibold">Votre projet</label>
-                                    <textarea id="q-message" name="message" rows="4" required placeholder="Quantités, dates, budget, contraintes…" class="{{ $field }}">{{ old('message') }}</textarea>
-                                </div>
+                    <div class="lg:col-span-7" data-reveal="up" style="--d:120ms">
+                        @if(session('quote_sent'))
+                            <div role="status" class="rounded-[28px] border border-emerald-500/30 bg-emerald-500/10 p-6 sm:p-8">
+                                <p class="font-display text-xl font-bold">Demande envoyée</p>
+                                <p class="mt-2 text-sm text-black/55 night:text-white/60">Merci. Nous revenons vers vous très vite avec une réponse à votre demande.</p>
                             </div>
+                        @else
+                            <form method="POST" action="{{ $quoteRoute ?? '#' }}" class="rounded-[28px] border border-black/[0.08] bg-white/60 p-5 backdrop-blur-2xl sm:p-8 night:border-white/10 night:bg-white/[0.04]" novalidate>
+                                @csrf
+                                <div class="hidden" aria-hidden="true"><label>Ne pas remplir<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
 
-                            <button type="submit" class="mt-6 flex w-full items-center justify-center rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-[#0B0F14] transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F14] sm:w-auto">Envoyer ma demande de devis</button>
-                        </form>
-                    @endif
+                                @if($errors->any())
+                                    <div role="alert" class="mb-5 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-3.5 text-sm text-rose-700 night:text-rose-200">
+                                        <ul class="space-y-0.5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                                    </div>
+                                @endif
+
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label for="q-name" class="mb-1.5 block text-xs font-medium text-black/60 night:text-white/60">Nom et prénom</label>
+                                        <input id="q-name" name="name" type="text" required autocomplete="name" value="{{ old('name') }}" class="{{ $field }}">
+                                    </div>
+                                    <div>
+                                        <label for="q-phone" class="mb-1.5 block text-xs font-medium text-black/60 night:text-white/60">Téléphone</label>
+                                        <input id="q-phone" name="phone" type="tel" required autocomplete="tel" inputmode="tel" value="{{ old('phone') }}" class="{{ $field }}">
+                                    </div>
+                                    <div>
+                                        <label for="q-email" class="mb-1.5 block text-xs font-medium text-black/60 night:text-white/60">Email <span class="font-normal text-black/40 night:text-white/40">(facultatif)</span></label>
+                                        <input id="q-email" name="email" type="email" autocomplete="email" inputmode="email" value="{{ old('email') }}" class="{{ $field }}">
+                                    </div>
+                                    <div>
+                                        <label for="q-pole" class="mb-1.5 block text-xs font-medium text-black/60 night:text-white/60">Pôle concerné</label>
+                                        <select id="q-pole" name="pole" x-model="pole" class="{{ $field }}">
+                                            <option value="" class="text-[#0B0F14]">Je ne sais pas encore</option>
+                                            @foreach($poles as $key => $p)
+                                                <option value="{{ $key }}" class="text-[#0B0F14]">{{ $p['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label for="q-message" class="mb-1.5 block text-xs font-medium text-black/60 night:text-white/60">Votre projet</label>
+                                        <textarea id="q-message" name="message" rows="4" required placeholder="Quantités, dates, budget, contraintes…" class="{{ $field }}">{{ old('message') }}</textarea>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0B0F14] px-7 text-sm font-semibold text-white transition hover:bg-black sm:w-auto night:bg-white night:text-black night:hover:bg-white/90">
+                                    Envoyer ma demande de devis
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                </button>
+                            </form>
+                        @endif
+                    </div>
                 </div>
             </div>
         </section>
     </main>
 
     {{-- ═══ 8. Pied de page ═══ --}}
-    <footer class="bg-[#0B0F14] text-white">
+    <footer class="border-t border-black/[0.08] night:border-white/10">
         <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 md:grid-cols-12 lg:px-8">
             <div class="md:col-span-5" data-reveal="up">
-                <img src="{{ asset('images/logo.png') }}" alt="IVOSPHERE" class="h-9 w-auto brightness-0 invert">
-                <p class="mt-4 max-w-sm text-sm leading-relaxed text-white/60">Impression, matériel sportif, solutions numériques, photo et évènements, assurance : cinq pôles au service de vos projets.</p>
+                <span class="inline-flex rounded-xl bg-white px-2.5 py-1.5 ring-1 ring-black/5">
+                    <img src="{{ asset('images/logo-horizontal.png') }}" alt="IVOSPHERE" class="h-8 w-auto">
+                </span>
+                <p class="mt-4 max-w-sm text-sm leading-relaxed text-black/50 night:text-white/50">Impression, matériel sportif, solutions numériques, photo et évènements, assurance : cinq pôles au service de vos projets.</p>
             </div>
 
             <nav class="md:col-span-4" aria-label="Pôles" data-reveal="up" style="--d:100ms">
                 <p class="text-sm font-semibold">Nos pôles</p>
-                <ul class="mt-4 space-y-2.5 text-sm text-white/60">
+                <ul class="mt-4 space-y-2.5 text-sm text-black/50 night:text-white/50">
                     @foreach($poles as $key => $p)
-                        <li><a href="#pole-{{ $key }}" class="hover:text-white">{{ $p['name'] }}</a></li>
+                        <li><a href="#pole-{{ $key }}" class="hover:text-black night:hover:text-white">{{ $p['name'] }}</a></li>
                     @endforeach
+                    <li><a href="{{ route('offres.index') }}" class="font-semibold text-[#0B0F14] hover:underline night:text-white">Abonnements</a></li>
                 </ul>
             </nav>
 
             <div class="md:col-span-3" data-reveal="up" style="--d:200ms">
                 <p class="text-sm font-semibold">Contact</p>
-                <ul class="mt-4 space-y-2.5 text-sm text-white/60">
-                    @if($phone)<li><a href="tel:{{ preg_replace('/\s+/', '', $phone) }}" class="hover:text-white">{{ $phone }}</a></li>@endif
-                    @if($email)<li><a href="mailto:{{ $email }}" class="break-all hover:text-white">{{ $email }}</a></li>@endif
+                <ul class="mt-4 space-y-2.5 text-sm text-black/50 night:text-white/50">
+                    @if($phone)<li><a href="tel:{{ preg_replace('/\s+/', '', $phone) }}" class="hover:text-black night:hover:text-white">{{ $phone }}</a></li>@endif
+                    @if($email)<li><a href="mailto:{{ $email }}" class="break-all hover:text-black night:hover:text-white">{{ $email }}</a></li>@endif
                     @if($address)<li>{{ $address }}</li>@endif
-                    <li><a href="#devis" class="font-semibold text-white hover:underline">Demander un devis</a></li>
+                    <li><a href="#devis" class="font-semibold text-[#0B0F14] hover:underline night:text-white">Demander un devis</a></li>
                 </ul>
             </div>
         </div>
 
-        <div class="border-t border-white/10">
-            <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div class="border-t border-black/[0.08] night:border-white/10">
+            <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-black/45 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 night:text-white/45">
                 <p>© {{ now()->year }} IVOSPHERE. Tous droits réservés.</p>
                 @if(Route::has('login'))
-                    <a href="{{ route('login') }}" class="hover:text-white">Accès équipe</a>
+                    <a href="{{ route('login') }}" class="hover:text-black night:hover:text-white">Accès équipe</a>
                 @endif
             </div>
         </div>
