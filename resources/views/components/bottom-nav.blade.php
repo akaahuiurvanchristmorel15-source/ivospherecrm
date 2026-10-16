@@ -1,6 +1,7 @@
 @props([])
 
 @if(!request()->routeIs('commercial.pos.*'))
+@php($isTenantSpace = auth()->check() && ! auth()->user()->belongsToMainTenant())
 <div x-data="{ quickActionsOpen: false }" @open-quick-actions.window="quickActionsOpen = true" class="md:hidden">
     <!-- Backdrop pour la feuille d'actions mobile -->
     <div 
@@ -49,6 +50,7 @@
 
         <!-- Grille de raccourcis 2 colonnes -->
         <div class="grid grid-cols-2 gap-2 text-xs">
+            @if(\App\Support\TenantAccess::allows('rh.portal.index'))
             <a href="{{ route('rh.portal.index') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-[#0066FF] text-white flex items-center justify-center shrink-0">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -58,7 +60,9 @@
                     <p class="text-[10px] text-[#64748B] truncate">Pointage & Note</p>
                 </div>
             </a>
+            @endif
 
+            @if(\App\Support\TenantAccess::allows('rh.attendance.scanner'))
             <a href="{{ route('rh.attendance.scanner') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200/60">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
@@ -68,7 +72,9 @@
                     <p class="text-[10px] text-[#64748B] truncate">Borne d'accueil</p>
                 </div>
             </a>
+            @endif
 
+            @if(\App\Support\TenantAccess::allows('commercial.quotations.create'))
             <a href="{{ route('commercial.quotations.create') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-blue-50 text-[#0066FF] flex items-center justify-center shrink-0 border border-blue-200/60">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -78,7 +84,9 @@
                     <p class="text-[10px] text-[#64748B] truncate">Proposition client</p>
                 </div>
             </a>
+            @endif
 
+            @if(\App\Support\TenantAccess::allows('commercial.pos.index'))
             <a href="{{ route('commercial.pos.index') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200/60">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
@@ -88,7 +96,9 @@
                     <p class="text-[10px] text-[#64748B] truncate">Caisse comptoir</p>
                 </div>
             </a>
+            @endif
 
+            @if(\App\Support\TenantAccess::allows('commercial.customers.create'))
             <a href="{{ route('commercial.customers.create') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-slate-100 text-[#0B0F14] flex items-center justify-center shrink-0">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
@@ -98,7 +108,9 @@
                     <p class="text-[10px] text-[#64748B] truncate">Fiche tiers</p>
                 </div>
             </a>
+            @endif
 
+            @if(\App\Support\TenantAccess::allows('stock.products.create'))
             <a href="{{ route('stock.products.create') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200/60">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
@@ -108,7 +120,9 @@
                     <p class="text-[10px] text-[#64748B] truncate">Gestion catalogue</p>
                 </div>
             </a>
+            @endif
 
+            @if(\App\Support\TenantAccess::allows('support.create'))
             <a href="{{ route('support.create') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-200/60">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
@@ -118,7 +132,9 @@
                     <p class="text-[10px] text-[#64748B] truncate">Assistance</p>
                 </div>
             </a>
+            @endif
 
+            @if(\App\Support\TenantAccess::allows('finance.expenses.create'))
             <a href="{{ route('finance.expenses.create') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center shrink-0 border border-rose-200/60">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
@@ -128,6 +144,7 @@
                     <p class="text-[10px] text-[#64748B] truncate">Note de frais / achat</p>
                 </div>
             </a>
+            @endif
         </div>
     </div>
 
@@ -139,8 +156,8 @@
     >
         <!-- 1. Accueil / Dashboard -->
         <a 
-            href="{{ route('dashboard') }}" 
-            class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('dashboard') && !request('domain') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
+            href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" 
+            class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('dashboard', 'space.home') && !request('domain') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
             aria-label="Tableau de bord"
         >
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,6 +167,7 @@
         </a>
 
         <!-- 2. Ventes / Commandes / Devis -->
+        @if(\App\Support\TenantAccess::allows('commercial.orders.index'))
         <a 
             href="{{ route('commercial.orders.index') }}" 
             class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('commercial.orders.*') || request()->routeIs('commercial.quotations.*') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
@@ -160,6 +178,7 @@
             </svg>
             <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('commercial.orders.*') || request()->routeIs('commercial.quotations.*') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">Ventes</span>
         </a>
+        @endif
 
         <!-- 3. Bouton Central Action Express (+) -->
         <div class="flex flex-col items-center justify-center -mt-4">
@@ -178,6 +197,7 @@
         </div>
 
         <!-- 4. Contacts / Clients -->
+        @if(\App\Support\TenantAccess::allows('commercial.customers.index'))
         <a 
             href="{{ route('commercial.customers.index') }}" 
             class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('commercial.customers.*') || request()->routeIs('commercial.prospects.*') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
@@ -188,17 +208,18 @@
             </svg>
             <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('commercial.customers.*') || request()->routeIs('commercial.prospects.*') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">Clients</span>
         </a>
+        @endif
 
         <!-- 5. Hub / Menu des 8 Pôles -->
         <a 
-            href="{{ route('menu.index') }}" 
+            href="{{ $isTenantSpace ? route('space.subscription') : route('menu.index') }}" 
             class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('menu.*') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
-            aria-label="Menu Général"
+            aria-label="{{ $isTenantSpace ? 'Mon abonnement' : 'Menu Général' }}"
         >
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
             </svg>
-            <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('menu.*') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">Menu</span>
+            <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('menu.*') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">{{ $isTenantSpace ? 'Compte' : 'Menu' }}</span>
         </a>
     </nav>
 </div>

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EnforceTenantAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => CheckRole::class,
             'permission' => CheckPermission::class,
+        ]);
+
+        // Espaces abonnés : accès limité aux modules du plan et à un abonnement actif.
+        $middleware->appendToGroup('web', EnforceTenantAccess::class);
+
+        // Retours et notifications du prestataire de paiement (état toujours revérifié par son API).
+        $middleware->preventRequestForgery(except: [
+            'offres/paiement/notification',
+            'offres/paiement/*/retour',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

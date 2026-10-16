@@ -75,6 +75,9 @@ use App\Http\Controllers\Stock\StockDashboardController;
 use App\Http\Controllers\Stock\StockMovementController;
 use App\Http\Controllers\Stock\StockProductController;
 use App\Http\Controllers\Stock\WarehouseController;
+use App\Http\Controllers\Subscription\OfferController;
+use App\Http\Controllers\Subscription\SpaceController;
+use App\Http\Controllers\Subscription\SubscriptionAdminController;
 use App\Http\Controllers\Support\SupportTicketController;
 use App\Http\Controllers\Tech\AiCampaignController;
 use App\Http\Controllers\Tech\TechDashboardController;
@@ -98,6 +101,19 @@ Route::get('/', function () {
 Route::post('/devis', [QuoteRequestController::class, 'store'])->name('quote.store');
 Route::post('/', [QuoteRequestController::class, 'store']);
 
+// Offres d'abonnement : inscription et paiement en ligne
+Route::prefix('offres')->name('offres.')->group(function () {
+    Route::get('/', [OfferController::class, 'index'])->name('index');
+    Route::get('{plan:code}/inscription', [OfferController::class, 'signup'])->name('signup');
+    Route::post('{plan:code}/inscription', [OfferController::class, 'register'])->middleware('throttle:10,1')->name('register');
+    Route::post('paiement/notification', [OfferController::class, 'notify'])->name('payment.notify');
+    Route::get('paiement/{subscription:reference}/simulation', [OfferController::class, 'simulation'])->name('payment.simulation');
+    Route::post('paiement/{subscription:reference}/simulation', [OfferController::class, 'simulate'])->name('payment.simulate');
+    Route::match(['get', 'post'], 'paiement/{subscription:reference}/retour', [OfferController::class, 'paymentReturn'])->name('payment.return');
+    Route::post('paiement/{subscription:reference}/relancer', [OfferController::class, 'retry'])->middleware('throttle:10,1')->name('payment.retry');
+    Route::get('paiement/{subscription:reference}/recapitulatif', [OfferController::class, 'pdf'])->name('payment.pdf');
+});
+
 // Authentification
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -112,6 +128,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/mon-compte/mot-de-passe', [PasswordController::class, 'edit'])->name('password.edit');
     Route::put('/mon-compte/mot-de-passe', [PasswordController::class, 'update'])->middleware('throttle:6,1')->name('password.update');
 
+    // Espace abonné : accueil et abonnement
+    Route::get('/espace-abonne', [SpaceController::class, 'home'])->name('space.home');
+    Route::get('/mon-abonnement', [SpaceController::class, 'subscription'])->name('space.subscription');
+    Route::post('/mon-abonnement/renouveler', [SpaceController::class, 'renew'])->middleware('throttle:10,1')->name('space.subscription.renew');
+    Route::get('/mon-abonnement/{subscription}/recapitulatif', [SpaceController::class, 'pdf'])->name('space.subscription.pdf');
+
     // Tableau de bord principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -123,6 +145,14 @@ Route::middleware('auth')->group(function () {
         // Utilisateurs
         Route::resource('users', UserController::class)->except(['show']);
         Route::patch('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
+
+        // Abonnements des clients (espace Ivosphere uniquement)
+        Route::get('subscriptions', [SubscriptionAdminController::class, 'index'])->name('subscriptions.index');
+        Route::get('subscriptions/plans', [SubscriptionAdminController::class, 'plans'])->name('subscriptions.plans');
+        Route::put('subscriptions/plans/{plan}', [SubscriptionAdminController::class, 'updatePlan'])->name('subscriptions.plans.update');
+        Route::get('subscriptions/{tenant}', [SubscriptionAdminController::class, 'show'])->name('subscriptions.show');
+        Route::patch('subscriptions/{tenant}/toggle', [SubscriptionAdminController::class, 'toggle'])->name('subscriptions.toggle');
+        Route::get('subscriptions/{tenant}/pdf/{subscriptionId}', [SubscriptionAdminController::class, 'pdf'])->name('subscriptions.pdf');
 
         // Rôles & Permissions
         Route::get('roles', [RolePermissionController::class, 'index'])->name('roles.index');

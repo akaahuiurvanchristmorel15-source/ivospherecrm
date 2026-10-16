@@ -21,25 +21,25 @@
 
             <!-- Navigation Desktop -->
             <nav class="hidden lg:flex items-center gap-1 xl:gap-2" aria-label="Navigation principale">
-                <a href="#solutions" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
+                <a href="{{ url('/') }}#solutions" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
                     Solutions
                 </a>
-                <a href="#modules" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
+                <a href="{{ url('/') }}#modules" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
                     Modules
                 </a>
-                <a href="#activites" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
+                <a href="{{ url('/') }}#activites" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
                     Activités
                 </a>
-                <a href="#finance" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
+                <a href="{{ url('/') }}#finance" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
                     Finance & Actifs
                 </a>
-                <a href="#tarifs" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
+                <a href="{{ route('offres.index') }}" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
                     Tarifs
                 </a>
-                <a href="#a-propos" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
+                <a href="{{ url('/') }}#a-propos" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
                     À propos
                 </a>
-                <a href="#faq" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
+                <a href="{{ url('/') }}#faq" class="px-3 py-2 text-xs xl:text-sm font-medium text-[#0B0F14] hover:text-[#0066FF] hover:bg-slate-50 rounded-lg transition">
                     FAQ
                 </a>
             </nav>
@@ -108,25 +108,25 @@
          @click.away="mobileMenuOpen = false"
          class="lg:hidden border-b border-[#E2E8F0] bg-white px-4 pt-2 pb-6 space-y-3 shadow-lg">
         <nav class="flex flex-col space-y-1">
-            <a href="#solutions" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
+            <a href="{{ url('/') }}#solutions" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
                 Solutions
             </a>
-            <a href="#modules" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
+            <a href="{{ url('/') }}#modules" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
                 Modules
             </a>
-            <a href="#activites" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
+            <a href="{{ url('/') }}#activites" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
                 Activités
             </a>
-            <a href="#finance" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
+            <a href="{{ url('/') }}#finance" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
                 Finance & Actifs
             </a>
-            <a href="#tarifs" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
+            <a href="{{ route('offres.index') }}" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
                 Tarifs
             </a>
-            <a href="#a-propos" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
+            <a href="{{ url('/') }}#a-propos" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
                 À propos
             </a>
-            <a href="#faq" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
+            <a href="{{ url('/') }}#faq" @click="mobileMenuOpen = false" class="px-3 py-2.5 rounded-xl text-sm font-medium text-[#0B0F14] hover:bg-slate-50 hover:text-[#0066FF]">
                 FAQ
             </a>
         </nav>
