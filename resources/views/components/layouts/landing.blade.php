@@ -49,7 +49,11 @@
       @open-demo-modal.window="demoModalOpen = true; selectedPole = $event.detail?.pole || ''">
 
     <!-- Top Navigation -->
-    <x-landing.navbar />
+    @isset($navbar)
+        {{ $navbar }}
+    @else
+        <x-landing.navbar />
+    @endisset
 
     <!-- Main Content -->
     <main id="main-content">
