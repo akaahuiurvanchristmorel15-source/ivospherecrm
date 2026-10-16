@@ -5,6 +5,10 @@
         @include('subscriptions.offers._nav')
     </x-slot:navbar>
 
+    <x-slot:footer>
+        @include('subscriptions.offers._footer')
+    </x-slot:footer>
+
     <div x-data="{ cycle: '{{ old('billing_cycle', $billingCycle) }}' }" class="relative overflow-hidden bg-[#F5F7FA] text-[#0B0F14] night:bg-black night:text-white transition-colors">
         <div class="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] rounded-full bg-[#0066FF]/[0.07] blur-3xl night:bg-white/[0.06]"></div>
 
