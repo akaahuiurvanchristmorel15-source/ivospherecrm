@@ -61,7 +61,11 @@
     </main>
 
     <!-- Footer -->
-    <x-landing.footer />
+    @isset($footer)
+        {{ $footer }}
+    @else
+        <x-landing.footer />
+    @endisset
 
     <!-- Modal Démo & Découverte Interactive -->
     <div x-show="demoModalOpen" 

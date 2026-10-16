@@ -5,6 +5,10 @@
         @include('subscriptions.offers._nav')
     </x-slot:navbar>
 
+    <x-slot:footer>
+        @include('subscriptions.offers._footer')
+    </x-slot:footer>
+
     @php
         $plans = $commercialPlans->concat($enterprisePlans)->values();
         $featuredPlan = $plans->first(fn ($plan) => $plan->canBeSubscribed());
