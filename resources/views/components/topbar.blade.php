@@ -72,9 +72,9 @@
         </button>
 
         {{-- Logo --}}
-        <a href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" class="flex items-center gap-2.5 shrink-0 group" title="Tableau de bord">
-            <img src="{{ asset('images/logo.png') }}" alt="IVOSPHERE" class="w-8 h-8 rounded-lg object-contain transition-transform group-hover:scale-105">
-            <span class="hidden sm:block text-[13px] font-semibold tracking-[0.18em] text-[#0B0F14]">IVOSPHERE</span>
+        <a href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" class="flex items-center shrink-0 group rounded-lg dark:bg-white dark:px-2 dark:py-1" title="Tableau de bord">
+            <img src="{{ asset('images/logo-emblem.png') }}" alt="IVOSPHERE" width="40" height="36" class="sm:hidden h-9 w-auto transition-transform group-hover:scale-105">
+            <img src="{{ asset('images/logo-horizontal.png') }}" alt="IVOSPHERE" width="147" height="40" class="hidden sm:block h-9 lg:h-10 w-auto transition-transform group-hover:scale-[1.03]">
         </a>
 
         {{-- Menu pôles (desktop) --}}
