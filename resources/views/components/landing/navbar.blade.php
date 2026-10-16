@@ -59,14 +59,13 @@
                     </a>
                 @endauth
 
-                <button type="button" 
-                        @click="$dispatch('open-demo-modal')"
+                <a href="{{ route('offres.index') }}"
                         class="h-10 px-4 rounded-xl bg-[#0066FF] hover:bg-[#0052CC] text-xs font-semibold text-white shadow-xs hover:shadow transition flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0066FF]">
                     <span>Commencer</span>
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
-                </button>
+                </a>
             </div>
 
             <!-- Hamburger Button Mobile -->
@@ -141,14 +140,13 @@
                     Se connecter
                 </a>
             @endauth
-            <button type="button" 
-                    @click="mobileMenuOpen = false; $dispatch('open-demo-modal')"
+            <a href="{{ route('offres.index') }}"
                     class="w-full h-11 rounded-xl bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs">
                 <span>Commencer maintenant</span>
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                 </svg>
-            </button>
+            </a>
         </div>
     </div>
 </header>

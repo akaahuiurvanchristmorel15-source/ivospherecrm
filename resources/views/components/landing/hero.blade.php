@@ -29,14 +29,13 @@
 
                 <!-- Boutons CTA -->
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-                    <button type="button" 
-                            @click="$dispatch('open-demo-modal')"
+                    <a href="{{ route('offres.index') }}"
                             class="h-12 px-6 rounded-xl bg-[#0066FF] hover:bg-[#0052CC] text-sm font-semibold text-white shadow-xs hover:shadow transition flex items-center justify-center gap-2 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0066FF]">
                         <span>Commencer maintenant</span>
                         <svg class="w-4 h-4 transition group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                         </svg>
-                    </button>
+                    </a>
 
                     <a href="#solutions" 
                        class="h-12 px-6 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 text-sm font-semibold text-[#0B0F14] transition flex items-center justify-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0066FF]">
