@@ -191,6 +191,10 @@
                 @foreach($navLinks as $href => $label)
                     <a href="{{ $href }}" data-nav class="transition-colors hover:text-[#0B0F14]">{{ $label }}</a>
                 @endforeach
+                <a href="{{ route('offres.index') }}" class="inline-flex items-center gap-1.5 font-semibold text-[#0066FF] transition-colors hover:text-[#0052CC]">
+                    Abonnements
+                    <span class="rounded-md bg-[#0066FF]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase">Nouveau</span>
+                </a>
             </nav>
 
             <div class="flex items-center gap-2">
@@ -215,6 +219,7 @@
                 @foreach($navLinks as $href => $label)
                     <li><a href="{{ $href }}" class="block rounded-lg px-3 py-3 text-[#0B0F14] active:bg-[#F5F7FA]">{{ $label }}</a></li>
                 @endforeach
+                <li><a href="{{ route('offres.index') }}" class="block rounded-lg px-3 py-3 font-semibold text-[#0066FF] active:bg-[#F5F7FA]">Abonnements</a></li>
             </ul>
             <a href="#devis" class="mt-3 flex items-center justify-center rounded-xl bg-[#0066FF] px-4 py-3 text-sm font-semibold text-white">Demander un devis</a>
             @if(Route::has('login'))
