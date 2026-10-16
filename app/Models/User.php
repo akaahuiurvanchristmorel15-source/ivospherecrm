@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Concerns\BelongsToTenant;
 use App\Services\EmployeeSyncService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,12 +14,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'phone', 'avatar', 'is_active', 'all_domains'])]
+#[Fillable(['tenant_id', 'name', 'email', 'password', 'phone', 'avatar', 'is_active', 'all_domains'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use BelongsToTenant, HasFactory, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -33,6 +34,14 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'all_domains' => 'boolean',
         ];
+    }
+
+    /**
+     * Compte de l'espace principal Ivosphere (et non d'un abonné).
+     */
+    public function belongsToMainTenant(): bool
+    {
+        return (int) ($this->tenant_id ?? Tenant::MAIN_ID) === Tenant::MAIN_ID;
     }
 
     /**
@@ -70,7 +79,7 @@ class User extends Authenticatable
     /**
      * S'assure que le compte utilisateur dispose d'une fiche employé synchronisée.
      */
-    public function ensureEmployeeProfile(array $extra = []): Employee
+    public function ensureEmployeeProfile(array $extra = []): ?Employee
     {
         return app(EmployeeSyncService::class)->syncUserToEmployee($this, $extra);
     }

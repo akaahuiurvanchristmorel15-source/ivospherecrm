@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Commercial;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Services\ActivityLogger;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -39,7 +40,7 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|unique:suppliers,code',
+            'code' => ['required', 'string', TenantRule::unique('suppliers', 'code')],
             'name' => 'required|string|max:255',
             'company' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -65,7 +66,7 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier)
     {
         $validated = $request->validate([
-            'code' => 'required|string|unique:suppliers,code,'.$supplier->id,
+            'code' => ['required', 'string', TenantRule::unique('suppliers', 'code', $supplier->id)],
             'name' => 'required|string|max:255',
             'company' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',

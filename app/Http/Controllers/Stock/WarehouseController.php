@@ -8,6 +8,7 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\ActivityLogger;
 use App\Services\StockService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,8 +53,8 @@ class WarehouseController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:warehouses,code',
-            'label_number' => 'nullable|integer|min:1|max:65535|unique:warehouses,label_number',
+            'code' => ['required', 'string', 'max:50', TenantRule::unique('warehouses', 'code')],
+            'label_number' => ['nullable', 'integer', 'min:1', 'max:65535', TenantRule::unique('warehouses', 'label_number')],
             'label_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'domain_id' => 'nullable|exists:domains,id',
             'address' => 'nullable|string',
@@ -105,8 +106,8 @@ class WarehouseController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:warehouses,code,'.$warehouse->id,
-            'label_number' => 'nullable|integer|min:1|max:65535|unique:warehouses,label_number,'.$warehouse->id,
+            'code' => ['required', 'string', 'max:50', TenantRule::unique('warehouses', 'code', $warehouse->id)],
+            'label_number' => ['nullable', 'integer', 'min:1', 'max:65535', TenantRule::unique('warehouses', 'label_number', $warehouse->id)],
             'label_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'domain_id' => 'nullable|exists:domains,id',
             'address' => 'nullable|string',

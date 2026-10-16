@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\TenantAccess;
 use Illuminate\Support\Facades\Route;
 
 class NavigationService
@@ -43,7 +44,7 @@ class NavigationService
         }
 
         $items = collect($module['items'])
-            ->filter(fn (array $item): bool => Route::has($item['route']))
+            ->filter(fn (array $item): bool => Route::has($item['route']) && TenantAccess::allows($item['route']))
             ->map(fn (array $item): array => [
                 'url' => route($item['route']),
                 'label' => $item['label'],

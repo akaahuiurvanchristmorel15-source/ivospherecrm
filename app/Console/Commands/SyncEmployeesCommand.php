@@ -35,6 +35,9 @@ class SyncEmployeesCommand extends Command
 
         foreach ($users as $user) {
             $employee = $syncService->syncUserToEmployee($user);
+            if (! $employee) {
+                continue;
+            }
             $syncedCount++;
             $this->line("✓ Utilisateur {$user->name} ({$user->email}) synchronisé -> Employé [{$employee->employee_code}] {$employee->full_name} ({$employee->position})");
         }

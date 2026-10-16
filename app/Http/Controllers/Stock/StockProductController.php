@@ -16,6 +16,7 @@ use App\Services\ActivityLogger;
 use App\Services\ProductThumbnailService;
 use App\Services\QrCodeService;
 use App\Services\StockService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -334,8 +335,8 @@ class StockProductController extends Controller
             'domain_id' => 'nullable|exists:domains,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|unique:products,sku',
-            'barcode' => 'nullable|string|max:100|unique:products,barcode',
+            'sku' => ['required', 'string', TenantRule::unique('products', 'sku')],
+            'barcode' => ['nullable', 'string', 'max:100', TenantRule::unique('products', 'barcode')],
             'description' => 'nullable|string',
             'purchase_price' => 'nullable|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
@@ -431,8 +432,8 @@ class StockProductController extends Controller
             'domain_id' => 'nullable|exists:domains,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|unique:products,sku,'.$product->id,
-            'barcode' => 'nullable|string|max:100|unique:products,barcode,'.$product->id,
+            'sku' => ['required', 'string', TenantRule::unique('products', 'sku', $product->id)],
+            'barcode' => ['nullable', 'string', 'max:100', TenantRule::unique('products', 'barcode', $product->id)],
             'description' => 'nullable|string',
             'purchase_price' => 'nullable|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',

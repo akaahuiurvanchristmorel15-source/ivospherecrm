@@ -8,6 +8,7 @@ use App\Models\Domain;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\PhoneNumberFormatter;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -52,7 +53,7 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'domain_id' => 'nullable|exists:domains,id',
             'commercial_id' => 'nullable|exists:users,id',
-            'code' => 'required|string|unique:customers,code',
+            'code' => ['required', 'string', TenantRule::unique('customers', 'code')],
             'type' => 'required|in:particulier,entreprise',
             'category' => 'nullable|in:standard,vip,revendeur,institutionnel',
             'name' => 'required|string|max:255',
@@ -107,7 +108,7 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'domain_id' => 'nullable|exists:domains,id',
             'commercial_id' => 'nullable|exists:users,id',
-            'code' => 'required|string|unique:customers,code,'.$customer->id,
+            'code' => ['required', 'string', TenantRule::unique('customers', 'code', $customer->id)],
             'type' => 'required|in:particulier,entreprise',
             'category' => 'nullable|in:standard,vip,revendeur,institutionnel',
             'name' => 'required|string|max:255',
