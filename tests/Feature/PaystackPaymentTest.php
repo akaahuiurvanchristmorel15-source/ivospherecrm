@@ -2,6 +2,7 @@
 
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\Tenant;
 use App\Services\Subscriptions\SubscriptionPdfService;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -105,4 +106,19 @@ test('Paystack webhooks must be signed with the secret key', function () {
     $this->call('POST', route('offres.payment.notify'), [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_PAYSTACK_SIGNATURE' => $signature], $payload)
         ->assertOk();
     expect($subscription->refresh()->isPaid())->toBeTrue();
+});
+
+test('the return page stays usable when the payment provider is not configured', function () {
+    config(['subscriptions.payment.paystack.secret_key' => null]);
+    $subscription = Subscription::create([
+        'tenant_id' => Tenant::create(['name' => 'Boutique', 'slug' => 'boutique', 'email' => 'b@b.ci', 'phone' => '07', 'status' => 'pending', 'subscription_plan_id' => $this->plan->id])->id,
+        'subscription_plan_id' => $this->plan->id, 'billing_cycle' => 'monthly', 'amount' => 15000, 'currency' => 'XOF', 'status' => 'pending', 'payment_provider' => 'paystack',
+    ]);
+
+    $this->get(route('offres.payment.return', $subscription))
+        ->assertOk()
+        ->assertSee('Paiement en cours')
+        ->assertSee('Impossible de vérifier le paiement pour le moment.');
+
+    expect($subscription->refresh()->isPaid())->toBeFalse();
 });
