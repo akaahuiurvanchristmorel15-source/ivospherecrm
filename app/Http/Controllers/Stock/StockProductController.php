@@ -16,12 +16,15 @@ use App\Services\ActivityLogger;
 use App\Services\ProductThumbnailService;
 use App\Services\QrCodeService;
 use App\Services\StockService;
+use App\Support\PdfRenderer;
 use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class StockProductController extends Controller
 {
@@ -589,7 +592,52 @@ class StockProductController extends Controller
      * Impression / Export PDF au format A4 Paysage du catalogue produit.
      * Tableau de 20 produits par page avec Désignation, Quantité, Prix Unitaire (vide) et Prix Revente (vide).
      */
+    /**
+     * Nombre d'articles par page du catalogue (A4 portrait).
+     */
+    public const CATALOG_ROWS_PER_PAGE = 30;
+
+    /**
+     * Catalogue imprimable (aperçu à l'écran, impression navigateur).
+     */
     public function printCatalog(Request $request)
+    {
+        return view('stock.products.print_catalog', $this->catalogData($request) + ['isPdf' => false]);
+    }
+
+    /**
+     * Téléchargement direct du catalogue en PDF (A4 portrait, 30 articles par page).
+     */
+    public function downloadCatalog(Request $request, PdfRenderer $pdfRenderer)
+    {
+        $html = view('stock.products.print_catalog', $this->catalogData($request) + ['isPdf' => true])->render();
+
+        try {
+            $pdf = $pdfRenderer->fromHtml($html);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return redirect()
+                ->route('stock.products.print-catalog', $request->query() + ['autoprint' => 1])
+                ->with('pdf_unavailable', true);
+        }
+
+        $suffix = $request->filled('warehouse_id')
+            ? '-'.Str::slug((string) Warehouse::whereKey($request->integer('warehouse_id'))->value('code'))
+            : ($request->boolean('per_warehouse') ? '-par-entrepot' : '');
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="Catalogue'.$suffix.'-'.now()->format('Y-m-d').'.pdf"',
+        ]);
+    }
+
+    /**
+     * Sections du catalogue (une par entrepôt, ou le stock global) découpées en pages.
+     *
+     * @return array{sections: Collection, chunks: Collection, productCount: int, rowsPerPage: int}
+     */
+    private function catalogData(Request $request): array
     {
         $query = Product::with(['domain', 'category', 'brand', 'warehouseStocks']);
 
@@ -639,14 +687,13 @@ class StockProductController extends Controller
                 ->when($warehouse, fn ($rows) => $rows->filter(fn (array $row) => $row['quantity'] > 0))
                 ->values();
 
-            // Découpage strict en paquets de 20 produits par page A4 Paysage
-            return ['warehouse' => $warehouse, 'rows' => $rows, 'chunks' => $rows->chunk(20)];
+            return ['warehouse' => $warehouse, 'rows' => $rows, 'chunks' => $rows->chunk(self::CATALOG_ROWS_PER_PAGE)];
         })->filter(fn (array $section) => $section['rows']->isNotEmpty() || $section['warehouse'] === null)->values();
 
         $chunks = $sections->flatMap(fn (array $section) => $section['chunks']);
         $productCount = $sections->sum(fn (array $section) => $section['rows']->count());
 
-        return view('stock.products.print_catalog', compact('sections', 'chunks', 'productCount'));
+        return ['sections' => $sections, 'chunks' => $chunks, 'productCount' => $productCount, 'rowsPerPage' => self::CATALOG_ROWS_PER_PAGE];
     }
 
     /**

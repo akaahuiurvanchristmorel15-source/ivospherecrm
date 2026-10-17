@@ -1,591 +1,242 @@
+@php
+    $isPdf = $isPdf ?? false;
+    $rowsPerPage = $rowsPerPage ?? 30;
+    $totalPages = max(1, $chunks->count());
+    $pageNumber = 0;
+
+    // Identité de l'entreprise de l'espace (logo des paramètres, sinon logo IVOSPHERE pour l'espace principal)
+    $companyName = \App\Models\Setting::get('company_name', 'IVOSPHERE');
+    $logoPath = null;
+    $customLogo = (string) \App\Models\Setting::get('company_logo', '');
+    if ($customLogo !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($customLogo)) {
+        $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($customLogo);
+    } elseif (\App\Support\TenantContext::isMain() && is_file(public_path('images/logo-horizontal.png'))) {
+        $logoPath = public_path('images/logo-horizontal.png');
+    }
+    $logoSrc = $logoPath ? 'data:'.(mime_content_type($logoPath) ?: 'image/png').';base64,'.base64_encode(file_get_contents($logoPath)) : null;
+
+    $editedAt = now()->format('d/m/Y à H:i');
+    $editor = auth()->user()->name ?? '';
+@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catalogue Produits & Bordereau de Prix (A4 Paysage) — IVOSPHERE ERP</title>
+    <title>Catalogue produits — {{ $companyName }}</title>
     <style>
-        /* ============================================================
-           CONFIGURATION PAGE A4 PAYSAGE (LANDSCAPE)
-           Dimensions A4 Landscape : 297mm x 210mm
-           ============================================================ */
-        @page {
-            size: A4 landscape;
-            margin: 8mm 10mm 8mm 10mm;
-        }
+        @page { size: A4 portrait; margin: 0; }
 
         :root {
-            --ink: #0b0f14;
-            --text-dark: #1e293b;
-            --text-muted: #64748b;
-            --border-color: #cbd5e1;
-            --border-light: #e2e8f0;
-            --bg-table-head: #f1f5f9;
-            --bg-zebra: #f8fafc;
-            --brand-blue: #0066ff;
+            --ink: #0B0F14;
+            --muted: #64748B;
+            --line: #E2E8F0;
+            --soft: #F5F7FA;
+            --accent: #0066FF;
         }
 
-        * {
-            box-sizing: border-box;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         body {
             margin: 0;
-            padding: 0;
-            background: #f1f5f9;
-            color: var(--text-dark);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-size: 11px;
-            line-height: 1.35;
-        }
-
-        /* ---------- Barre d'actions à l'écran (non imprimée) ---------- */
-        .screen-toolbar {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            background: #ffffff;
-            border-bottom: 1px solid var(--border-light);
-            padding: 12px 24px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-
-        .screen-toolbar-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .btn-action {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 700;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            border: 1px solid transparent;
-        }
-
-        .btn-print {
-            background: var(--brand-blue);
-            color: #ffffff;
-        }
-        .btn-print:hover {
-            background: #0052cc;
-        }
-
-        .btn-back {
-            background: #ffffff;
-            color: #475569;
-            border-color: var(--border-light);
-        }
-        .btn-back:hover {
-            background: #f8fafc;
-            color: #0f172a;
-        }
-
-        .info-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 12px;
-            background: #eff6ff;
-            color: #1e40af;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        /* ---------- Conteneur principal & Pages ---------- */
-        .print-container {
-            max-width: 297mm;
-            margin: 20px auto;
-            padding: 0;
-        }
-
-        .catalog-page {
-            width: 297mm;
-            min-height: 204mm;
-            max-height: 208mm;
-            background: #ffffff;
-            margin: 0 auto 24px auto;
-            padding: 8mm 10mm;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-            border-radius: 4px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            page-break-after: always;
-            break-after: page;
-            position: relative;
-        }
-
-        .catalog-page:last-child {
-            margin-bottom: 40px;
-            page-break-after: auto;
-            break-after: auto;
-        }
-
-        /* ---------- En-tête de page ---------- */
-        .page-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            border-bottom: 2px solid var(--ink);
-            padding-bottom: 7px;
-            margin-bottom: 6px;
-        }
-
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .brand-logo-badge {
-            width: 38px;
-            height: 38px;
-            border-radius: 8px;
-            background: #0b0f14;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 18px;
-            letter-spacing: -0.5px;
-        }
-
-        .brand-text h1 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 900;
-            letter-spacing: -0.3px;
+            background: {{ $isPdf ? '#FFFFFF' : '#E9EDF2' }};
             color: var(--ink);
-            text-transform: uppercase;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 8.6pt;
+            line-height: 1.25;
         }
 
-        .brand-text p {
-            margin: 2px 0 0 0;
-            font-size: 10px;
-            color: var(--text-muted);
-            font-weight: 600;
+        /* ---------- Barre d'outils (écran uniquement) ---------- */
+        .toolbar {
+            position: sticky; top: 0; z-index: 10;
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid var(--line);
+            box-shadow: 0 6px 20px -12px rgba(11, 15, 20, .25);
         }
-
-        .header-title-box {
-            text-align: center;
-            flex: 1;
-            padding: 0 16px;
+        .toolbar .group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 999px;
+            border: 1px solid var(--line); background: #FFFFFF; color: var(--ink);
+            font-family: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer;
         }
+        .btn:hover { border-color: #94A3B8; }
+        .btn-dark { background: var(--ink); border-color: var(--ink); color: #FFFFFF; }
+        .btn-dark:hover { background: #000000; }
+        .pill { font-size: 12px; color: var(--muted); }
+        .pill strong { color: var(--ink); }
+        .notice { margin: 16px auto 0; max-width: 210mm; padding: 10px 14px; border-radius: 12px; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; font-size: 12.5px; }
 
-        .header-title-box h2 {
-            margin: 0;
-            font-size: 15px;
-            font-weight: 800;
-            color: var(--brand-blue);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        /* ---------- Pages A4 portrait ---------- */
+        .sheet {
+            width: 210mm; height: 297mm; margin: {{ $isPdf ? '0' : '20px auto' }};
+            padding: 11mm 11mm 9mm; background: #FFFFFF; overflow: hidden;
+            display: flex; flex-direction: column;
+            {{ $isPdf ? '' : 'box-shadow: 0 12px 40px -18px rgba(11, 15, 20, .35); border-radius: 4px;' }}
+            break-after: page; page-break-after: always;
         }
+        .sheet:last-child { break-after: auto; page-break-after: auto; }
 
-        .header-title-box p {
-            margin: 2px 0 0 0;
-            font-size: 9.5px;
-            color: var(--text-muted);
-            font-weight: 500;
+        .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10mm; padding-bottom: 4mm; border-bottom: 2.2pt solid var(--ink); }
+        .brand img { display: block; height: 11mm; width: auto; max-width: 60mm; object-fit: contain; }
+        .brand .name { font-size: 15pt; font-weight: 800; letter-spacing: -.02em; }
+        .title { text-align: right; }
+        .title h1 { margin: 0; font-size: 17pt; font-weight: 800; letter-spacing: -.03em; }
+        .title p { margin: 1.2mm 0 0; color: var(--muted); font-size: 8.4pt; }
+        .title p strong { color: var(--accent); }
+
+        .meta { display: flex; gap: 4mm; margin: 3.5mm 0 3mm; }
+        .meta div { flex: 1; padding: 2mm 3mm; border-radius: 2.5mm; background: var(--soft); }
+        .meta span { display: block; font-size: 6.6pt; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+        .meta strong { display: block; margin-top: .6mm; font-size: 8.8pt; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        thead th {
+            height: 7mm; padding: 0 2mm; background: var(--ink); color: #FFFFFF; text-align: left;
+            font-size: 6.8pt; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
         }
+        thead th:first-child { border-radius: 1.6mm 0 0 1.6mm; }
+        thead th:last-child { border-radius: 0 1.6mm 1.6mm 0; }
+        tbody td { height: 7.15mm; padding: 0 2mm; border-bottom: .5pt solid var(--line); vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        tbody tr:nth-child(even) td { background: #FAFBFC; }
+        .c-num { width: 9mm; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .c-ref { width: 27mm; font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 7.6pt; }
+        .c-name .n { font-weight: 600; }
+        .c-name .s { margin-left: 1.5mm; color: var(--muted); font-size: 7pt; }
+        .c-qty { width: 21mm; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .c-qty small { margin-left: .8mm; color: var(--muted); font-weight: 500; font-size: 6.6pt; }
+        .c-price { width: 27mm; border-left: .5pt dashed #CBD5E1; }
+        th.c-price, th.c-qty { text-align: right; }
+        tr.blank td { color: #CBD5E1; }
 
-        .header-meta {
-            text-align: right;
-            font-size: 9.5px;
-            color: var(--text-dark);
-            line-height: 1.4;
-        }
+        .foot { margin-top: auto; padding-top: 3mm; display: flex; align-items: center; justify-content: space-between; gap: 6mm; border-top: .5pt solid var(--line); color: var(--muted); font-size: 7pt; }
+        .foot .page { color: var(--ink); font-weight: 700; }
+        .foot .sign { display: flex; align-items: center; gap: 2mm; }
+        .foot .sign i { display: inline-block; width: 38mm; border-bottom: .5pt solid #94A3B8; }
 
-        .header-meta strong {
-            color: var(--ink);
-        }
+        .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--muted); }
+        .empty strong { color: var(--ink); font-size: 13pt; }
 
-        .badge-landscape {
-            display: inline-block;
-            margin-top: 2px;
-            padding: 2px 6px;
-            background: #e0f2fe;
-            color: #0369a1;
-            font-size: 8.5px;
-            font-weight: 700;
-            border-radius: 4px;
-            text-transform: uppercase;
-        }
-
-        /* ---------- Tableau des 20 Produits ---------- */
-        .table-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        table.catalog-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 10px;
-            table-layout: fixed;
-        }
-
-        table.catalog-table thead th {
-            background-color: var(--bg-table-head);
-            color: var(--ink);
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 9px;
-            letter-spacing: 0.4px;
-            padding: 6px 7px;
-            border: 1px solid var(--border-color);
-            vertical-align: middle;
-        }
-
-        table.catalog-table tbody tr {
-            height: 25px; /* Calibré pour 20 lignes exactes sur une page A4 paysage */
-        }
-
-        table.catalog-table tbody tr:nth-child(even) {
-            background-color: var(--bg-zebra);
-        }
-
-        table.catalog-table tbody td {
-            padding: 4px 7px;
-            border: 1px solid var(--border-light);
-            vertical-align: middle;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Alignements et colonnes */
-        .col-num {
-            width: 32px;
-            text-align: center;
-            font-weight: 700;
-            color: var(--text-muted);
-        }
-
-        .col-ref {
-            width: 105px;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-weight: 700;
-            color: #0369a1;
-        }
-
-        .col-designation {
-            width: auto; /* Prend tout l'espace disponible */
-            font-weight: 600;
-            color: var(--ink);
-        }
-
-        .col-designation .product-name {
-            font-weight: 700;
-            color: var(--ink);
-        }
-
-        .col-designation .product-sub {
-            color: var(--text-muted);
-            font-size: 8.5px;
-            margin-left: 4px;
-            font-weight: 400;
-        }
-
-        .col-qty {
-            width: 80px;
-            text-align: right;
-            font-weight: 800;
-            color: var(--ink);
-        }
-
-        .col-qty .unit-label {
-            font-size: 8.5px;
-            color: var(--text-muted);
-            font-weight: 500;
-            margin-left: 2px;
-        }
-
-        /* Colonnes PRIX UNITAIRE et PRIX DE REVENTE (STRICTEMENT VIDES) */
-        .col-price-empty {
-            width: 120px;
-            text-align: center;
-            background-color: #ffffff !important;
-            border: 1px dashed var(--border-color) !important;
-            position: relative;
-        }
-
-        .col-price-empty:after {
-            content: "";
-            display: inline-block;
-        }
-
-        /* ---------- Pied de page ---------- */
-        .page-footer {
-            border-top: 1px solid var(--border-color);
-            padding-top: 5px;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 9px;
-            color: var(--text-muted);
-        }
-
-        .footer-left {
-            font-weight: 500;
-        }
-
-        .footer-center {
-            font-weight: 700;
-            color: var(--ink);
-            background: #f1f5f9;
-            padding: 2px 10px;
-            border-radius: 12px;
-        }
-
-        .footer-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-        }
-
-        .signature-line {
-            display: inline-block;
-            width: 110px;
-            border-bottom: 1px dotted var(--text-muted);
-            height: 12px;
-        }
-
-        /* ============================================================
-           MEDIA PRINT : OPTIMISATIONS POUR IMPRESSION & PDF
-           ============================================================ */
         @media print {
-            body {
-                background: #ffffff;
-                padding: 0;
-            }
-
-            .screen-toolbar {
-                display: none !important;
-            }
-
-            .print-container {
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            .catalog-page {
-                width: 100% !important;
-                min-height: 100% !important;
-                max-height: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border-radius: 0 !important;
-                page-break-after: always !important;
-                break-after: page !important;
-            }
-
-            .catalog-page:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-            }
-
-            table.catalog-table tbody tr {
-                height: 25.5px !important;
-            }
-        }
-        .warehouse-line strong {
-            color: #0066FF;
+            body { background: #FFFFFF; }
+            .toolbar, .notice { display: none !important; }
+            .sheet { margin: 0; box-shadow: none; border-radius: 0; }
         }
     </style>
 </head>
 <body>
 
-    {{-- BARRE D'ACTIONS ÉCRAN (Cachée à l'impression / PDF) --}}
-    <div class="screen-toolbar">
-        <div class="screen-toolbar-left">
-            <a href="{{ url()->previous() ?: route('stock.index', ['tab' => 'disponibilite']) }}" class="btn-action btn-back">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                <span>Retour au Catalogue</span>
-            </a>
-
-            <button type="button" onclick="window.print()" class="btn-action btn-print">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                <span>Imprimer / Exporter en PDF (A4 Paysage)</span>
-            </button>
+@unless($isPdf)
+    <div class="toolbar">
+        <div class="group">
+            <a href="{{ url()->previous() ?: route('stock.index', ['tab' => 'disponibilite']) }}" class="btn">← Retour</a>
+            <a href="{{ route('stock.products.download-catalog', request()->except('autoprint')) }}" class="btn btn-dark">Télécharger le PDF</a>
+            <button type="button" onclick="window.print()" class="btn">Imprimer</button>
         </div>
-
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span class="info-pill">
-                📄 Format : A4 Paysage · 20 articles / page · Total : {{ $productCount }} produits ({{ $chunks->count() }} {{ Str::plural('page', $chunks->count()) }})
-            </span>
-            <span style="font-size: 11px; color: #64748b;">
-                Colonnes Prix Unitaire & Prix de Revente : <strong>Vides</strong> (pour saisie manuscrite / inventaire)
-            </span>
-        </div>
+        <p class="pill">A4 portrait · {{ $rowsPerPage }} articles par page · <strong>{{ $productCount }}</strong> articles · <strong>{{ $totalPages }}</strong> {{ Str::plural('page', $totalPages) }}</p>
     </div>
 
-    {{-- CONTENEUR DES PAGES CHUNKÉES PAR 20 PRODUITS --}}
-    <div class="print-container">
-        @php
-            $totalPages = $chunks->count() ?: 1;
-            $currentPageNumber = 0;
-        @endphp
+    @if(session('pdf_unavailable'))
+        <p class="notice">Le PDF n'a pas pu être généré automatiquement sur ce serveur. Utilisez « Imprimer » puis « Enregistrer au format PDF ».</p>
+    @endif
+@endunless
 
-        @foreach($sections as $section)
-        @php
-            $warehouse = $section['warehouse'];
-            $globalIndex = 0;
-        @endphp
-        @forelse($section['chunks'] as $pageProducts)
-            @php
-                $currentPageNumber++;
-            @endphp
-            <div class="catalog-page">
-                {{-- 1. EN-TÊTE DE LA PAGE --}}
-                <div class="page-header">
-                    <div class="header-brand">
-                        <div class="brand-logo-badge">IV</div>
-                        <div class="brand-text">
-                            <h1>IVOSPHERE ERP</h1>
-                            <p>Système Intégré de Gestion & Logistique</p>
-                        </div>
-                    </div>
+@if($chunks->isEmpty())
+    <section class="sheet">
+        <div class="empty">
+            <strong>Aucun produit à afficher</strong>
+            <p>Aucun article ne correspond à ce catalogue (filtres ou entrepôt sans stock).</p>
+        </div>
+    </section>
+@endif
 
-                    <div class="header-title-box">
-                        <h2>Catalogue & Bordereau de Prix des Produits</h2>
+@foreach($sections as $section)
+    @php
+        $warehouse = $section['warehouse'];
+        $index = 0;
+    @endphp
+    @foreach($section['chunks'] as $pageRows)
+        @php $pageNumber++; @endphp
+        <section class="sheet">
+            <header class="head">
+                <div class="brand">
+                    @if($logoSrc)
+                        <img src="{{ $logoSrc }}" alt="{{ $companyName }}">
+                    @else
+                        <span class="name">{{ $companyName }}</span>
+                    @endif
+                </div>
+                <div class="title">
+                    <h1>Catalogue produits</h1>
+                    <p>
                         @if($warehouse)
-                            <p class="warehouse-line">
-                                Entrepôt : <strong>{{ $warehouse->name }}</strong> ({{ $warehouse->code }})@if($warehouse->address) · {{ $warehouse->address }}@endif @if($warehouse->manager) · Resp. {{ $warehouse->manager }}@endif
-                            </p>
+                            Entrepôt <strong>{{ $warehouse->name }}</strong> · {{ $warehouse->code }}@if($warehouse->address) · {{ $warehouse->address }}@endif
                         @else
-                            <p>Stock global, tous entrepôts confondus · Format A4 Paysage</p>
+                            Stock global · tous entrepôts
                         @endif
-                    </div>
-
-                    <div class="header-meta">
-                        <div>Date d'édition : <strong>{{ now()->format('d/m/Y à H:i') }}</strong></div>
-                        <div>Édité par : <strong>{{ auth()->user()->name ?? 'Administrateur' }}</strong></div>
-                        <div>{{ $warehouse ? 'Articles de l\'entrepôt' : 'Total articles' }} : <strong>{{ $section['rows']->count() }}</strong></div>
-                        <span class="badge-landscape">A4 Paysage · 20 / page</span>
-                    </div>
+                    </p>
                 </div>
+            </header>
 
-                {{-- 2. TABLEAU DES 20 PRODUITS --}}
-                <div class="table-wrapper">
-                    <table class="catalog-table">
-                        <thead>
-                            <tr>
-                                <th class="col-num">N°</th>
-                                <th class="col-ref">RÉFÉRENCE</th>
-                                <th class="col-designation">DÉSIGNATION DU PRODUIT</th>
-                                <th class="col-qty">{{ $warehouse ? 'QTÉ ENTREPÔT' : 'QUANTITÉ' }}</th>
-                                <th class="col-price-empty">PRIX UNITAIRE</th>
-                                <th class="col-price-empty">PRIX DE REVENTE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($pageProducts as $row)
-                                @php
-                                    $product = $row['product'];
-                                    $globalIndex++;
-                                @endphp
-                                <tr>
-                                    {{-- N° index incrémental --}}
-                                    <td class="col-num">{{ $globalIndex }}</td>
-
-                                    {{-- Référence SKU & EAN --}}
-                                    <td class="col-ref">
-                                        <span>{{ $product->sku }}</span>
-                                    </td>
-
-                                    {{-- Désignation du produit --}}
-                                    <td class="col-designation">
-                                        <span class="product-name">{{ $product->name }}</span>
-                                        @if($product->brand || $product->domain)
-                                            <span class="product-sub">
-                                                ({{ $product->brand?->name ?? 'IVOSPHERE' }} · {{ strtoupper($product->domain?->name ?? 'Général') }})
-                                            </span>
-                                        @endif
-                                    </td>
-
-                                    {{-- Quantité en stock --}}
-                                    <td class="col-qty">
-                                        <span>{{ number_format($row['quantity'], 0, ',', ' ') }}</span>
-                                        <span class="unit-label">{{ $product->unit ?? 'pcs' }}</span>
-                                    </td>
-
-                                    {{-- Colonne PRIX UNITAIRE : Strictement VIDE pour saisie manuelle / inventaire --}}
-                                    <td class="col-price-empty"></td>
-
-                                    {{-- Colonne PRIX DE REVENTE : Strictement VIDE pour saisie manuelle / inventaire --}}
-                                    <td class="col-price-empty"></td>
-                                </tr>
-                            @endforeach
-
-                            {{-- Si la dernière page contient moins de 20 produits, compléter avec des lignes vierges pour conserver la grille parfaite --}}
-                            @for($i = $pageProducts->count(); $i < 20; $i++)
-                                <tr>
-                                    <td class="col-num" style="color: #cbd5e1;">{{ $globalIndex + ($i - $pageProducts->count() + 1) }}</td>
-                                    <td class="col-ref" style="color: #cbd5e1;">-</td>
-                                    <td class="col-designation" style="color: #cbd5e1;">-</td>
-                                    <td class="col-qty" style="color: #cbd5e1;">-</td>
-                                    <td class="col-price-empty"></td>
-                                    <td class="col-price-empty"></td>
-                                </tr>
-                            @endfor
-                        </tbody>
-                    </table>
-                </div>
-
-                {{-- 3. PIED DE PAGE --}}
-                <div class="page-footer">
-                    <div class="footer-left">
-                        Document officiel IVOSPHERE CRM & WMS {{ $warehouse ? "· ".$warehouse->code : "" }} · Édité le {{ now()->format('d/m/Y à H:i:s') }}
-                    </div>
-                    <div class="footer-center">
-                        Page {{ $currentPageNumber }} sur {{ $totalPages }}
-                    </div>
-                    <div class="footer-right">
-                        <span>Visa / Signature :</span>
-                        <span class="signature-line"></span>
-                    </div>
-                </div>
+            <div class="meta">
+                <div><span>Édité le</span><strong>{{ $editedAt }}</strong></div>
+                <div><span>Articles</span><strong>{{ number_format($section['rows']->count(), 0, ',', ' ') }}</strong></div>
+                @if($warehouse?->manager)
+                    <div><span>Responsable</span><strong>{{ $warehouse->manager }}</strong></div>
+                @endif
+                <div><span>Édité par</span><strong>{{ $editor ?: '—' }}</strong></div>
             </div>
-        @empty
-            <div class="catalog-page" style="justify-content: center; align-items: center;">
-                <div style="text-align: center; color: #64748b;">
-                    <p style="font-size: 16px; font-weight: 700; color: #0b0f14;">Aucun produit trouvé dans le catalogue.</p>
-                    <p>Ajoutez des produits au catalogue pour générer le bordereau PDF.</p>
-                </div>
-            </div>
-        @endforelse
-        @endforeach
 
-        @if($sections->isEmpty())
-            <div class="catalog-page" style="justify-content: center; align-items: center;">
-                <div style="text-align: center; color: #64748b;">
-                    <p style="font-size: 16px; font-weight: 700; color: #0b0f14;">Aucun produit en stock dans cet entrepôt.</p>
-                    <p>Les entrepôts sans stock ne sont pas imprimés.</p>
-                </div>
-            </div>
-        @endif
-    </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="c-num">N°</th>
+                        <th class="c-ref">Référence</th>
+                        <th class="c-name">Désignation</th>
+                        <th class="c-qty">{{ $warehouse ? 'Qté dépôt' : 'Quantité' }}</th>
+                        <th class="c-price">Prix unitaire</th>
+                        <th class="c-price">Prix revente</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($pageRows as $row)
+                        @php
+                            $product = $row['product'];
+                            $index++;
+                            $details = collect([$product->brand?->name, $product->category?->name])->filter()->implode(' · ');
+                        @endphp
+                        <tr>
+                            <td class="c-num">{{ $index }}</td>
+                            <td class="c-ref">{{ $product->sku }}</td>
+                            <td class="c-name"><span class="n">{{ $product->name }}</span>@if($details)<span class="s">{{ $details }}</span>@endif</td>
+                            <td class="c-qty">{{ number_format($row['quantity'], 0, ',', ' ') }}<small>{{ $product->unit ?? 'pcs' }}</small></td>
+                            <td class="c-price"></td>
+                            <td class="c-price"></td>
+                        </tr>
+                    @endforeach
+                    @for($i = $pageRows->count(); $i < $rowsPerPage; $i++)
+                        <tr class="blank">
+                            <td class="c-num">{{ $index + ($i - $pageRows->count() + 1) }}</td>
+                            <td class="c-ref"></td>
+                            <td class="c-name"></td>
+                            <td class="c-qty"></td>
+                            <td class="c-price"></td>
+                            <td class="c-price"></td>
+                        </tr>
+                    @endfor
+                </tbody>
+            </table>
 
+            <footer class="foot">
+                <span>{{ $companyName }} · Catalogue{{ $warehouse ? ' '.$warehouse->code : '' }} · {{ $editedAt }}</span>
+                <span class="page">Page {{ $pageNumber }} / {{ $totalPages }}</span>
+                <span class="sign">Visa <i></i></span>
+            </footer>
+        </section>
+    @endforeach
+@endforeach
+
+@if(! $isPdf && request()->boolean('autoprint'))
+    <script>window.addEventListener('load', () => window.print());</script>
+@endif
 </body>
 </html>
