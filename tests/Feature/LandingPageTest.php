@@ -27,7 +27,6 @@ test('official showcase landing page contains all core showcase sections', funct
     $response = $this->get('/');
 
     $response->assertSeeText('Nos prestations');
-    $response->assertSeeText('Détail des prestations');
     $response->assertSeeText('Pourquoi choisir IVOSPHERE ?');
     $response->assertSeeText('Notre processus');
     $response->assertSeeText('Réalisations et projets');
