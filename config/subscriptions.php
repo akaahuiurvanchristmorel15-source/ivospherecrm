@@ -146,7 +146,8 @@ return [
     */
 
     'payment' => [
-        'provider' => env('SUBSCRIPTION_PAYMENT_PROVIDER', env('APP_ENV') === 'production' ? 'cinetpay' : 'simulation'),
+        // « simulation » doit être activé explicitement (en local) ; il est toujours refusé en production.
+        'provider' => env('SUBSCRIPTION_PAYMENT_PROVIDER', 'cinetpay'),
         'currency' => 'XOF',
         'cinetpay' => [
             'api_key' => env('CINETPAY_API_KEY'),

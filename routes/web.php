@@ -98,8 +98,8 @@ Route::get('/', function () {
 })->name('home');
 
 // Demandes de devis depuis la page d'accueil
-Route::post('/devis', [QuoteRequestController::class, 'store'])->name('quote.store');
-Route::post('/', [QuoteRequestController::class, 'store']);
+Route::post('/devis', [QuoteRequestController::class, 'store'])->middleware('throttle:5,1')->name('quote.store');
+Route::post('/', [QuoteRequestController::class, 'store'])->middleware('throttle:5,1');
 
 // Offres d'abonnement : inscription et paiement en ligne
 Route::prefix('offres')->name('offres.')->group(function () {
@@ -117,7 +117,7 @@ Route::prefix('offres')->name('offres.')->group(function () {
 // Authentification
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:20,1');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');

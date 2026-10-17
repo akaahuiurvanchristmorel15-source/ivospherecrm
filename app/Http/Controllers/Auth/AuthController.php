@@ -7,6 +7,8 @@ use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -36,7 +38,18 @@ class AuthController extends Controller
 
         $remember = $request->boolean('remember');
 
+        // Protection contre les essais de mots de passe en série : 5 tentatives par minute (e-mail + IP).
+        $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            throw ValidationException::withMessages([
+                'email' => "Trop de tentatives de connexion. Réessayez dans {$seconds} secondes.",
+            ]);
+        }
+
         if (Auth::attempt($credentials, $remember)) {
+            RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
             $user = Auth::user();
@@ -59,6 +72,8 @@ class AuthController extends Controller
 
             return redirect()->intended(route('dashboard'));
         }
+
+        RateLimiter::hit($throttleKey, 60);
 
         throw ValidationException::withMessages([
             'email' => 'Les identifiants fournis ne correspondent à aucun compte actif.',

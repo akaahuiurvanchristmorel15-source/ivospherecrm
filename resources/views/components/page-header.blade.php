@@ -13,7 +13,8 @@
         @endif
 
         <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-[#0B0F14]">
-            {!! $title !!}
+            {{-- Échappé sans réencoder les entités déjà échappées par Blade (title="{{ … }}") --}}
+            {!! htmlspecialchars((string) $title, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8', false) !!}
         </h1>
 
         @if($description)
