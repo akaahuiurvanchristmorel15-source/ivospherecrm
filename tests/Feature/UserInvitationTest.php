@@ -148,3 +148,15 @@ test('a link from a subscriber space creates the account in that space within it
     expect(User::withoutGlobalScopes()->where('email', 'quatrieme@gmail.com')->exists())->toBeFalse()
         ->and(UserInvitation::withoutGlobalScopes()->where('token_hash', UserInvitation::hashToken($fullToken))->value('used_at'))->toBeNull();
 });
+
+test('the signup form only accepts a real email address', function () {
+    $link = generateInvitationLink();
+
+    $this->post($link, invitationSignup(['email' => 'koffi@yopmail.com']))->assertSessionHasErrors('email');
+
+    config(['subscriptions.email.verify_dns' => true]);
+    $this->post($link, invitationSignup(['email' => 'koffi@domaine-inexistant.invalid']))->assertSessionHasErrors('email');
+
+    expect(User::where('email', 'like', 'koffi@%')->exists())->toBeFalse()
+        ->and(UserInvitation::first()->used_at)->toBeNull();
+});

@@ -55,8 +55,12 @@
                     <div>
                         <label for="email" class="{{ $label }}">Adresse e-mail</label>
                         <input type="email" name="email" id="email" value="{{ old('email', $invitation->email) }}" required autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"
-                               placeholder="vous@exemple.com" @if($invitation->email) readonly @endif class="{{ $field }} {{ $invitation->email ? 'cursor-not-allowed opacity-80' : '' }}">
-                        @error('email')<p class="{{ $error }}">{{ $message }}</p>@enderror
+                               placeholder="votre.adresse@gmail.com" @if($invitation->email) readonly @endif class="{{ $field }} {{ $invitation->email ? 'cursor-not-allowed opacity-80' : '' }}">
+                        @error('email')
+                            <p class="{{ $error }}">{{ $message }}</p>
+                        @else
+                            <p class="mt-1.5 text-[11px] text-black/45 night:text-white/45">Utilisez votre vraie adresse e-mail : elle sert à vous connecter et à recevoir les informations de votre compte.</p>
+                        @enderror
                     </div>
 
                     <div>
