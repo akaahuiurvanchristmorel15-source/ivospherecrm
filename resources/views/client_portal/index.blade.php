@@ -168,7 +168,7 @@
 
                 <div class="pt-4 border-t border-[#E2E8F0] mt-4 flex items-center justify-between text-[11px] text-slate-400">
                     <span>Ligne directe assistance : +225 27 00 00 00</span>
-                    <span>support@ivosphere.com</span>
+                    <span>ivospheresarl@gmail.com</span>
                 </div>
             </div>
 

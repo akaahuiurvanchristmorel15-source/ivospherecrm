@@ -36,7 +36,7 @@ class SettingSeeder extends Seeder
             ],
             [
                 'key' => 'company_email',
-                'value' => 'contact@ivosphere.com',
+                'value' => 'ivospheresarl@gmail.com',
                 'group' => 'general',
                 'type' => 'string',
                 'description' => 'Adresse email officielle',
