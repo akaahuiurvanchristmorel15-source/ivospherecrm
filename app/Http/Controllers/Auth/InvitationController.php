@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserInvitation;
+use App\Rules\RealEmailAddress;
 use App\Services\EmployeeSyncService;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
@@ -49,7 +50,7 @@ class InvitationController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => array_filter([
-                'required', 'string', 'email', 'max:255', 'unique:users,email',
+                'required', 'string', 'email:rfc,strict', 'max:255', new RealEmailAddress, 'unique:users,email',
                 $invitation->email ? 'in:'.$invitation->email : null,
             ]),
             'phone' => ['nullable', 'string', 'max:50'],

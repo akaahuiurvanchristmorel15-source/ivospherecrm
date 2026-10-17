@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserInvitation;
+use App\Rules\RealEmailAddress;
 use App\Services\ActivityLogger;
 use App\Support\TenantAccess;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +32,7 @@ class UserInvitationController extends Controller
 
         $validated = $request->validate([
             'invite_name' => ['nullable', 'string', 'max:255'],
-            'invite_email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
+            'invite_email' => ['nullable', 'email:rfc,strict', 'max:255', new RealEmailAddress, 'unique:users,email'],
             'invite_role' => ['required', 'exists:roles,id'],
             'invite_domains' => ['nullable', 'array'],
             'invite_domains.*' => ['exists:domains,id'],
