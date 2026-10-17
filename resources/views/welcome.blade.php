@@ -319,8 +319,8 @@
                         @endphp
                         <article id="pole-{{ $key }}" data-stack-card
                                  x-data="poleSlides({{ $slides->count() }})" @mouseenter="pause()" @mouseleave="resume()"
-                                 style="--stack-top: calc(6rem + {{ $loop->index * 0.75 }}rem)"
-                                 class="relative isolate mb-6 flex min-h-[30rem] scroll-mt-24 flex-col justify-end overflow-hidden rounded-[28px] border border-black/[0.08] bg-white shadow-[0_-10px_30px_-14px_rgba(11,15,20,.18)] sm:min-h-[34rem] md:sticky md:top-[var(--stack-top)] night:border-white/10 night:bg-[#0c0c0d] night:shadow-[0_-10px_30px_-14px_rgba(0,0,0,.8)]">
+                                 style="--stack-top: calc(5rem + {{ $loop->index * 0.6 }}rem)"
+                                 class="relative isolate mb-6 flex min-h-[30rem] scroll-mt-24 flex-col justify-end overflow-hidden rounded-[28px] border border-black/[0.08] bg-white shadow-[0_-10px_30px_-14px_rgba(11,15,20,.18)] sm:min-h-[34rem] sticky top-[var(--stack-top)] sm:top-[calc(var(--stack-top)+1rem)] night:border-white/10 night:bg-[#0c0c0d] night:shadow-[0_-10px_30px_-14px_rgba(0,0,0,.8)]">
 
                             {{-- Arrière-plan : visuels en fondu enchaîné avec léger zoom --}}
                             <div class="absolute inset-0 -z-10" aria-hidden="true">
@@ -699,14 +699,13 @@
             const bar = document.getElementById('scroll-progress');
             const parallax = document.querySelector('[data-parallax]');
             const desktop = window.matchMedia('(min-width: 1024px)');
-            const medium = window.matchMedia('(min-width: 768px)');
             let ticking = false;
 
             /* 3a. Card stack : la carte recouverte se réduit et s'assombrit */
             const stackCards = [...document.querySelectorAll('[data-stack-card]')];
 
             function updateStack() {
-                const on = !reduced && medium.matches;
+                const on = !reduced;
                 stackCards.forEach((card, i) => {
                     const next = stackCards[i + 1];
                     const shade = card.querySelector('[data-stack-shade]');
