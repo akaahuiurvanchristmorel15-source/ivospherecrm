@@ -3,7 +3,7 @@
 namespace App\Services\Subscriptions;
 
 use App\Models\Subscription;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\ConnectionException;
 use RuntimeException;
 
 /**
@@ -22,26 +22,30 @@ class CinetPayGateway implements PaymentGateway
         $config = $this->config();
         $tenant = $subscription->tenant;
 
-        $response = Http::acceptJson()->timeout(20)->post($config['base_url'].'/payment', [
-            'apikey' => $config['api_key'],
-            'site_id' => $config['site_id'],
-            'transaction_id' => $subscription->reference,
-            'amount' => $subscription->amount,
-            'currency' => $subscription->currency,
-            'description' => 'Abonnement '.$subscription->plan->name.' ('.$subscription->billingCycleLabel().')',
-            'notify_url' => route('offres.payment.notify'),
-            'return_url' => route('offres.payment.return', $subscription->reference),
-            'channels' => 'ALL',
-            'customer_name' => $tenant->name,
-            'customer_surname' => $tenant->name,
-            'customer_email' => $tenant->email,
-            'customer_phone_number' => $tenant->phone,
-            'customer_address' => $tenant->address ?: $tenant->city,
-            'customer_city' => $tenant->city,
-            'customer_country' => 'CI',
-            'customer_state' => 'CI',
-            'customer_zip_code' => '00225',
-        ]);
+        try {
+            $response = PaymentHttp::request()->post($config['base_url'].'/payment', [
+                'apikey' => $config['api_key'],
+                'site_id' => $config['site_id'],
+                'transaction_id' => $subscription->reference,
+                'amount' => $subscription->amount,
+                'currency' => $subscription->currency,
+                'description' => 'Abonnement '.$subscription->plan->name.' ('.$subscription->billingCycleLabel().')',
+                'notify_url' => route('offres.payment.notify'),
+                'return_url' => route('offres.payment.return', $subscription->reference),
+                'channels' => 'ALL',
+                'customer_name' => $tenant->name,
+                'customer_surname' => $tenant->name,
+                'customer_email' => $tenant->email,
+                'customer_phone_number' => $tenant->phone,
+                'customer_address' => $tenant->address ?: $tenant->city,
+                'customer_city' => $tenant->city,
+                'customer_country' => 'CI',
+                'customer_state' => 'CI',
+                'customer_zip_code' => '00225',
+            ]);
+        } catch (ConnectionException $exception) {
+            throw new RuntimeException('CinetPay injoignable : '.$exception->getMessage(), 0, $exception);
+        }
 
         $paymentUrl = $response->json('data.payment_url');
         if (! $response->successful() || ! $paymentUrl) {
@@ -55,11 +59,15 @@ class CinetPayGateway implements PaymentGateway
     {
         $config = $this->config();
 
-        $response = Http::acceptJson()->timeout(20)->post($config['base_url'].'/payment/check', [
-            'apikey' => $config['api_key'],
-            'site_id' => $config['site_id'],
-            'transaction_id' => $subscription->reference,
-        ]);
+        try {
+            $response = PaymentHttp::request()->post($config['base_url'].'/payment/check', [
+                'apikey' => $config['api_key'],
+                'site_id' => $config['site_id'],
+                'transaction_id' => $subscription->reference,
+            ]);
+        } catch (ConnectionException $exception) {
+            throw new RuntimeException('CinetPay injoignable : '.$exception->getMessage(), 0, $exception);
+        }
 
         $data = (array) $response->json('data', []);
         $status = strtoupper((string) ($data['status'] ?? ''));

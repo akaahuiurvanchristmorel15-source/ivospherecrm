@@ -150,6 +150,8 @@ return [
         // « simulation » doit être activé explicitement (en local) ; il est toujours refusé en production.
         'provider' => env('SUBSCRIPTION_PAYMENT_PROVIDER', 'paystack'),
         'currency' => env('SUBSCRIPTION_CURRENCY', 'XOF'),
+        // Fichier de certificats racine (cacert.pem) si PHP n'en a pas : chemin absolu ou relatif au projet.
+        'ca_bundle' => env('HTTP_CA_BUNDLE'),
         'paystack' => [
             'public_key' => env('PAYSTACK_PUBLIC_KEY'),
             'secret_key' => env('PAYSTACK_SECRET_KEY'),
