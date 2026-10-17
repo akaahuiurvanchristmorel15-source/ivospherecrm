@@ -144,6 +144,15 @@
         .js [data-reveal="bar-y"]{opacity:1;transform:scaleY(0);transform-origin:center top;transition-duration:.9s}
         .js [data-reveal].is-visible{opacity:1;transform:none}
 
+        /* Glissement latéral alterné (Notre processus) : entrée et sortie à chaque passage */
+        .js [data-slide]{
+            opacity:0;
+            transition:opacity .7s cubic-bezier(.22,1,.36,1) var(--d,0ms),transform .7s cubic-bezier(.22,1,.36,1) var(--d,0ms);
+        }
+        .js [data-slide="right"]{transform:translateX(min(18vw,160px)) rotate(2deg)}
+        .js [data-slide="left"]{transform:translateX(max(-18vw,-160px)) rotate(-2deg)}
+        .js [data-slide].is-in{opacity:1;transform:none}
+
         /* Lien actif dans la navigation (suivi du défilement) */
         [data-nav][aria-current="true"]{color:#0B0F14;background:rgba(0,0,0,.06)}
         [data-offer-theme=night] [data-nav][aria-current="true"]{color:#fff;background:rgba(255,255,255,.1)}
@@ -164,6 +173,7 @@
             html{scroll-behavior:auto !important}
             .js [data-reveal]{opacity:1 !important;transform:none !important;transition:none !important}
             [data-stack-card]{transform:none !important}
+            .js [data-slide]{opacity:1 !important;transform:none !important;transition:none !important}
         }
     </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -428,7 +438,7 @@
         </section>
 
         {{-- ═══ 5. Notre processus ═══ --}}
-        <section id="processus" class="scroll-mt-24 py-20 sm:py-28" aria-labelledby="processus-titre">
+        <section id="processus" class="scroll-mt-24 overflow-x-clip py-20 sm:py-28" aria-labelledby="processus-titre">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div data-reveal="up" class="text-center">
                     <span class="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">Processus</span>
@@ -438,7 +448,7 @@
 
                 <ol class="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($steps as $i => [$title, $text])
-                        <li data-reveal="up" {!! $d($i, 100) !!} class="rounded-[28px] border border-black/[0.08] bg-white/55 p-6 backdrop-blur-2xl night:border-white/10 night:bg-white/[0.04]">
+                        <li data-slide="{{ $i % 2 === 0 ? 'right' : 'left' }}" style="--d:{{ ($i % 3) * 90 }}ms" class="rounded-[28px] border border-black/[0.08] bg-white/55 p-6 backdrop-blur-2xl night:border-white/10 night:bg-white/[0.04]">
                             <span class="font-display text-5xl font-extrabold text-black/10 night:text-white/15">0{{ $i + 1 }}</span>
                             <h3 class="mt-6 text-base font-semibold">{{ $title }}</h3>
                             <p class="mt-1.5 text-sm leading-relaxed text-black/55 night:text-white/55">{{ $text }}</p>
@@ -679,6 +689,17 @@
                     });
                 }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
                 items.forEach(el => reveal.observe(el));
+            }
+
+            /* 1b. Glissement latéral alterné : la carte entre et ressort par son côté à chaque passage */
+            const slides = document.querySelectorAll('[data-slide]');
+            if (!('IntersectionObserver' in window) || reduced) {
+                slides.forEach(el => el.classList.add('is-in'));
+            } else {
+                const slider = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => entry.target.classList.toggle('is-in', entry.isIntersecting));
+                }, { threshold: 0.2, rootMargin: '0px 0px -6% 0px' });
+                slides.forEach(el => slider.observe(el));
             }
 
             /* 2. Lien de navigation actif selon la section visible */
