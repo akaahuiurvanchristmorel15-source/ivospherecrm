@@ -21,7 +21,7 @@ class SubscriptionPdfService
 
         $ivosphere = TenantContext::run(Tenant::MAIN_ID, fn () => [
             'name' => Setting::get('company_name', 'GROUPE IVOSPHERE'),
-            'email' => Setting::get('company_email', 'contact@ivosphere.com'),
+            'email' => Setting::get('company_email', 'ivospheresarl@gmail.com'),
             'phone' => Setting::get('company_phone'),
             'address' => Setting::get('company_address'),
         ]);

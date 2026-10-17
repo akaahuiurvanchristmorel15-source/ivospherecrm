@@ -13,6 +13,11 @@ test('official showcase landing page is accessible at root url', function () {
     $response->assertSeeText('Des solutions professionnelles pour donner vie à vos projets');
 });
 
+test('landing page and offers footer show the official contact email', function () {
+    $this->get('/')->assertSee('mailto:ivospheresarl@gmail.com', false);
+    $this->get(route('offres.index'))->assertSee('mailto:ivospheresarl@gmail.com', false);
+});
+
 test('official showcase landing page contains all 5 business poles', function () {
     $response = $this->get('/');
 
