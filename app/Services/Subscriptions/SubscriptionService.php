@@ -26,10 +26,12 @@ class SubscriptionService
 
     public function gateway(): PaymentGateway
     {
-        return match (config('subscriptions.payment.provider')) {
-            'cinetpay' => app(CinetPayGateway::class),
-            default => app(SimulationGateway::class),
-        };
+        // La simulation (paiement factice) n'est jamais utilisable en production.
+        if (config('subscriptions.payment.provider') === 'simulation' && ! app()->isProduction()) {
+            return app(SimulationGateway::class);
+        }
+
+        return app(CinetPayGateway::class);
     }
 
     /**

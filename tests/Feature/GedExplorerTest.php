@@ -17,6 +17,7 @@ beforeEach(function () {
     $this->seed(UserSeeder::class);
 
     Storage::fake('public');
+    Storage::fake('local');
     $this->actingAs(User::where('email', 'admin@ivosphere.com')->first());
 
     $this->contracts = DocumentFolder::create(['name' => 'Contrats', 'slug' => 'contrats', 'color' => '#0066FF', 'is_vault' => false]);
@@ -74,7 +75,8 @@ test('dropped files are archived in the current folder with a readable title', f
         ->and($document->title)->toBe('Contrat orange final')
         ->and($document->folder_id)->toBe($this->contracts->id)
         ->and($document->tags)->toBe(['client', '2026']);
-    Storage::disk('public')->assertExists($document->file_path);
+    Storage::disk('local')->assertExists($document->file_path);
+    Storage::disk('public')->assertMissing($document->file_path);
 });
 
 test('a new folder is created inside the folder being viewed', function () {

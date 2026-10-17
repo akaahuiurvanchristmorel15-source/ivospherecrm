@@ -101,7 +101,7 @@ test('admin can access sport dashboard and articles listing', function () {
 
     $responseArticles = $this->actingAs($admin)->get('/sport/articles');
     $responseArticles->assertStatus(200);
-    $responseArticles->assertSee('Articles & Maillots Personnalisés', false);
+    $responseArticles->assertSee('Articles & Maillots Personnalisés');
 });
 
 test('admin can access tech dashboard and projects listing', function () {

@@ -25,8 +25,10 @@ class GedController extends Controller
     /**
      * Coffre-fort : même explorateur, en mode privé.
      */
-    public function vault(): View
+    public function vault(Request $request): View
     {
+        abort_unless(Document::canAccessVault($request->user()), 403, 'Le coffre-fort est réservé à la direction.');
+
         return view('ged.vault');
     }
 
@@ -58,10 +60,14 @@ class GedController extends Controller
             'domain_id' => ['nullable', 'exists:domains,id'],
             'is_vault' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'string'],
-            'file' => ['nullable', 'file', 'max:20480'], // max 20MB
+            'file' => ['nullable', ...Document::uploadRules()],
+        ], [
+            'file.mimes' => 'Type de fichier non autorisé (PDF, images, Word, Excel, PowerPoint ou ZIP).',
+            'file.extensions' => 'Type de fichier non autorisé (PDF, images, Word, Excel, PowerPoint ou ZIP).',
         ]);
 
         $isVault = $request->boolean('is_vault');
+        abort_if($isVault && ! Document::canAccessVault($request->user()), 403, 'Le coffre-fort est réservé à la direction.');
         $fileName = 'document_'.time().'.pdf';
         $filePath = 'documents/'.$fileName;
         $fileSize = 102400; // default 100 KB mock if simulated
@@ -72,7 +78,7 @@ class GedController extends Controller
             $fileName = $uploaded->getClientOriginalName();
             $fileSize = $uploaded->getSize();
             $mimeType = $uploaded->getMimeType();
-            $filePath = $uploaded->store('ged_files', 'public');
+            $filePath = $uploaded->store($isVault ? 'vault_files' : 'ged_files', 'local');
         }
 
         $tagsArray = null;
@@ -105,6 +111,8 @@ class GedController extends Controller
      */
     public function open(Request $request, Document $document): StreamedResponse
     {
+        abort_unless($document->canBeViewedBy($request->user()), 403);
+
         $disk = Storage::disk($document->storageDisk());
         abort_unless($document->file_path && $disk->exists($document->file_path), 404, 'Ce fichier est introuvable sur le serveur.');
 
@@ -112,11 +120,16 @@ class GedController extends Controller
 
         return $request->boolean('download')
             ? $disk->download($document->file_path, $document->file_name)
-            : $disk->response($document->file_path, $document->file_name);
+            : $disk->response($document->file_path, $document->file_name, [
+                'X-Content-Type-Options' => 'nosniff',
+                'Content-Security-Policy' => "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+            ]);
     }
 
-    public function destroy(Document $document): RedirectResponse
+    public function destroy(Request $request, Document $document): RedirectResponse
     {
+        abort_unless($document->canBeDeletedBy($request->user()), 403);
+
         $isVault = $document->is_vault;
         $document->delete();
 

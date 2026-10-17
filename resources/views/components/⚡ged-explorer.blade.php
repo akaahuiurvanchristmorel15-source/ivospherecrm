@@ -28,7 +28,7 @@ new class extends Component {
      */
     public const TYPES = [
         'pdf' => ['PDF', ['pdf']],
-        'image' => ['Images', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']],
+        'image' => ['Images', ['jpg', 'jpeg', 'png', 'gif', 'webp']],
         'word' => ['Word', ['doc', 'docx', 'odt', 'rtf', 'txt']],
         'sheet' => ['Excel', ['xls', 'xlsx', 'ods', 'csv']],
     ];
@@ -62,6 +62,8 @@ new class extends Component {
 
     public function mount(): void
     {
+        abort_if($this->vault && ! Document::canAccessVault(auth()->user()), 403, 'Le coffre-fort est réservé à la direction.');
+
         $this->ensureDefaultFolders();
     }
 
@@ -86,15 +88,19 @@ new class extends Component {
     {
         $this->validate([
             'uploads' => ['array', 'max:20'],
-            'uploads.*' => ['file', 'max:20480'],
+            'uploads.*' => Document::uploadRules(),
             'uploadDomainId' => ['nullable', 'exists:domains,id'],
             'uploadTags' => ['nullable', 'string', 'max:255'],
         ], [
             'uploads.*.max' => 'Chaque fichier doit faire 20 Mo au maximum.',
+            'uploads.*.mimes' => 'Type de fichier non autorisé (PDF, images, Word, Excel, PowerPoint ou ZIP).',
+            'uploads.*.extensions' => 'Type de fichier non autorisé (PDF, images, Word, Excel, PowerPoint ou ZIP).',
             'uploads.max' => 'Déposez 20 fichiers au maximum à la fois.',
         ]);
 
         $tags = collect(explode(',', $this->uploadTags))->map(fn (string $tag) => trim($tag))->filter()->values()->all();
+
+        abort_if($this->vault && ! Document::canAccessVault(auth()->user()), 403);
 
         foreach ($this->uploads as $upload) {
             $originalName = $upload->getClientOriginalName();
@@ -102,7 +108,7 @@ new class extends Component {
             Document::create([
                 'title' => Str::of(pathinfo($originalName, PATHINFO_FILENAME))->replace(['_', '-'], ' ')->squish()->ucfirst()->limit(255, ''),
                 'file_name' => $originalName,
-                'file_path' => $this->vault ? $upload->store('vault_files', 'local') : $upload->store('ged_files', 'public'),
+                'file_path' => $upload->store($this->vault ? 'vault_files' : 'ged_files', 'local'),
                 'file_size' => $upload->getSize(),
                 'mime_type' => $upload->getMimeType(),
                 'folder_id' => $this->folderId,
@@ -146,6 +152,7 @@ new class extends Component {
     public function deleteDocument(int $documentId): void
     {
         $document = Document::where('is_vault', $this->vault)->findOrFail($documentId);
+        abort_unless($document->canBeDeletedBy(auth()->user()), 403, 'Seul l\'auteur du dépôt ou la direction peut supprimer ce document.');
         $disk = Storage::disk($document->storageDisk());
 
         if ($document->file_path && $disk->exists($document->file_path)) {
@@ -484,8 +491,8 @@ new class extends Component {
                     @php [$badge, $badgeClass] = $familyStyles[$this::familyOf($document->file_name)]; @endphp
                     <article wire:key="doc-{{ $document->id }}" class="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/70">
                         <a href="{{ route('ged.documents.open', $document) }}" target="_blank" rel="noopener" class="flex aspect-[4/3] items-center justify-center bg-[#F8FAFC]">
-                            @if(! $vault && $this::familyOf($document->file_name) === 'image' && \Illuminate\Support\Facades\Storage::disk('public')->exists((string) $document->file_path))
-                                <img src="{{ asset('storage/'.$document->file_path) }}" alt="" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                            @if(! $vault && $this::familyOf($document->file_name) === 'image')
+                                <img src="{{ route('ged.documents.open', $document) }}" alt="" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                             @else
                                 <span class="rounded-xl px-3 py-2 text-sm font-bold tracking-wide transition duration-300 group-hover:scale-110 {{ $badgeClass }}">{{ $badge }}</span>
                             @endif
