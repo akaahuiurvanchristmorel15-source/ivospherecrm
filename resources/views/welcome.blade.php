@@ -256,11 +256,7 @@
             <div class="mx-auto max-w-7xl px-4 pb-10 pt-32 sm:px-6 sm:pt-40 lg:px-8">
                 <div class="grid grid-cols-1 items-end gap-10 lg:grid-cols-12">
                     <div class="lg:col-span-7">
-                        <span data-reveal="up" class="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">
-                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                            Cinq pôles · Un seul partenaire
-                        </span>
-                        <h1 data-reveal="up" style="--d:80ms" class="mt-6 font-display text-4xl font-extrabold leading-[1.02] sm:text-6xl lg:text-7xl">
+                        <h1 data-reveal="up" style="--d:80ms" class="font-display text-4xl font-extrabold leading-[1.02] sm:text-6xl lg:text-7xl">
                             Des solutions professionnelles pour donner vie à vos projets
                         </h1>
                         <p data-reveal="up" style="--d:160ms" class="mt-6 max-w-xl text-base leading-relaxed text-black/55 sm:text-lg night:text-white/55">
