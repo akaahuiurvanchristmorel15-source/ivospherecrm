@@ -20,6 +20,10 @@
                 <p class="mt-2 text-sm leading-relaxed text-black/55 night:text-white/55">Accédez à votre espace de gestion IVOSPHERE.</p>
             </header>
 
+            @if (session('success'))
+                <div role="status" class="mb-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-sm text-emerald-800 night:text-emerald-200">{{ session('success') }}</div>
+            @endif
+
             @if ($errors->any())
                 <div role="alert" class="mb-5 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-3.5 text-sm text-rose-700 night:text-rose-200">
                     <p class="font-semibold">Connexion impossible</p>
