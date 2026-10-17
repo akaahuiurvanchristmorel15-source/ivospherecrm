@@ -188,6 +188,7 @@ Route::middleware('auth')->group(function () {
     // Pôles Transversaux — Navigation d'accès selon les Rôles et Domaines
     Route::prefix('rh')->name('rh.')->middleware('role:administrateur,responsable,responsable_rh')->group(function () {
         Route::get('/', [RhDashboardController::class, 'index'])->name('index');
+        Route::delete('employees', [EmployeeController::class, 'bulkDestroy'])->name('employees.bulk-destroy');
         Route::resource('employees', EmployeeController::class);
         Route::resource('leaves', LeaveRequestController::class)->except(['show', 'edit', 'update']);
         Route::patch('leaves/{leave}/approve', [LeaveRequestController::class, 'approve'])->name('leaves.approve');

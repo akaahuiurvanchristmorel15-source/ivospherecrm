@@ -12,6 +12,7 @@ use App\Services\EmployeeSyncService;
 use App\Services\PhoneNumberFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -231,5 +232,73 @@ class EmployeeController extends Controller
         ActivityLogger::log('desactivation_employe', "Désactivation de l'employé {$employee->full_name}", $employee);
 
         return redirect()->route('rh.employees.index')->with('success', 'Employé désactivé avec succès.');
+    }
+
+    /**
+     * Suppression définitive des employés sélectionnés : fiche, historique RH et compte de connexion.
+     * Le compte est conservé (désactivé) s'il porte des opérations comptables ou commerciales.
+     */
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'employee_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'employee_ids.*' => ['integer', 'distinct'],
+        ], [
+            'employee_ids.required' => 'Sélectionnez au moins un employé.',
+        ]);
+
+        $currentUser = $request->user();
+        $employees = Employee::with('user.roles')->whereIn('id', $validated['employee_ids'])->get();
+
+        $deleted = [];
+        $skipped = [];
+        $accountsKept = [];
+
+        foreach ($employees as $employee) {
+            $user = $employee->user;
+
+            if ($user && $user->id === $currentUser->id) {
+                $skipped[] = $employee->full_name.' (votre propre compte)';
+
+                continue;
+            }
+
+            if ($user && $user->isAdmin() && ! $currentUser->isAdmin()) {
+                $skipped[] = $employee->full_name.' (administrateur)';
+
+                continue;
+            }
+
+            DB::transaction(function () use ($employee, $user, &$accountsKept) {
+                $employee->delete();
+
+                if (! $user) {
+                    return;
+                }
+
+                if ($user->hasBusinessRecords()) {
+                    $user->update(['is_active' => false]);
+                    $accountsKept[] = $user->name;
+
+                    return;
+                }
+
+                $user->delete();
+            });
+
+            $deleted[] = $employee->full_name;
+
+            ActivityLogger::log('suppression_employe', "Suppression définitive de l'employé {$employee->full_name}".($user ? " et de son compte {$user->email}" : ''));
+        }
+
+        $message = count($deleted).' employé(s) supprimé(s) définitivement.';
+        if ($accountsKept !== []) {
+            $message .= ' Comptes conservés (désactivés) car ils portent des ventes, paiements ou mouvements à garder : '.implode(', ', $accountsKept).'.';
+        }
+
+        $redirect = redirect()->route('rh.employees.index', $request->only(['search', 'domain_id', 'status']))
+            ->with($deleted === [] ? 'error' : 'success', $deleted === [] ? 'Aucun employé n\'a été supprimé.' : $message);
+
+        return $skipped === [] ? $redirect : $redirect->with('warning', 'Non supprimé(s) : '.implode(', ', $skipped).'.');
     }
 }

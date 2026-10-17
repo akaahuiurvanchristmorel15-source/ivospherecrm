@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 #[Fillable(['tenant_id', 'name', 'email', 'password', 'phone', 'avatar', 'is_active', 'all_domains'])]
 #[Hidden(['password', 'remember_token'])]
@@ -20,6 +22,33 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use BelongsToTenant, HasFactory, Notifiable;
+
+    /**
+     * Tables métier dont les lignes sont supprimées en cascade avec le compte (clé user_id) :
+     * un compte qui en possède ne doit pas être supprimé, sous peine d'effacer la comptabilité.
+     *
+     * @var list<string>
+     */
+    public const BUSINESS_RECORD_TABLES = [
+        'account_transfers', 'ai_campaigns', 'bank_reconciliations', 'cash_register_sessions', 'commercial_appointments',
+        'equipment_rentals', 'events', 'expenses', 'financial_audit_logs', 'insurance_contracts', 'invoices', 'orders',
+        'payments', 'photo_sessions', 'physical_inventories', 'print_jobs', 'purchase_requests', 'quotations', 'revenues',
+        'stock_movements', 'stock_transfers', 'supplier_invoices', 'supplier_receptions', 'tech_projects', 'transactions',
+    ];
+
+    /**
+     * Le compte a enregistré des opérations (ventes, paiements, mouvements de stock…) qu'il faut conserver.
+     */
+    public function hasBusinessRecords(): bool
+    {
+        foreach (self::BUSINESS_RECORD_TABLES as $table) {
+            if (Schema::hasTable($table) && DB::table($table)->where('user_id', $this->id)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * Get the attributes that should be cast.
