@@ -153,6 +153,13 @@
         .js [data-slide="left"]{transform:translateX(max(-18vw,-160px)) rotate(-2deg)}
         .js [data-slide].is-in{opacity:1;transform:none}
 
+        /* Pilule de navigation → flèche « haut de page » en bas à droite (dernière section) */
+        .nav-pill{transform-origin:50% 50%;transition:transform .7s cubic-bezier(.65,0,.35,1),opacity .45s ease .2s,border-radius .7s}
+        .nav-pill.is-docked{transform:translate(var(--dock-x,40vw),var(--dock-y,80vh)) scale(var(--dock-s,.1));opacity:0;pointer-events:none}
+        .back-to-top{opacity:0;transform:translateY(12px) scale(.4) rotate(-90deg);pointer-events:none;transition:opacity .35s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
+        .back-to-top.is-visible{opacity:1;transform:none;pointer-events:auto;transition-delay:.45s}
+        .back-to-top:hover{transform:translateY(-3px)}
+
         /* Lien actif dans la navigation (suivi du défilement) */
         [data-nav][aria-current="true"]{color:#0B0F14;background:rgba(0,0,0,.06)}
         [data-offer-theme=night] [data-nav][aria-current="true"]{color:#fff;background:rgba(255,255,255,.1)}
@@ -174,6 +181,7 @@
             .js [data-reveal]{opacity:1 !important;transform:none !important;transition:none !important}
             [data-stack-card]{transform:none !important}
             .js [data-slide]{opacity:1 !important;transform:none !important;transition:none !important}
+            .nav-pill,.back-to-top{transition:none !important}
         }
     </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -183,7 +191,39 @@
 <body class="bg-[#F5F7FA] font-sans text-[#0B0F14] antialiased transition-colors night:bg-black night:text-white"
       x-data="{
           menu: false,
+          docked: false,
           night: document.documentElement.getAttribute('data-offer-theme') === 'night',
+          init() {
+              /* Arrivé à la dernière section, le menu glisse en bas à droite et devient une flèche « haut de page ». */
+              const last = document.getElementById('devis');
+              if (! last) return;
+              let ticking = false;
+              const check = () => {
+                  const docked = last.getBoundingClientRect().top < window.innerHeight * 0.6;
+                  if (docked !== this.docked) {
+                      if (docked) this.aimPill();
+                      this.docked = docked;
+                      if (docked) this.menu = false;
+                  }
+                  ticking = false;
+              };
+              window.addEventListener('scroll', () => { if (! ticking) { requestAnimationFrame(check); ticking = true; } }, { passive: true });
+              window.addEventListener('resize', check);
+              check();
+          },
+          aimPill() {
+              /* Trajectoire : du centre de la pilule au centre de la flèche, avec la réduction correspondante */
+              const pill = this.$refs.pill, arrow = this.$refs.arrow;
+              if (! pill || ! arrow) return;
+              const p = pill.getBoundingClientRect(), a = arrow.getBoundingClientRect();
+              pill.style.setProperty('--dock-x', ((a.left + a.width / 2) - (p.left + p.width / 2)).toFixed(1) + 'px');
+              pill.style.setProperty('--dock-y', ((a.top + a.height / 2) - (p.top + p.height / 2)).toFixed(1) + 'px');
+              pill.style.setProperty('--dock-s', (a.width / p.width).toFixed(3));
+          },
+          backToTop() {
+              const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+              window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+          },
           toggleTheme() {
               this.night = ! this.night;
               const theme = this.night ? 'night' : 'day';
@@ -197,7 +237,8 @@
 
     {{-- ═══ Navigation en pilule flottante ═══ --}}
     <header id="site-header" class="fixed inset-x-0 top-4 z-40 flex flex-col items-center px-4">
-        <nav class="flex max-w-full items-center gap-1 rounded-full border border-black/10 bg-white/70 p-1.5 pl-2 shadow-xl shadow-black/5 backdrop-blur-xl night:border-white/15 night:bg-black/60 night:shadow-black/50" aria-label="Navigation principale">
+        <nav class="nav-pill flex max-w-full items-center gap-1 rounded-full border border-black/10 bg-white/70 p-1.5 pl-2 shadow-xl shadow-black/5 backdrop-blur-xl night:border-white/15 night:bg-black/60 night:shadow-black/50"
+             x-ref="pill" :class="docked && 'is-docked'" :inert="docked" aria-label="Navigation principale">
             <a href="#accueil" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5" aria-label="IVOSPHERE, retour à l'accueil">
                 <img src="{{ asset('images/logo-emblem.png') }}" alt="" class="h-5 w-auto">
             </a>
@@ -236,6 +277,12 @@
             @endif
         </nav>
     </header>
+
+    {{-- Flèche « haut de page » : la pilule de navigation s'y transforme à la dernière section --}}
+    <button type="button" x-ref="arrow" @click="backToTop()" class="back-to-top fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-black/10 bg-[#0B0F14] text-white shadow-2xl shadow-black/20 sm:bottom-8 sm:right-8 night:border-white/20 night:bg-white night:text-black"
+            :class="docked && 'is-visible'" :tabindex="docked ? 0 : -1" :aria-hidden="! docked" aria-label="Revenir en haut de la page" title="Haut de page">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"/></svg>
+    </button>
 
     <main id="contenu" class="relative overflow-x-clip">
         <div class="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[1000px] -translate-x-1/2 rounded-full bg-[#0066FF]/[0.07] blur-3xl night:bg-white/[0.06]" aria-hidden="true"></div>
