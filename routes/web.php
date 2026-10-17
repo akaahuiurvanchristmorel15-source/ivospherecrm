@@ -122,6 +122,8 @@ Route::prefix('offres')->name('offres.')->group(function () {
 // Inscription d'un collaborateur par lien à usage unique
 Route::get('/invitation/{token}', [InvitationController::class, 'show'])->middleware('throttle:30,1')->name('invitations.show');
 Route::post('/invitation/{token}', [InvitationController::class, 'register'])->middleware('throttle:10,1')->name('invitations.register');
+Route::get('/invitation/{token}/google', [InvitationController::class, 'googleRedirect'])->middleware('throttle:10,1')->name('invitations.google');
+Route::post('/invitation/{token}/google/oublier', [InvitationController::class, 'googleForget'])->name('invitations.google.forget');
 
 // Authentification
 Route::middleware('guest')->group(function () {

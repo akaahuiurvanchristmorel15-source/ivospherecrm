@@ -43,19 +43,51 @@
                     <div role="alert" class="mb-5 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-3.5 text-sm text-rose-700 night:text-rose-200">{{ session('error') }}</div>
                 @endif
 
+                @if($googleIdentity)
+                    <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] p-3.5">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
+                                @include('subscriptions.offers._google-icon')
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 night:text-emerald-300">E-mail vérifié par Google</p>
+                                <p class="truncate text-sm font-semibold">{{ $googleIdentity['email'] }}</p>
+                            </div>
+                        </div>
+                        <form method="POST" action="{{ route('invitations.google.forget', $token) }}">
+                            @csrf
+                            <button type="submit" class="h-8 rounded-full border border-black/15 px-3 text-xs font-semibold transition hover:border-black/40 night:border-white/15 night:hover:border-white/40">Changer</button>
+                        </form>
+                    </div>
+                @elseif($googleEnabled)
+                    <div class="mb-5 space-y-3">
+                        <a href="{{ route('invitations.google', $token) }}"
+                           class="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-black/15 bg-white text-sm font-semibold text-[#0B0F14] shadow-sm transition hover:border-black/40 night:border-white/20 night:hover:border-white/50">
+                            @include('subscriptions.offers._google-icon')
+                            Continuer avec Google
+                        </a>
+                        <p class="text-center text-[11px] text-black/45 night:text-white/45">Recommandé : Google confirme que l'adresse e-mail vous appartient.</p>
+                        <div class="flex items-center gap-3 text-[11px] uppercase tracking-wider text-black/35 night:text-white/35">
+                            <span class="h-px flex-1 bg-black/10 night:bg-white/10"></span>
+                            ou remplissez le formulaire
+                            <span class="h-px flex-1 bg-black/10 night:bg-white/10"></span>
+                        </div>
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('invitations.register', $token) }}" class="space-y-4">
                     @csrf
 
                     <div>
                         <label for="name" class="{{ $label }}">Nom complet</label>
-                        <input type="text" name="name" id="name" value="{{ old('name', $invitation->name) }}" required autofocus autocomplete="name" placeholder="Prénom et nom" class="{{ $field }}">
+                        <input type="text" name="name" id="name" value="{{ old('name', $invitation->name ?: ($googleIdentity['name'] ?? null)) }}" required autofocus autocomplete="name" placeholder="Prénom et nom" class="{{ $field }}">
                         @error('name')<p class="{{ $error }}">{{ $message }}</p>@enderror
                     </div>
 
                     <div>
                         <label for="email" class="{{ $label }}">Adresse e-mail</label>
-                        <input type="email" name="email" id="email" value="{{ old('email', $invitation->email) }}" required autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"
-                               placeholder="votre.adresse@gmail.com" @if($invitation->email) readonly @endif class="{{ $field }} {{ $invitation->email ? 'cursor-not-allowed opacity-80' : '' }}">
+                        <input type="email" name="email" id="email" value="{{ old('email', $googleIdentity['email'] ?? $invitation->email) }}" required autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"
+                               placeholder="votre.adresse@gmail.com" @if($invitation->email || $googleIdentity) readonly @endif class="{{ $field }} {{ ($invitation->email || $googleIdentity) ? 'cursor-not-allowed opacity-80' : '' }}">
                         @error('email')
                             <p class="{{ $error }}">{{ $message }}</p>
                         @else

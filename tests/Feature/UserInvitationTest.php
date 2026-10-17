@@ -9,6 +9,8 @@ use App\Models\UserInvitation;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\UserSeeder;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
     $this->seed(DomainSeeder::class);
@@ -159,4 +161,55 @@ test('the signup form only accepts a real email address', function () {
 
     expect(User::where('email', 'like', 'koffi@%')->exists())->toBeFalse()
         ->and(UserInvitation::first()->used_at)->toBeNull();
+});
+
+function verifyInvitationWithGoogle(string $link, string $googleEmail): TestResponse
+{
+    config(['services.google.client_id' => 'client-id-test', 'services.google.client_secret' => 'client-secret-test']);
+    Http::fake([
+        'oauth2.googleapis.com/token' => Http::response(['access_token' => 'google-token']),
+        'openidconnect.googleapis.com/v1/userinfo' => Http::response(['email' => $googleEmail, 'email_verified' => true, 'name' => 'Koffi Yao']),
+    ]);
+
+    $redirect = test()->get($link.'/google')->assertRedirect();
+    parse_str((string) parse_url($redirect->headers->get('Location'), PHP_URL_QUERY), $query);
+
+    return test()->get(route('offres.google.callback', ['state' => $query['state'], 'code' => 'auth-code']));
+}
+
+test('an employee can confirm the email with google before signing up', function () {
+    $link = generateInvitationLink();
+    config(['services.google.client_id' => 'client-id-test', 'services.google.client_secret' => 'client-secret-test']);
+
+    $this->get($link)->assertOk()->assertSee('Continuer avec Google');
+
+    verifyInvitationWithGoogle($link, 'Koffi.Yao@gmail.com')->assertRedirect($link);
+
+    $this->get($link)->assertOk()->assertSee('E-mail vérifié par Google')->assertSee('koffi.yao@gmail.com');
+
+    $this->post($link, invitationSignup(['email' => 'koffi.yao@gmail.com']))->assertRedirect(route('login'));
+
+    expect(User::where('email', 'koffi.yao@gmail.com')->value('email_verified_at'))->not->toBeNull();
+});
+
+test('a google verification only applies to the link it was made for', function () {
+    $firstLink = generateInvitationLink();
+    $secondLink = generateInvitationLink();
+
+    verifyInvitationWithGoogle($firstLink, 'koffi.yao@gmail.com');
+
+    $this->get($secondLink)->assertOk()->assertDontSee('E-mail vérifié par Google');
+
+    $this->post($secondLink, invitationSignup(['email' => 'koffi.yao@gmail.com']))->assertRedirect(route('login'));
+    expect(User::where('email', 'koffi.yao@gmail.com')->value('email_verified_at'))->toBeNull();
+});
+
+test('a link reserved to an address refuses another google account', function () {
+    $link = generateInvitationLink(['invite_email' => 'awa@gmail.com']);
+
+    verifyInvitationWithGoogle($link, 'intrus@gmail.com');
+
+    $this->get($link)->assertOk()
+        ->assertSee('Ce lien est réservé à l&#039;adresse awa@gmail.com', false)
+        ->assertDontSee('E-mail vérifié par Google');
 });
