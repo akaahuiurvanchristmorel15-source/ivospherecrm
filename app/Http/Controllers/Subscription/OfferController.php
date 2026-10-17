@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Subscription;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Rules\RealEmailAddress;
 use App\Services\Subscriptions\PaymentResult;
 use App\Services\Subscriptions\PaystackGateway;
 use App\Services\Subscriptions\SubscriptionPdfService;
@@ -57,12 +58,12 @@ class OfferController extends Controller
         $validated = $request->validate([
             'billing_cycle' => ['required', 'in:monthly,yearly'],
             'company_name' => ['required', 'string', 'max:150'],
-            'email' => ['required', 'email', 'max:150'],
+            'email' => ['required', 'email:rfc,strict', 'max:150', new RealEmailAddress],
             'phone' => ['required', 'string', 'max:30'],
             'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
             'admin_name' => ['required', 'string', 'max:150'],
-            'admin_email' => ['required', 'email', 'max:150', 'unique:users,email'],
+            'admin_email' => ['required', 'email:rfc,strict', 'max:150', new RealEmailAddress, 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'terms' => ['accepted'],
         ], [
