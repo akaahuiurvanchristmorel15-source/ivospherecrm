@@ -4,7 +4,6 @@ namespace App\Services\Subscriptions;
 
 use App\Models\Subscription;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
@@ -24,7 +23,7 @@ class CinetPayGateway implements PaymentGateway
         $tenant = $subscription->tenant;
 
         try {
-            $response = Http::acceptJson()->timeout(20)->post($config['base_url'].'/payment', [
+            $response = PaymentHttp::request()->post($config['base_url'].'/payment', [
                 'apikey' => $config['api_key'],
                 'site_id' => $config['site_id'],
                 'transaction_id' => $subscription->reference,
@@ -61,7 +60,7 @@ class CinetPayGateway implements PaymentGateway
         $config = $this->config();
 
         try {
-            $response = Http::acceptJson()->timeout(20)->post($config['base_url'].'/payment/check', [
+            $response = PaymentHttp::request()->post($config['base_url'].'/payment/check', [
                 'apikey' => $config['api_key'],
                 'site_id' => $config['site_id'],
                 'transaction_id' => $subscription->reference,

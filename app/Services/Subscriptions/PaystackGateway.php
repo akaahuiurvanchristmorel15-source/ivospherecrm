@@ -5,7 +5,6 @@ namespace App\Services\Subscriptions;
 use App\Models\Subscription;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
@@ -25,7 +24,7 @@ class PaystackGateway implements PaymentGateway
         $subscription->loadMissing(['tenant', 'plan']);
 
         try {
-            $response = Http::withToken($config['secret_key'])->acceptJson()->timeout(20)
+            $response = PaymentHttp::request()->withToken($config['secret_key'])
                 ->post($config['base_url'].'/transaction/initialize', [
                     'email' => $subscription->tenant->email,
                     'amount' => $this->toSubunit($subscription->amount),
@@ -57,7 +56,7 @@ class PaystackGateway implements PaymentGateway
         $config = $this->config();
 
         try {
-            $response = Http::withToken($config['secret_key'])->acceptJson()->timeout(20)
+            $response = PaymentHttp::request()->withToken($config['secret_key'])
                 ->get($config['base_url'].'/transaction/verify/'.rawurlencode($subscription->reference));
         } catch (ConnectionException $exception) {
             throw new RuntimeException('Paystack injoignable : '.$exception->getMessage(), 0, $exception);

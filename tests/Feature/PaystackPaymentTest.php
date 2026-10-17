@@ -3,6 +3,7 @@
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
+use App\Services\Subscriptions\PaymentHttp;
 use App\Services\Subscriptions\SubscriptionPdfService;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -134,4 +135,17 @@ test('signup shows a clear message instead of an error when Paystack cannot be r
         ->assertOk()
         ->assertSee('Paiement en cours');
     expect($subscription->refresh()->isPaid())->toBeFalse();
+});
+
+test('a custom CA bundle can be configured for payment requests', function () {
+    $bundle = tempnam(sys_get_temp_dir(), 'cacert');
+    file_put_contents($bundle, 'certificats');
+
+    config(['subscriptions.payment.ca_bundle' => $bundle]);
+    expect(PaymentHttp::caBundlePath())->toBe($bundle);
+
+    config(['subscriptions.payment.ca_bundle' => 'introuvable/cacert.pem']);
+    expect(PaymentHttp::caBundlePath())->toBeNull();
+
+    unlink($bundle);
 });
