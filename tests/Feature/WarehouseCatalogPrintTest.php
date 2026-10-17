@@ -94,6 +94,13 @@ test('catalog can be downloaded as a PDF', function () {
         ->assertDownload('Catalogue-wh-plt-'.now()->format('Y-m-d').'.pdf');
 });
 
+test('catalog PDF is rendered in pure PHP without Chromium', function () {
+    $response = $this->get(route('stock.products.download-catalog', ['warehouse_id' => $this->plateau->id]));
+
+    $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    expect(str_starts_with($response->getContent(), '%PDF'))->toBeTrue();
+});
+
 test('catalog download falls back to the print view when PDF rendering fails', function () {
     $this->mock(PdfRenderer::class)
         ->shouldReceive('fromHtml')
