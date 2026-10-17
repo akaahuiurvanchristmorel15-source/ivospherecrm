@@ -31,7 +31,10 @@ class SubscriptionService
             return app(SimulationGateway::class);
         }
 
-        return app(CinetPayGateway::class);
+        return match (config('subscriptions.payment.provider')) {
+            'cinetpay' => app(CinetPayGateway::class),
+            default => app(PaystackGateway::class),
+        };
     }
 
     /**

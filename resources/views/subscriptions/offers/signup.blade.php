@@ -110,7 +110,7 @@
                     </ul>
 
                     <div class="mt-6 rounded-2xl bg-black/[0.04] p-4 text-[11px] leading-relaxed text-black/50 night:bg-white/[0.04] night:text-white/50">
-                        Paiement sécurisé par Wave, Orange Money, MTN MoMo, Moov Money ou carte bancaire. Vous recevez le récapitulatif PDF et l'accès administrateur dès la confirmation.
+                        Paiement sécurisé par Paystack : carte bancaire ou Mobile Money. Vous recevez le récapitulatif PDF et l'accès administrateur dès la confirmation.
                     </div>
                 </aside>
             </div>

@@ -141,14 +141,24 @@ return [
     |--------------------------------------------------------------------------
     |
     | « simulation » : page de paiement factice, pour les tests en local uniquement.
-    | « cinetpay »   : paiement réel (Wave, Orange Money, MTN, Moov, carte) via CinetPay.
+    | « paystack »   : paiement réel (carte bancaire, Mobile Money) via Paystack.
+    | « cinetpay »   : paiement réel via CinetPay (alternative).
     |
     */
 
     'payment' => [
         // « simulation » doit être activé explicitement (en local) ; il est toujours refusé en production.
-        'provider' => env('SUBSCRIPTION_PAYMENT_PROVIDER', 'cinetpay'),
-        'currency' => 'XOF',
+        'provider' => env('SUBSCRIPTION_PAYMENT_PROVIDER', 'paystack'),
+        'currency' => env('SUBSCRIPTION_CURRENCY', 'XOF'),
+        'paystack' => [
+            'public_key' => env('PAYSTACK_PUBLIC_KEY'),
+            'secret_key' => env('PAYSTACK_SECRET_KEY'),
+            'base_url' => env('PAYSTACK_BASE_URL', 'https://api.paystack.co'),
+            // Moyens proposés sur la page Paystack (selon ceux activés sur votre compte).
+            'channels' => array_values(array_filter(explode(',', (string) env('PAYSTACK_CHANNELS', 'card,mobile_money')))),
+            // Paystack exprime les montants en sous-unités : ×100, y compris pour le franc CFA.
+            'amount_multiplier' => (int) env('PAYSTACK_AMOUNT_MULTIPLIER', 100),
+        ],
         'cinetpay' => [
             'api_key' => env('CINETPAY_API_KEY'),
             'site_id' => env('CINETPAY_SITE_ID'),

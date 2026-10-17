@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Subscription;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Services\Subscriptions\PaystackGateway;
 use App\Services\Subscriptions\SubscriptionPdfService;
 use App\Services\Subscriptions\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
@@ -113,8 +114,17 @@ class OfferController extends Controller
      */
     public function notify(Request $request): Response
     {
-        $reference = (string) ($request->input('cpm_trans_id') ?? $request->input('transaction_id', ''));
-        $subscription = Subscription::where('reference', $reference)->first();
+        $gateway = $this->subscriptions->gateway();
+
+        // Paystack signe ses notifications : une notification non signée est ignorée.
+        if ($gateway instanceof PaystackGateway) {
+            abort_unless($gateway->hasValidSignature($request), 401);
+            $reference = (string) $request->input('data.reference', '');
+        } else {
+            $reference = (string) ($request->input('cpm_trans_id') ?? $request->input('transaction_id', ''));
+        }
+
+        $subscription = $reference !== '' ? Subscription::where('reference', $reference)->first() : null;
 
         if ($subscription) {
             try {
