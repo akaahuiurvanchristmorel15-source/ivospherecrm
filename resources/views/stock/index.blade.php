@@ -286,8 +286,11 @@
                             <div x-show="open" x-cloak x-transition class="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white py-1 text-xs shadow-lg">
                                 <a href="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}"
                                    :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
-                                   data-base="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}" target="_blank" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Catalogue PDF</a>
-                                <a href="{{ route('stock.products.print-catalog', array_merge(request()->except('warehouse_id'), ['per_warehouse' => 1])) }}" target="_blank" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Catalogue PDF par entrepôt</a>
+                                   data-base="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}" target="_blank" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Aperçu du catalogue (A4)</a>
+                                <a href="{{ route('stock.products.download-catalog', request()->except('warehouse_id')) }}"
+                                   :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
+                                   data-base="{{ route('stock.products.download-catalog', request()->except('warehouse_id')) }}" class="block px-4 py-2.5 font-semibold text-[#0B0F14] hover:bg-[#F5F7FA]">Télécharger le catalogue (PDF)</a>
+                                <a href="{{ route('stock.products.download-catalog', array_merge(request()->except('warehouse_id'), ['per_warehouse' => 1])) }}" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Télécharger par entrepôt (PDF)</a>
                                 <a href="{{ route('stock.export') }}" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Export CSV</a>
                             </div>
                         </div>

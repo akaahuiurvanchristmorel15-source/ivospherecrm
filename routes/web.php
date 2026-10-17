@@ -419,6 +419,7 @@ Route::middleware('auth')->group(function () {
         Route::post('products/bulk-update', [StockProductController::class, 'bulkUpdate'])->name('products.bulk-update');
         Route::post('products/bulk-destroy', [StockProductController::class, 'bulkDestroy'])->name('products.bulk-destroy');
         Route::get('products/print-catalog', [StockProductController::class, 'printCatalog'])->name('products.print-catalog');
+        Route::get('products/download-catalog', [StockProductController::class, 'downloadCatalog'])->name('products.download-catalog');
         Route::post('products/{product}/quick-image', [StockProductController::class, 'updateImage'])->name('products.quick-image');
         Route::get('products/{product}/qr-download', [StockProductController::class, 'downloadQr'])->name('products.qr-download');
         Route::resource('products', StockProductController::class)->except(['show']);
