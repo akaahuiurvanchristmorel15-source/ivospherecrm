@@ -52,7 +52,7 @@
                     <li><button type="button" @click="$dispatch('open-demo-modal')" class="font-semibold text-[#0B0F14] hover:underline night:text-white">Parler à un conseiller</button></li>
                 </ul>
                 <div class="mt-5 flex flex-wrap gap-1.5">
-                    @foreach(['Wave', 'Orange Money', 'MTN', 'Moov', 'Visa', 'Mastercard'] as $method)
+                    @foreach(['Paystack', 'Mobile Money', 'Visa', 'Mastercard'] as $method)
                         <span class="rounded-full border border-black/10 px-2.5 py-1 text-[10px] font-medium text-black/50 night:border-white/10 night:text-white/50">{{ $method }}</span>
                     @endforeach
                 </div>

@@ -6,7 +6,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\Subscriptions\CinetPayGateway;
+use App\Services\Subscriptions\PaystackGateway;
 use App\Services\Subscriptions\SubscriptionService;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -109,7 +109,7 @@ test('the payment simulation is never available in production', function () {
     config(['subscriptions.payment.provider' => 'simulation']);
     app()->detectEnvironment(fn () => 'production');
 
-    expect(app(SubscriptionService::class)->gateway())->toBeInstanceOf(CinetPayGateway::class);
+    expect(app(SubscriptionService::class)->gateway())->toBeInstanceOf(PaystackGateway::class);
 
     $tenant = Tenant::create(['name' => 'Boutique', 'slug' => 'boutique', 'email' => 'b@b.ci', 'phone' => '07', 'status' => 'pending',
         'subscription_plan_id' => SubscriptionPlan::where('code', 'commercial_caisse')->value('id')]);

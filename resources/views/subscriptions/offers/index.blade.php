@@ -18,7 +18,7 @@
             ->max() ?? 0;
         $faqs = [
             ['Comment mon espace est-il créé ?', "Dès que votre paiement est confirmé, votre espace est activé automatiquement. Vous recevez par e-mail un récapitulatif PDF de votre abonnement et vous vous connectez avec l'e-mail et le mot de passe choisis à l'inscription."],
-            ['Quels moyens de paiement acceptez-vous ?', 'Wave, Orange Money, MTN MoMo, Moov Money et carte bancaire (Visa, Mastercard), via la plateforme sécurisée CinetPay.'],
+            ['Quels moyens de paiement acceptez-vous ?', 'Carte bancaire (Visa, Mastercard) et Mobile Money, via la plateforme de paiement sécurisée Paystack.'],
             ['Mes données sont-elles séparées des autres clients ?', 'Oui. Chaque abonné dispose de son propre espace : articles, clients, factures, stock et utilisateurs ne sont visibles que par votre équipe.'],
             ['Que se passe-t-il à la fin de mon abonnement ?', "Vos données sont conservées. L'accès aux modules est suspendu jusqu'au renouvellement, que vous effectuez en ligne depuis « Mon abonnement »."],
             ["Puis-je changer d'offre ?", "Oui, depuis « Mon abonnement » vous pouvez renouveler ou passer à une offre supérieure. Un renouvellement anticipé s'ajoute à la période en cours."],
@@ -88,7 +88,7 @@
                         <span class="px-2 py-0.5 rounded-full bg-black/[0.06] text-[11px] font-semibold text-[#0B0F14] night:bg-white/10 night:text-white">-{{ $bestSaving }} %</span>
                     @endif
                 </button>
-                <p class="text-xs text-black/40 night:text-white/40">Prix en francs CFA · Wave, Orange Money, MTN, Moov et carte bancaire</p>
+                <p class="text-xs text-black/40 night:text-white/40">Prix en francs CFA · Paiement sécurisé Paystack : carte et Mobile Money</p>
             </div>
         </section>
 
