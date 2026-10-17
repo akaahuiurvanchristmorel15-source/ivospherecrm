@@ -16,11 +16,7 @@
         <div class="rounded-[26px] border border-black/[0.06] bg-white/60 p-5 backdrop-blur-2xl sm:p-8 night:border-white/10 night:bg-white/[0.03]">
             {{-- Marque --}}
             <header class="mb-7">
-                <span class="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
-                    Espace employé
-                </span>
-                <h1 class="mt-5 font-display text-3xl font-extrabold leading-[1.05] sm:text-4xl">Connexion</h1>
+                <h1 class="font-display text-3xl font-extrabold leading-[1.05] sm:text-4xl">Connexion</h1>
                 <p class="mt-2 text-sm leading-relaxed text-black/55 night:text-white/55">Accédez à votre espace de gestion IVOSPHERE.</p>
             </header>
 

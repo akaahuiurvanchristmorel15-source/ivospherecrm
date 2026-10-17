@@ -256,7 +256,7 @@
             <div class="mx-auto max-w-7xl px-4 pb-10 pt-32 sm:px-6 sm:pt-40 lg:px-8">
                 <div class="grid grid-cols-1 items-end gap-10 lg:grid-cols-12">
                     <div class="lg:col-span-7">
-                        <h1 data-reveal="up" style="--d:80ms" class="mt-6 font-display text-4xl font-extrabold leading-[1.02] sm:text-6xl lg:text-7xl">
+                        <h1 data-reveal="up" style="--d:80ms" class="font-display text-4xl font-extrabold leading-[1.02] sm:text-6xl lg:text-7xl">
                             Des solutions professionnelles pour donner vie à vos projets
                         </h1>
                         <p data-reveal="up" style="--d:160ms" class="mt-6 max-w-xl text-base leading-relaxed text-black/55 sm:text-lg night:text-white/55">
