@@ -146,6 +146,31 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Adresses e-mail des abonnés
+    |--------------------------------------------------------------------------
+    |
+    | Le reçu Paystack et le PDF d'abonnement sont envoyés par e-mail : on exige
+    | un domaine qui reçoit du courrier (vérification DNS) et on refuse les boîtes
+    | jetables ou de test.
+    |
+    */
+
+    'email' => [
+        'verify_dns' => (bool) env('SUBSCRIPTION_VERIFY_EMAIL_DNS', true),
+        'blocked_domains' => [
+            'example.com', 'example.org', 'example.net', 'test.com', 'test.fr', 'email.com', 'domain.com',
+            'yopmail.com', 'yopmail.fr', 'yopmail.net', 'mailinator.com', 'guerrillamail.com', 'guerrillamail.info',
+            'sharklasers.com', 'grr.la', '10minutemail.com', '10minutemail.net', 'tempmail.com', 'temp-mail.org',
+            'temp-mail.io', 'tempmail.net', 'tempmailo.com', 'tempail.com', 'trashmail.com', 'trashmail.fr',
+            'getnada.com', 'nada.email', 'maildrop.cc', 'dispostable.com', 'throwawaymail.com', 'fakeinbox.com',
+            'mailnesia.com', 'mohmal.com', 'emailondeck.com', 'moakt.com', 'mintemail.com', 'spamgourmet.com',
+            'jetable.org', 'mail-temp.com', 'minuteinbox.com', 'discard.email', 'mytemp.email', 'mailcatch.com',
+            'spambox.us', 'burnermail.io', 'inboxkitten.com', 'emailfake.com', 'crazymailing.com', 'tmpmail.org',
+        ],
+    ],
+
     'payment' => [
         // « simulation » doit être activé explicitement (en local) ; il est toujours refusé en production.
         'provider' => env('SUBSCRIPTION_PAYMENT_PROVIDER', 'paystack'),

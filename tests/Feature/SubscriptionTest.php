@@ -66,6 +66,25 @@ function subscribeAndPay(string $outcome = 'paid', array $overrides = []): Subsc
     return $subscription->refresh();
 }
 
+test('signup refuses disposable or test email addresses', function () {
+    $plan = SubscriptionPlan::where('code', 'commercial_caisse')->first();
+
+    $this->post(route('offres.register', $plan), signupData(['email' => 'contact@yopmail.com', 'admin_email' => 'grace@example.com']))
+        ->assertSessionHasErrors(['email', 'admin_email']);
+
+    expect(Subscription::count())->toBe(0);
+});
+
+test('signup refuses email domains that cannot receive mail', function () {
+    config(['subscriptions.email.verify_dns' => true]);
+    $plan = SubscriptionPlan::where('code', 'commercial_caisse')->first();
+
+    $this->post(route('offres.register', $plan), signupData(['email' => 'contact@grace.invalid']))
+        ->assertSessionHasErrors(['email' => "Le domaine « grace.invalid » ne reçoit pas d'e-mails. Vérifiez l'adresse saisie."]);
+
+    expect(Subscription::count())->toBe(0);
+});
+
 test('offers page lists the plans and enterprise plans are not yet subscribable', function () {
     $this->get(route('offres.index'))
         ->assertOk()
