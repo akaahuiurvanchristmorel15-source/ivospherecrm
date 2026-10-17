@@ -222,6 +222,11 @@ class StockDashboardController extends Controller
             'notes' => 'nullable|string|max:255',
         ]);
 
+        // L'inventaire remplace le stock : même droit que l'ajustement depuis le catalogue
+        if ($validated['action_type'] === 'inventaire' && ! $request->user()->hasPermission('products.adjust')) {
+            return back()->with('error', "Seul l'administrateur peut ajuster le stock par inventaire.");
+        }
+
         $code = trim($validated['code']);
         $product = Product::where('sku', $code)
             ->orWhere('barcode', $code)
