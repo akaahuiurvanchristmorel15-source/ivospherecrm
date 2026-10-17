@@ -67,6 +67,9 @@ class RolePermissionSeeder extends Seeder
             ['slug' => 'stocks.view', 'name' => 'Consulter les stocks', 'group' => 'stock'],
             ['slug' => 'stocks.manage', 'name' => 'Gérer les entrepôts et stocks', 'group' => 'stock'],
             ['slug' => 'stocks.movements', 'name' => 'Effectuer des mouvements de stocks', 'group' => 'stock'],
+            ['slug' => 'products.edit', 'name' => 'Modifier les produits du catalogue (fiche, prix, photos)', 'group' => 'stock'],
+            ['slug' => 'products.adjust', 'name' => 'Ajuster le stock des produits du catalogue', 'group' => 'stock'],
+            ['slug' => 'products.delete', 'name' => 'Supprimer des produits du catalogue', 'group' => 'stock'],
 
             // Pôle Communication
             ['slug' => 'communication.campaigns', 'name' => 'Gérer les campagnes de communication', 'group' => 'communication'],

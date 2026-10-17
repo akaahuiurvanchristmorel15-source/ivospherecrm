@@ -143,6 +143,7 @@
                                 </svg>
                                 <span>Transfert</span>
                             </button>
+                            @if(auth()->user()->hasPermission('products.adjust'))
                             <button type="button" @click="actionType = 'inventaire'"
                                     :class="actionType === 'inventaire' ? 'border-[#0B0F14] bg-[#0B0F14] text-white' : 'border-slate-200 bg-white text-slate-700'"
                                     class="flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-center text-xs font-bold transition">
@@ -151,6 +152,7 @@
                                 </svg>
                                 <span>Inventaire</span>
                             </button>
+                            @endif
                         </div>
                     </div>
 

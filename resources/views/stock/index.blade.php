@@ -1,3 +1,10 @@
+@php
+    // Catalogue : modification, ajustement du stock et suppression réservés (Administration › Rôles & permissions)
+    $canEditProducts = auth()->user()->hasPermission('products.edit');
+    $canAdjustProducts = auth()->user()->hasPermission('products.adjust');
+    $canDeleteProducts = auth()->user()->hasPermission('products.delete');
+    $canSelectProducts = $canEditProducts || $canDeleteProducts;
+@endphp
 <x-layouts.app title="Gestion des Stocks & Entrepôts (WMS)">
     <div x-data="{
         activeTab: '{{ request('tab', 'synthese') }}',
@@ -63,12 +70,14 @@
                     </div>
                 </div>
 
+                @if($canEditProducts)
                 <a href="{{ route('stock.products.bulk-edit') }}"
                    class="flex h-10 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
                    title="Modifier les photos de plusieurs articles en même temps">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     <span class="hidden sm:inline">Photos en masse</span>
                 </a>
+                @endif
 
                 <a href="{{ route('stock.products.create') }}"
                    class="flex h-10 items-center gap-1.5 rounded-xl bg-[#0066FF] px-4 text-xs font-semibold text-white hover:bg-[#0052cc]">
@@ -337,6 +346,7 @@
                 </div>
 
                 {{-- Sélection (mobile) --}}
+                @if($canSelectProducts)
                 <div class="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-2 md:hidden">
                     <label class="flex items-center gap-2 text-xs font-medium text-[#0B0F14]">
                         <input type="checkbox" @change="toggleSelectAll()" :checked="isAllSelected" class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
@@ -344,6 +354,7 @@
                     </label>
                     <span class="text-[11px] text-[#64748B]">puis « Prix &amp; photos »</span>
                 </div>
+                @endif
 
                 {{-- Barre de sélection --}}
                 <div x-show="selectedProductIds.length > 0" x-cloak
@@ -351,20 +362,26 @@
                     <span class="text-xs"><strong x-text="selectedProductIds.length"></strong> article(s) sélectionné(s)</span>
                     <div class="flex flex-wrap items-center gap-2">
                         <button type="button" @click="selectedProductIds = []" class="rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white">Désélectionner</button>
+                        @if($canEditProducts)
                         {{-- GET : la page peut être rechargée (Android recharge l'onglet au retour de l'appareil photo) --}}
                         <form action="{{ route('stock.products.bulk-edit') }}" method="GET" class="inline">
                             {{-- Tout le catalogue sélectionné : aucune liste (une URL de plusieurs milliers d'identifiants peut être refusée) --}}
                             <input type="hidden" name="product_ids" :value="selectedProductIds.join(',')" :disabled="isAllSelected">
                             <button type="submit" class="rounded-lg bg-[#0066FF] px-3 py-1.5 text-xs font-semibold hover:bg-[#0052cc]">Prix &amp; photos</button>
                         </form>
+                        @endif
+                        @if($canDeleteProducts)
                         <button type="button" @click="$dispatch('open-bulk-delete-products', { product_ids: selectedProductIds })" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold hover:bg-rose-700">Supprimer</button>
+                        @endif
                     </div>
                 </div>
 
                 {{-- En-tête de colonnes (desktop) --}}
                 <div class="hidden items-center gap-3 border-b border-[#E2E8F0] bg-[#F5F7FA] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] md:grid md:grid-cols-12">
                     <div class="col-span-6 flex items-center gap-3">
+                        @if($canSelectProducts)
                         <input type="checkbox" @change="toggleSelectAll()" :checked="isAllSelected" class="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]" title="Tout sélectionner">
+                        @endif
                         <span>Article · stock par entrepôt</span>
                     </div>
                     <div class="col-span-2 text-right">Disponible</div>
@@ -430,12 +447,13 @@
 
                             {{-- Produit --}}
                             <div class="flex items-center gap-3 md:col-span-6">
+                                @if($canSelectProducts)
                                 <input type="checkbox" :value="{{ $product->id }}" x-model.number="selectedProductIds"
                                        class="shrink-0 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]">
+                                @endif
 
-                                <button type="button" @click="$dispatch('open-product-photo', {{ Js::from($photoPayload) }})"
-                                        class="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] hover:ring-2 hover:ring-[#0066FF]"
-                                        title="Changer la photo">
+                                <button type="button" @if($canEditProducts) @click="$dispatch('open-product-photo', {{ Js::from($photoPayload) }})" title="Changer la photo" @else disabled @endif
+                                        class="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] {{ $canEditProducts ? 'hover:ring-2 hover:ring-[#0066FF]' : 'cursor-default' }}">
                                     @if($product->image)
                                         <img src="{{ $product->thumbnail_url }}" alt="{{ $product->name }}" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                     @else
@@ -482,26 +500,32 @@
 
                             {{-- Actions --}}
                             <div class="mt-2 flex items-center gap-4 pl-[4.25rem] text-xs font-medium md:col-span-2 md:mt-0 md:justify-end md:gap-1.5 md:pl-0">
+                                @if($canAdjustProducts)
                                 <button type="button" @click="$dispatch('open-stock-adjust', {{ Js::from($adjustPayload) }})"
                                         class="text-emerald-600 hover:underline md:rounded-lg md:p-1.5 md:hover:bg-emerald-50 md:hover:no-underline" title="Ajuster le stock">
                                     <svg class="hidden h-4 w-4 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
                                     <span class="md:hidden">Ajuster</span>
                                 </button>
+                                @endif
                                 <button type="button" @click="$dispatch('open-product-qr', {{ Js::from($qrPayload) }})"
                                         class="text-[#0066FF] hover:underline md:rounded-lg md:p-1.5 md:hover:bg-blue-50 md:hover:no-underline" title="QR Code & EAN">
                                     <svg class="hidden h-4 w-4 md:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
                                     <span class="md:hidden">QR</span>
                                 </button>
+                                @if($canEditProducts)
                                 <a href="{{ route('stock.products.edit', $product) }}"
                                    class="text-slate-600 hover:underline md:rounded-lg md:p-1.5 md:hover:bg-slate-100 md:hover:no-underline" title="Modifier la fiche">
                                     <svg class="hidden h-4 w-4 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     <span class="md:hidden">Fiche</span>
                                 </a>
+                                @endif
+                                @if($canDeleteProducts)
                                 <button type="button" @click="$dispatch('open-delete-product', {{ Js::from($deletePayload) }})"
                                         class="text-rose-600 hover:underline md:rounded-lg md:p-1.5 md:hover:bg-rose-50 md:hover:no-underline" title="Supprimer">
                                     <svg class="hidden h-4 w-4 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     <span class="md:hidden">Suppr.</span>
                                 </button>
+                                @endif
                             </div>
                         </div>
                     @empty
