@@ -148,7 +148,7 @@
         [data-nav][aria-current="true"]{color:#0B0F14;background:rgba(0,0,0,.06)}
         [data-offer-theme=night] [data-nav][aria-current="true"]{color:#fff;background:rgba(255,255,255,.1)}
 
-        /* ── Card stack (Détail des prestations) ───────────────────── */
+        /* ── Card stack (Nos prestations) ───────────────────── */
         [data-stack-card]{transform-origin:center top;will-change:transform}
 
         /* ── Scroll horizontal épinglé (Pourquoi IVOSPHERE) ──────────── */
@@ -159,18 +159,11 @@
         .hs-active .hs-pin{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding-top:5rem;padding-bottom:3rem}
         .hs-active .hs-track{overflow:visible;scroll-snap-type:none;will-change:transform;gap:1.5rem;padding-inline:max(2rem,calc((100vw - 80rem)/2 + 2rem))}
         .hs-active .hs-card{flex-basis:24rem;scroll-snap-align:none}
-        /* ── Bento Grid & Défilement horizontal mobile (Prestations) ── */
-        .bento-mobile-track{scrollbar-width:none;-ms-overflow-style:none}
-        .bento-mobile-track::-webkit-scrollbar{display:none}
-        @media (max-width: 639px){
-            .bento-card-mobile{flex:0 0 85vw;max-width:24rem;scroll-snap-align:center}
-        }
 
         @media (prefers-reduced-motion: reduce){
             html{scroll-behavior:auto !important}
             .js [data-reveal]{opacity:1 !important;transform:none !important;transition:none !important}
             [data-stack-card]{transform:none !important}
-            [data-magnetic-arrow]{transform:none !important}
         }
     </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -309,86 +302,15 @@
             <p class="pointer-events-none select-none text-center font-display text-[19vw] font-extrabold leading-[0.8] text-black/[0.06] night:text-white/[0.07] lg:text-[250px]" aria-hidden="true">IVOSPHERE</p>
         </section>
 
-        {{-- ═══ 2. Nos prestations : Bento Grid ═══ --}}
-        <section id="prestations" class="relative scroll-mt-24 py-20 sm:py-28" aria-labelledby="prestations-titre" x-data="bentoSection()">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div data-reveal="up" class="text-center">
-                    <span class="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">Prestations</span>
-                    <h2 id="prestations-titre" class="mt-5 font-display text-3xl font-extrabold sm:text-5xl">Nos prestations</h2>
-                    <p class="mx-auto mt-4 max-w-xl text-base text-black/50 night:text-white/50">Cinq domaines d'expertise pour répondre à vos besoins professionnels.</p>
-                </div>
-
-                <div @scroll.passive="handleScroll($event)"
-                     class="bento-mobile-track -mx-4 mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 pt-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-12 lg:gap-5">
-                    @foreach($poles as $key => $p)
-                        @php
-                            $bentoSpan = match($loop->index) {
-                                0 => 'lg:col-span-7 sm:col-span-2',
-                                1 => 'lg:col-span-5 sm:col-span-1',
-                                2 => 'lg:col-span-4 sm:col-span-1',
-                                3 => 'lg:col-span-4 sm:col-span-1',
-                                4 => 'lg:col-span-4 sm:col-span-2',
-                                default => 'lg:col-span-4 sm:col-span-1',
-                            };
-                        @endphp
-                        <a href="#pole-{{ $key }}"
-                           data-reveal="up" {!! $d($loop->index, 90) !!}
-                           x-data="magneticCard()" @mousemove="move($event)" @mouseleave="leave()"
-                           class="bento-card-mobile group relative flex flex-col justify-between overflow-hidden rounded-[28px] border border-black/[0.08] bg-white/55 p-6 backdrop-blur-2xl transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-black/20 hover:bg-white/80 focus-visible:outline-none sm:p-7 night:border-white/10 night:bg-white/[0.04] night:hover:border-white/25 night:hover:bg-white/[0.07] {{ $bentoSpan }}">
-
-                            <div class="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-25" style="background: {{ $p['color'] }}" aria-hidden="true"></div>
-
-                            <div>
-                                <div class="flex items-center justify-between gap-3">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
-                                          style="background: {{ $p['color'] }}22; color: {{ $p['color'] }}">
-                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                            @foreach($p['icon'] as $path)<path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/>@endforeach
-                                        </svg>
-                                    </span>
-                                    <span class="rounded-full border border-black/10 px-3 py-1 text-[11px] font-medium text-black/45 night:border-white/15 night:text-white/50">Pôle 0{{ $loop->iteration }}</span>
-                                </div>
-
-                                <h3 class="mt-6 font-display text-xl font-bold sm:text-2xl">{{ $p['name'] }}</h3>
-                                <p class="mt-1 text-xs font-medium uppercase tracking-wider text-black/40 night:text-white/40">{{ $p['tagline'] }}</p>
-                                <p class="mt-3 text-sm leading-relaxed text-black/55 night:text-white/55">{{ $p['intro'] }}</p>
-
-                                <div class="mt-5 flex flex-wrap gap-1.5">
-                                    @foreach(array_slice($p['services'], 0, $loop->index === 0 ? 3 : 2) as $s)
-                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-black/[0.05] px-3 py-1 text-xs text-black/65 night:bg-white/[0.06] night:text-white/70">
-                                            <span class="h-1.5 w-1.5 rounded-full" style="background: {{ $p['color'] }}"></span>{{ $s }}
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <div class="mt-7 flex items-center justify-between">
-                                <span class="text-sm font-semibold">Voir le détail</span>
-                                <span data-magnetic-arrow
-                                      class="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 transition-all duration-200 group-hover:border-transparent group-hover:bg-[#0B0F14] group-hover:text-white night:border-white/15 night:group-hover:bg-white night:group-hover:text-black"
-                                      :style="{ transform: `translate3d(${mx}px, ${my}px, 0)` }">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                </span>
-                            </div>
-                        </a>
-                    @endforeach
-                </div>
-
-                <div class="mt-4 flex items-center justify-center gap-1.5 sm:hidden" aria-hidden="true">
-                    @for($i = 1; $i <= 5; $i++)
-                        <span class="h-1.5 rounded-full transition-all duration-300"
-                              :class="currentSlide === {{ $i }} ? 'w-6 bg-[#0B0F14] night:bg-white' : 'w-1.5 bg-black/20 night:bg-white/25'"></span>
-                    @endfor
-                </div>
-            </div>
-        </section>
-
-        {{-- ═══ 3. Détail des prestations : CARD STACK ═══
+        {{-- ═══ 2. Nos prestations : CARD STACK ═══
              Chaque pôle est une carte « collante » dont les visuels (configurables dans les
              paramètres) défilent en arrière-plan, sous un voile qui garde le texte lisible. --}}
-        <section class="pb-20 sm:pb-28" aria-labelledby="detail-titre">
+        <section id="prestations" class="scroll-mt-24 py-20 sm:py-28" aria-labelledby="prestations-titre">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <h2 id="detail-titre" data-reveal="up" class="font-display text-3xl font-extrabold sm:text-5xl">Détail des prestations</h2>
+                <div data-reveal="up">
+                    <h2 id="prestations-titre" class="font-display text-3xl font-extrabold sm:text-5xl">Nos prestations</h2>
+                    <p class="mt-4 max-w-xl text-base text-black/50 night:text-white/50">Cinq domaines d'expertise pour répondre à vos besoins professionnels.</p>
+                </div>
 
                 <div class="mt-12 pb-4">
                     @foreach($poles as $key => $p)
@@ -734,52 +656,6 @@
                 pause() { this.paused = true; this.stop(); },
                 resume() { this.paused = false; this.start(); },
                 go(i) { this.current = i; this.stop(); this.start(); },
-            };
-        }
-
-        /* Suivi du défilement horizontal sur mobile (section Prestations) */
-        function bentoSection() {
-            return {
-                currentSlide: 1,
-                handleScroll(e) {
-                    const el = e.target;
-                    const card = el.firstElementChild;
-                    const step = card ? (card.offsetWidth + 16) : 300;
-                    const index = Math.round(el.scrollLeft / step);
-                    this.currentSlide = Math.min(5, Math.max(1, index + 1));
-                }
-            };
-        }
-
-        /* Effet d'attraction magnétique sur la flèche de chaque carte Bento */
-        function magneticCard() {
-            const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            return {
-                mx: 0,
-                my: 0,
-                move(e) {
-                    if (reduced) return;
-                    const arrow = e.currentTarget.querySelector('[data-magnetic-arrow]');
-                    if (!arrow) return;
-                    const rect = arrow.getBoundingClientRect();
-                    const cx = rect.left + rect.width / 2;
-                    const cy = rect.top + rect.height / 2;
-                    const dx = e.clientX - cx;
-                    const dy = e.clientY - cy;
-                    const dist = Math.hypot(dx, dy);
-                    // Attraction magnétique dans un rayon de 160px autour du bouton flèche
-                    if (dist < 160) {
-                        this.mx = Math.max(-8, Math.min(8, dx * 0.22));
-                        this.my = Math.max(-8, Math.min(8, dy * 0.22));
-                    } else {
-                        this.mx = 0;
-                        this.my = 0;
-                    }
-                },
-                leave() {
-                    this.mx = 0;
-                    this.my = 0;
-                }
             };
         }
 
