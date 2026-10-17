@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Rules\RealEmailAddress;
+use App\Services\PhoneNumberFormatter;
 use App\Services\Subscriptions\GoogleEmailVerifier;
 use App\Services\Subscriptions\PaymentResult;
 use App\Services\Subscriptions\PaystackGateway;
@@ -122,7 +123,7 @@ class OfferController extends Controller
             'billing_cycle' => ['required', 'in:monthly,yearly'],
             'company_name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email:rfc,strict', 'max:150', new RealEmailAddress],
-            'phone' => ['required', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30', PhoneNumberFormatter::rule()],
             'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
             'admin_name' => ['required', 'string', 'max:150'],
@@ -132,8 +133,10 @@ class OfferController extends Controller
         ], [
             'admin_email.unique' => 'Cette adresse e-mail est déjà utilisée par un compte IVOSPHERE.',
             'terms.accepted' => "Vous devez accepter les conditions d'abonnement.",
-        ]);
+            'phone.phone' => PhoneNumberFormatter::invalidMessage(),
+        ], ['phone' => 'de téléphone']);
 
+        $validated['phone'] = PhoneNumberFormatter::format($validated['phone']);
         $googleEmail = $request->session()->get(self::GOOGLE_IDENTITY.'.email');
         $validated['admin_email_verified'] = is_string($googleEmail) && strcasecmp($googleEmail, $validated['admin_email']) === 0;
 
