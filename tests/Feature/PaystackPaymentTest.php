@@ -7,6 +7,7 @@ use App\Services\Subscriptions\SubscriptionPdfService;
 use Database\Seeders\DomainSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\UserSeeder;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -120,5 +121,17 @@ test('the return page stays usable when the payment provider is not configured',
         ->assertSee('Paiement en cours')
         ->assertSee('Impossible de vérifier le paiement pour le moment.');
 
+    expect($subscription->refresh()->isPaid())->toBeFalse();
+});
+
+test('signup shows a clear message instead of an error when Paystack cannot be reached', function () {
+    Http::fake(fn () => throw new ConnectionException('cURL error 60: SSL certificate problem'));
+
+    $subscription = registerForPaystack();
+
+    $this->followingRedirects()
+        ->get(route('offres.payment.return', $subscription))
+        ->assertOk()
+        ->assertSee('Paiement en cours');
     expect($subscription->refresh()->isPaid())->toBeFalse();
 });

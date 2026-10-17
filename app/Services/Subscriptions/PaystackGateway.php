@@ -3,6 +3,7 @@
 namespace App\Services\Subscriptions;
 
 use App\Models\Subscription;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -23,21 +24,25 @@ class PaystackGateway implements PaymentGateway
         $config = $this->config();
         $subscription->loadMissing(['tenant', 'plan']);
 
-        $response = Http::withToken($config['secret_key'])->acceptJson()->timeout(20)
-            ->post($config['base_url'].'/transaction/initialize', [
-                'email' => $subscription->tenant->email,
-                'amount' => $this->toSubunit($subscription->amount),
-                'currency' => $subscription->currency,
-                'reference' => $subscription->reference,
-                'callback_url' => route('offres.payment.return', $subscription->reference),
-                'channels' => $config['channels'],
-                'metadata' => [
-                    'subscription_reference' => $subscription->reference,
-                    'tenant' => $subscription->tenant->name,
-                    'plan' => $subscription->plan->name,
-                    'billing_cycle' => $subscription->billingCycleLabel(),
-                ],
-            ]);
+        try {
+            $response = Http::withToken($config['secret_key'])->acceptJson()->timeout(20)
+                ->post($config['base_url'].'/transaction/initialize', [
+                    'email' => $subscription->tenant->email,
+                    'amount' => $this->toSubunit($subscription->amount),
+                    'currency' => $subscription->currency,
+                    'reference' => $subscription->reference,
+                    'callback_url' => route('offres.payment.return', $subscription->reference),
+                    'channels' => $config['channels'],
+                    'metadata' => [
+                        'subscription_reference' => $subscription->reference,
+                        'tenant' => $subscription->tenant->name,
+                        'plan' => $subscription->plan->name,
+                        'billing_cycle' => $subscription->billingCycleLabel(),
+                    ],
+                ]);
+        } catch (ConnectionException $exception) {
+            throw new RuntimeException('Paystack injoignable : '.$exception->getMessage(), 0, $exception);
+        }
 
         $paymentUrl = $response->json('data.authorization_url');
         if (! $response->successful() || ! $response->json('status') || ! $paymentUrl) {
@@ -51,8 +56,12 @@ class PaystackGateway implements PaymentGateway
     {
         $config = $this->config();
 
-        $response = Http::withToken($config['secret_key'])->acceptJson()->timeout(20)
-            ->get($config['base_url'].'/transaction/verify/'.rawurlencode($subscription->reference));
+        try {
+            $response = Http::withToken($config['secret_key'])->acceptJson()->timeout(20)
+                ->get($config['base_url'].'/transaction/verify/'.rawurlencode($subscription->reference));
+        } catch (ConnectionException $exception) {
+            throw new RuntimeException('Paystack injoignable : '.$exception->getMessage(), 0, $exception);
+        }
 
         $data = (array) $response->json('data', []);
         $status = strtolower((string) ($data['status'] ?? ''));
