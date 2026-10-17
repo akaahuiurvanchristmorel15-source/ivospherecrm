@@ -383,73 +383,94 @@
             </div>
         </section>
 
-        {{-- ═══ 3. Détail des prestations : CARD STACK ═══ --}}
+        {{-- ═══ 3. Détail des prestations : CARD STACK ═══
+             Chaque pôle est une carte « collante » dont les visuels (configurables dans les
+             paramètres) défilent en arrière-plan, sous un voile qui garde le texte lisible. --}}
         <section class="pb-20 sm:pb-28" aria-labelledby="detail-titre">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <h2 id="detail-titre" data-reveal="up" class="font-display text-3xl font-extrabold sm:text-5xl">Détail des prestations</h2>
 
                 <div class="mt-12 pb-4">
                     @foreach($poles as $key => $p)
+                        @php
+                            $slides = collect($p['gallery'])->filter(fn ($img) => ! empty($img['image']))->values();
+                        @endphp
                         <article id="pole-{{ $key }}" data-stack-card
+                                 x-data="poleSlides({{ $slides->count() }})" @mouseenter="pause()" @mouseleave="resume()"
                                  style="--stack-top: calc(6rem + {{ $loop->index * 0.75 }}rem)"
-                                 class="relative mb-6 grid scroll-mt-24 gap-6 rounded-[28px] border border-black/[0.08] bg-white p-6 shadow-[0_-10px_30px_-14px_rgba(11,15,20,.18)] sm:p-10 md:sticky md:top-[var(--stack-top)] lg:grid-cols-12 lg:gap-12 night:border-white/10 night:bg-[#0c0c0d] night:shadow-[0_-10px_30px_-14px_rgba(0,0,0,.8)]">
+                                 class="relative isolate mb-6 flex min-h-[30rem] scroll-mt-24 flex-col justify-end overflow-hidden rounded-[28px] border border-black/[0.08] bg-white shadow-[0_-10px_30px_-14px_rgba(11,15,20,.18)] sm:min-h-[34rem] md:sticky md:top-[var(--stack-top)] night:border-white/10 night:bg-[#0c0c0d] night:shadow-[0_-10px_30px_-14px_rgba(0,0,0,.8)]">
 
-                            <div class="lg:col-span-5">
-                                <span data-reveal="bar" class="mb-5 block h-1 w-12 rounded-full" style="background: {{ $p['color'] }}"></span>
-                                <div data-reveal="up" style="--d:100ms">
-                                    <h3 class="font-display text-2xl font-bold sm:text-3xl">{{ $p['name'] }}</h3>
-                                    <p class="mt-3 max-w-md text-base leading-relaxed text-black/55 night:text-white/55">{{ $p['intro'] }}</p>
-                                    <ul class="mt-6 space-y-2.5">
-                                        @foreach($p['services'] as $s)
-                                            <li class="flex items-center gap-3 text-sm">
-                                                <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0B0F14] text-white night:bg-white night:text-black">
-                                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                                                </span>
-                                                {{ $s }}
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </div>
+                            {{-- Arrière-plan : visuels en fondu enchaîné avec léger zoom --}}
+                            <div class="absolute inset-0 -z-10" aria-hidden="true">
+                                @forelse($slides as $img)
+                                    <img src="{{ Str::startsWith($img['image'], ['http://', 'https://', '/']) ? $img['image'] : asset($img['image']) }}"
+                                         alt="" loading="lazy"
+                                         class="absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-[1400ms] ease-out"
+                                         :class="current === {{ $loop->index }} ? 'opacity-100 scale-105' : 'opacity-0 scale-100'"
+                                         @unless($loop->first) x-cloak @endunless>
+                                @empty
+                                    <div class="absolute inset-0" style="background: radial-gradient(120% 90% at 85% 15%, {{ $p['color'] }}55, transparent 60%), radial-gradient(80% 70% at 10% 100%, {{ $p['color'] }}22, transparent 70%);"></div>
+                                @endforelse
+
+                                {{-- Voiles de lisibilité (jour / nuit) --}}
+                                <div class="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/25 night:from-black night:via-black/80 night:to-black/20"></div>
+                                <div class="absolute inset-0 bg-gradient-to-t from-white/90 via-transparent to-transparent night:from-black/85"></div>
                             </div>
 
-                            <div class="flex flex-col justify-between lg:col-span-7">
-                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-3.5">
-                                    @foreach($p['gallery'] as $img)
-                                        <div data-reveal="up" {!! $d($loop->index + 1, 90) !!}
-                                             class="group/img relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl border border-black/[0.08] bg-black/[0.03] transition-all duration-300 hover:-translate-y-1 night:border-white/10 night:bg-white/[0.04]">
-                                            @if(!empty($img['image']))
-                                                <img src="{{ Str::startsWith($img['image'], ['http://', 'https://', '/']) ? $img['image'] : asset($img['image']) }}"
-                                                     alt="{{ $img['title'] ?? $p['name'] }}"
-                                                     class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover/img:scale-105" loading="lazy">
-                                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                                            @else
-                                                <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-black/35 night:text-white/35">
-                                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                                    <span class="mt-2 text-xs font-semibold text-black/70 night:text-white/70">{{ $img['title'] ?? 'Visuel 0' . $loop->iteration }}</span>
-                                                </div>
-                                            @endif
+                            {{-- Filigrane : numéro du pôle --}}
+                            <span class="pointer-events-none absolute right-6 top-4 hidden select-none font-display text-[7rem] sm:block font-extrabold leading-none text-black/[0.06] sm:right-10 sm:text-[10rem] night:text-white/[0.07]" aria-hidden="true">0{{ $loop->iteration }}</span>
 
-                                            @if(!empty($img['title']) && !empty($img['image']))
-                                                <div class="relative z-10 p-3">
-                                                    <span class="inline-block rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur">{{ $img['title'] }}</span>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @endforeach
+                            <div class="relative grid gap-8 p-6 sm:p-10 lg:grid-cols-12 lg:items-end lg:gap-12">
+                                <div class="lg:col-span-7">
+                                    <span data-reveal="bar" class="mb-5 block h-1 w-12 rounded-full" style="background: {{ $p['color'] }}"></span>
+                                    <div data-reveal="up" style="--d:100ms">
+                                        <p class="text-xs font-medium uppercase tracking-wider text-black/45 night:text-white/50">{{ $p['tagline'] }}</p>
+                                        <h3 class="mt-2 font-display text-3xl font-extrabold sm:text-5xl">{{ $p['name'] }}</h3>
+                                        <p class="mt-4 max-w-lg text-base leading-relaxed text-black/60 night:text-white/65">{{ $p['intro'] }}</p>
+                                        <ul class="mt-6 flex flex-wrap gap-2">
+                                            @foreach($p['services'] as $s)
+                                                <li class="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/70 px-3.5 py-1.5 text-xs font-medium backdrop-blur night:border-white/15 night:bg-black/40">
+                                                    <span class="h-1.5 w-1.5 rounded-full" style="background: {{ $p['color'] }}"></span>
+                                                    {{ $s }}
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
                                 </div>
 
-                                <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                                    <a href="#devis" @click="$dispatch('choose-pole', '{{ $key }}')" data-reveal="up" style="--d:400ms"
-                                       class="inline-flex h-11 items-center gap-2 rounded-full bg-[#0B0F14] px-5 text-sm font-semibold text-white transition hover:bg-black night:bg-white night:text-black night:hover:bg-white/90">
-                                        Demander un devis {{ $p['short'] }}
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
-                                    </a>
+                                <div class="flex flex-col gap-4 lg:col-span-5 lg:items-end">
+                                    {{-- Légende et indicateurs du diaporama --}}
+                                    @if($slides->isNotEmpty())
+                                        <div class="flex items-center gap-3 rounded-full border border-black/10 bg-white/70 py-1.5 pl-4 pr-2 backdrop-blur night:border-white/15 night:bg-black/50">
+                                            <span class="max-w-[12rem] truncate text-xs font-medium">
+                                                @foreach($slides as $img)
+                                                    <span x-show="current === {{ $loop->index }}" @if(! $loop->first) x-cloak @endif>{{ $img['title'] ?? $p['short'] }}</span>
+                                                @endforeach
+                                            </span>
+                                            @if($slides->count() > 1)
+                                                <span class="flex items-center gap-1" role="group" aria-label="Visuels {{ $p['short'] }}">
+                                                    @foreach($slides as $img)
+                                                        <button type="button" @click="go({{ $loop->index }})" aria-label="Afficher le visuel {{ $loop->iteration }}" class="flex h-6 items-center px-0.5">
+                                                            <span class="block h-1.5 rounded-full transition-all duration-300" :class="current === {{ $loop->index }} ? 'w-5 bg-[#0B0F14] night:bg-white' : 'w-1.5 bg-black/25 night:bg-white/30'"></span>
+                                                        </button>
+                                                    @endforeach
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
 
-                                    @auth
-                                        @if(auth()->user()->role === 'administrateur')
-                                            <a href="{{ route('admin.settings.index') }}#pole-showcase-images" class="text-xs text-black/45 hover:underline night:text-white/45">Gérer ces visuels dans les paramètres</a>
-                                        @endif
-                                    @endauth
+                                    <div class="flex flex-wrap items-center gap-3 lg:justify-end">
+                                        @auth
+                                            @if(auth()->user()->role === 'administrateur')
+                                                <a href="{{ route('admin.settings.index') }}#pole-showcase-images" class="text-xs text-black/50 hover:underline night:text-white/50">Gérer ces visuels</a>
+                                            @endif
+                                        @endauth
+                                        <a href="#devis" @click="$dispatch('choose-pole', '{{ $key }}')" data-reveal="up" style="--d:300ms"
+                                           class="inline-flex h-12 items-center gap-2 rounded-full bg-[#0B0F14] px-6 text-sm font-semibold text-white transition hover:bg-black night:bg-white night:text-black night:hover:bg-white/90">
+                                            Demander un devis {{ $p['short'] }}
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
 
@@ -691,6 +712,28 @@
                 },
                 stop() { clearInterval(this.timer); this.timer = null; },
                 go(i) { this.active = i; this.stop(); this.start(); },
+            };
+        }
+
+        /* Diaporama d'arrière-plan d'une carte pôle : en pause au survol, onglet masqué ou mouvement réduit. */
+        function poleSlides(total) {
+            const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            return {
+                current: 0,
+                timer: null,
+                paused: false,
+                init() {
+                    this.start();
+                    document.addEventListener('visibilitychange', () => document.hidden ? this.stop() : this.start());
+                },
+                start() {
+                    if (reduced || total < 2 || this.timer || this.paused) return;
+                    this.timer = setInterval(() => { this.current = (this.current + 1) % total; }, 4500);
+                },
+                stop() { clearInterval(this.timer); this.timer = null; },
+                pause() { this.paused = true; this.stop(); },
+                resume() { this.paused = false; this.start(); },
+                go(i) { this.current = i; this.stop(); this.start(); },
             };
         }
 
