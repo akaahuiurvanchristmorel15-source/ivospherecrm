@@ -40,7 +40,7 @@ class SubscriptionService
     /**
      * Crée l'espace (en attente), son compte administrateur et la souscription à payer.
      *
-     * @param  array{company_name: string, email: string, phone: string, city?: ?string, address?: ?string, admin_name: string, admin_email: string, password: string}  $data
+     * @param  array{company_name: string, email: string, phone: string, city?: ?string, address?: ?string, admin_name: string, admin_email: string, admin_email_verified?: bool, password: string}  $data
      */
     public function register(SubscriptionPlan $plan, array $data, string $billingCycle): Subscription
     {
@@ -66,6 +66,11 @@ class SubscriptionService
                 'is_active' => true,
                 'all_domains' => true,
             ]);
+
+            // Adresse confirmée par Google lors de l'inscription
+            if ($data['admin_email_verified'] ?? false) {
+                $admin->forceFill(['email_verified_at' => now()])->save();
+            }
 
             $administratorRole = Role::where('slug', 'administrateur')->first();
             if ($administratorRole) {

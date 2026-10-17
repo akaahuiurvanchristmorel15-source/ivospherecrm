@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Rules\RealEmailAddress;
+use App\Services\Subscriptions\GoogleEmailVerifier;
 use App\Services\Subscriptions\PaymentResult;
 use App\Services\Subscriptions\PaystackGateway;
 use App\Services\Subscriptions\SubscriptionPdfService;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use RuntimeException;
@@ -25,6 +27,10 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  */
 class OfferController extends Controller
 {
+    private const GOOGLE_STATE = 'offer_google_state';
+
+    private const GOOGLE_IDENTITY = 'offer_google_identity';
+
     public function __construct(private SubscriptionService $subscriptions) {}
 
     public function index(): View
@@ -37,7 +43,7 @@ class OfferController extends Controller
         ]);
     }
 
-    public function signup(Request $request, SubscriptionPlan $plan): View|RedirectResponse
+    public function signup(Request $request, SubscriptionPlan $plan, GoogleEmailVerifier $googleVerifier): View|RedirectResponse
     {
         if (! $plan->canBeSubscribed()) {
             return redirect()->route('offres.index')->with('warning', "L'offre {$plan->name} sera bientôt disponible.");
@@ -46,7 +52,63 @@ class OfferController extends Controller
         return view('subscriptions.offers.signup', [
             'plan' => $plan,
             'billingCycle' => $request->query('cycle') === 'yearly' ? 'yearly' : 'monthly',
+            'googleEnabled' => $googleVerifier->isConfigured(),
+            'googleIdentity' => $request->session()->get(self::GOOGLE_IDENTITY),
         ]);
+    }
+
+    /**
+     * Envoie le futur abonné sur Google pour confirmer son adresse e-mail.
+     */
+    public function googleRedirect(Request $request, SubscriptionPlan $plan, GoogleEmailVerifier $googleVerifier): RedirectResponse
+    {
+        abort_unless($googleVerifier->isConfigured(), 404);
+
+        $state = Str::random(40);
+        $request->session()->put(self::GOOGLE_STATE, [
+            'state' => $state,
+            'plan' => $plan->code,
+            'cycle' => $request->query('cycle') === 'yearly' ? 'yearly' : 'monthly',
+        ]);
+
+        return redirect()->away($googleVerifier->authorizationUrl($state));
+    }
+
+    /**
+     * Retour de Google : l'adresse n'est retenue que si Google la déclare vérifiée.
+     */
+    public function googleCallback(Request $request, GoogleEmailVerifier $googleVerifier): RedirectResponse
+    {
+        $pending = $request->session()->pull(self::GOOGLE_STATE);
+
+        if (! is_array($pending) || ! hash_equals((string) $pending['state'], (string) $request->query('state', ''))) {
+            return redirect()->route('offres.index')->with('warning', 'La vérification Google a expiré. Recommencez votre inscription.');
+        }
+
+        $signupUrl = route('offres.signup', ['plan' => $pending['plan'], 'cycle' => $pending['cycle']]);
+
+        if ($request->filled('error') || blank($request->query('code'))) {
+            return redirect($signupUrl)->with('warning', 'La vérification Google a été annulée.');
+        }
+
+        try {
+            $identity = $googleVerifier->verifiedIdentity((string) $request->query('code'));
+        } catch (RuntimeException $exception) {
+            report($exception);
+
+            return redirect($signupUrl)->with('error', "La vérification Google n'a pas abouti. Réessayez ou saisissez votre adresse manuellement.");
+        }
+
+        $request->session()->put(self::GOOGLE_IDENTITY, $identity);
+
+        return redirect($signupUrl)->with('success', 'Adresse e-mail vérifiée par Google : '.$identity['email']);
+    }
+
+    public function googleForget(Request $request): RedirectResponse
+    {
+        $request->session()->forget(self::GOOGLE_IDENTITY);
+
+        return back();
     }
 
     public function register(Request $request, SubscriptionPlan $plan): RedirectResponse
@@ -71,7 +133,11 @@ class OfferController extends Controller
             'terms.accepted' => "Vous devez accepter les conditions d'abonnement.",
         ]);
 
+        $googleEmail = $request->session()->get(self::GOOGLE_IDENTITY.'.email');
+        $validated['admin_email_verified'] = is_string($googleEmail) && strcasecmp($googleEmail, $validated['admin_email']) === 0;
+
         $subscription = $this->subscriptions->register($plan, $validated, $validated['billing_cycle']);
+        $request->session()->forget(self::GOOGLE_IDENTITY);
         $request->session()->put('subscription_reference', $subscription->reference);
 
         return $this->redirectToPayment($subscription);
