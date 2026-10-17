@@ -213,3 +213,14 @@ test('a link reserved to an address refuses another google account', function ()
         ->assertSee('Ce lien est réservé à l&#039;adresse awa@gmail.com', false)
         ->assertDontSee('E-mail vérifié par Google');
 });
+
+test('the signup form requires a real phone number', function () {
+    $link = generateInvitationLink();
+
+    $this->post($link, invitationSignup(['phone' => '']))->assertSessionHasErrors('phone');
+    $this->post($link, invitationSignup(['phone' => '123']))->assertSessionHasErrors('phone');
+    expect(UserInvitation::first()->used_at)->toBeNull();
+
+    $this->post($link, invitationSignup(['phone' => '07 08 09 10 11']))->assertRedirect(route('login'));
+    expect(User::where('email', 'koffi.yao@gmail.com')->value('phone'))->toBe('+225 07 08 09 10 11');
+});

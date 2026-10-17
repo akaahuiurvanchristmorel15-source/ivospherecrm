@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserInvitation;
 use App\Rules\RealEmailAddress;
 use App\Services\EmployeeSyncService;
+use App\Services\PhoneNumberFormatter;
 use App\Services\Subscriptions\GoogleEmailVerifier;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
@@ -98,12 +99,13 @@ class InvitationController extends Controller
                 'required', 'string', 'email:rfc,strict', 'max:255', new RealEmailAddress, 'unique:users,email',
                 $invitation->email ? 'in:'.$invitation->email : null,
             ]),
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:30', PhoneNumberFormatter::rule()],
             'password' => ['required', 'confirmed', Password::defaults()],
         ], [
             'email.unique' => 'Un compte existe déjà avec cette adresse e-mail.',
             'email.in' => "Ce lien est réservé à l'adresse {$invitation->email}.",
-        ]);
+            'phone.phone' => PhoneNumberFormatter::invalidMessage(),
+        ], ['phone' => 'de téléphone']);
 
         $googleIdentity = $this->googleIdentityFor($request, $invitation);
         $emailVerified = ($googleIdentity && $googleIdentity['email'] === $validated['email']) || $invitation->email !== null;
@@ -125,7 +127,7 @@ class InvitationController extends Controller
                     'tenant_id' => $invitation->tenant_id,
                     'name' => $validated['name'],
                     'email' => mb_strtolower($validated['email']),
-                    'phone' => $validated['phone'] ?? null,
+                    'phone' => PhoneNumberFormatter::format($validated['phone']),
                     'password' => $validated['password'],
                     'all_domains' => $invitation->all_domains,
                     'is_active' => true,

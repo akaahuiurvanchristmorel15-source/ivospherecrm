@@ -96,8 +96,8 @@
                     </div>
 
                     <div>
-                        <label for="phone" class="{{ $label }}">Téléphone <span class="text-black/35 night:text-white/35">(facultatif)</span></label>
-                        <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel" placeholder="07 00 00 00 00" class="{{ $field }}">
+                        <label for="phone" class="{{ $label }}">Téléphone</label>
+                        <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" required autocomplete="tel" inputmode="tel" placeholder="07 00 00 00 00" class="{{ $field }}">
                         @error('phone')<p class="{{ $error }}">{{ $message }}</p>@enderror
                     </div>
 

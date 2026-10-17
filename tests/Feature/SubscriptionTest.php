@@ -85,6 +85,15 @@ test('signup refuses email domains that cannot receive mail', function () {
     expect(Subscription::count())->toBe(0);
 });
 
+test('signup requires a real phone number', function () {
+    $plan = SubscriptionPlan::where('code', 'commercial_caisse')->first();
+
+    $this->post(route('offres.register', $plan), signupData(['phone' => '12345']))->assertSessionHasErrors('phone');
+    $this->post(route('offres.register', $plan), signupData(['phone' => '']))->assertSessionHasErrors('phone');
+
+    expect(Subscription::count())->toBe(0);
+});
+
 test('offers page lists the plans and enterprise plans are not yet subscribable', function () {
     $this->get(route('offres.index'))
         ->assertOk()
