@@ -13,10 +13,16 @@
     } elseif (\App\Support\TenantContext::isMain() && is_file(public_path('images/logo-horizontal.png'))) {
         $logoPath = public_path('images/logo-horizontal.png');
     }
+    // dompdf a besoin de GD pour les PNG : sans GD, on affiche le nom de l'entreprise
+    if ($logoPath && $isPdf && ! extension_loaded('gd') && str_ends_with(strtolower($logoPath), '.png')) {
+        $logoPath = null;
+    }
     $logoSrc = $logoPath ? 'data:'.(mime_content_type($logoPath) ?: 'image/png').';base64,'.base64_encode(file_get_contents($logoPath)) : null;
 
     $editedAt = now()->format('d/m/Y à H:i');
     $editor = auth()->user()->name ?? '';
+    $nameLimit = 44;
+    $lineLimit = 64;
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -25,24 +31,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catalogue produits — {{ $companyName }}</title>
     <style>
-        @page { size: A4 portrait; margin: 0; }
-
-        :root {
-            --ink: #0B0F14;
-            --muted: #64748B;
-            --line: #E2E8F0;
-            --soft: #F5F7FA;
-            --accent: #0066FF;
-        }
+        @page { size: A4 portrait; margin: {{ $isPdf ? '11mm 11mm 8mm' : '0' }}; }
 
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         body {
             margin: 0;
             background: {{ $isPdf ? '#FFFFFF' : '#E9EDF2' }};
-            color: var(--ink);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-size: 8.6pt;
+            color: #0B0F14;
+            font-family: {!! $isPdf ? "'DejaVu Sans', sans-serif" : "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" !!};
+            font-size: {{ $isPdf ? '7.8pt' : '8.6pt' }};
             line-height: 1.25;
         }
 
@@ -50,71 +48,78 @@
         .toolbar {
             position: sticky; top: 0; z-index: 10;
             display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
-            padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid var(--line);
+            padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E2E8F0;
             box-shadow: 0 6px 20px -12px rgba(11, 15, 20, .25);
         }
         .toolbar .group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .btn {
             display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 999px;
-            border: 1px solid var(--line); background: #FFFFFF; color: var(--ink);
+            border: 1px solid #E2E8F0; background: #FFFFFF; color: #0B0F14;
             font-family: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer;
         }
         .btn:hover { border-color: #94A3B8; }
-        .btn-dark { background: var(--ink); border-color: var(--ink); color: #FFFFFF; }
+        .btn-dark { background: #0B0F14; border-color: #0B0F14; color: #FFFFFF; }
         .btn-dark:hover { background: #000000; }
-        .pill { font-size: 12px; color: var(--muted); }
-        .pill strong { color: var(--ink); }
+        .pill { font-size: 12px; color: #64748B; }
+        .pill strong { color: #0B0F14; }
         .notice { margin: 16px auto 0; max-width: 210mm; padding: 10px 14px; border-radius: 12px; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; font-size: 12.5px; }
 
         /* ---------- Pages A4 portrait ---------- */
+        .sheet { page-break-after: always; }
+        .sheet.is-last { page-break-after: auto; }
+@unless($isPdf)
         .sheet {
-            width: 210mm; height: 297mm; margin: {{ $isPdf ? '0' : '20px auto' }};
-            padding: 11mm 11mm 9mm; background: #FFFFFF; overflow: hidden;
-            display: flex; flex-direction: column;
-            {{ $isPdf ? '' : 'box-shadow: 0 12px 40px -18px rgba(11, 15, 20, .35); border-radius: 4px;' }}
-            break-after: page; page-break-after: always;
+            width: 210mm; height: 297mm; margin: 20px auto; padding: 11mm 11mm 8mm;
+            background: #FFFFFF; overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: 0 12px 40px -18px rgba(11, 15, 20, .35); border-radius: 4px;
         }
-        .sheet:last-child { break-after: auto; page-break-after: auto; }
+@endunless
 
-        .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10mm; padding-bottom: 4mm; border-bottom: 2.2pt solid var(--ink); }
-        .brand img { display: block; height: 11mm; width: auto; max-width: 60mm; object-fit: contain; }
-        .brand .name { font-size: 15pt; font-weight: 800; letter-spacing: -.02em; }
+        table { width: 100%; border-collapse: collapse; }
+
+        .head td { padding: 0 0 4mm; border-bottom: 2.2pt solid #0B0F14; vertical-align: bottom; }
+        .brand img { display: block; height: 11mm; width: auto; max-width: 60mm; }
+        .brand .name { font-size: 15pt; font-weight: bold; }
         .title { text-align: right; }
-        .title h1 { margin: 0; font-size: 17pt; font-weight: 800; letter-spacing: -.03em; }
-        .title p { margin: 1.2mm 0 0; color: var(--muted); font-size: 8.4pt; }
-        .title p strong { color: var(--accent); }
+        .title h1 { margin: 0; font-size: 17pt; font-weight: bold; }
+        .title p { margin: 1.2mm 0 0; color: #64748B; font-size: 8pt; }
+        .title p strong { color: #0066FF; }
 
-        .meta { display: flex; gap: 4mm; margin: 3.5mm 0 3mm; }
-        .meta div { flex: 1; padding: 2mm 3mm; border-radius: 2.5mm; background: var(--soft); }
-        .meta span { display: block; font-size: 6.6pt; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-        .meta strong { display: block; margin-top: .6mm; font-size: 8.8pt; }
+        .meta { margin: 3.5mm 0 3mm; border-collapse: separate; border-spacing: 2mm 0; }
+        .meta-wrap { margin: 0 -2mm; }
+        .meta td { padding: 2mm 3mm; border-radius: 2.5mm; background: #F5F7FA; vertical-align: top; }
+        .meta span { display: block; font-size: 6.4pt; text-transform: uppercase; letter-spacing: .08em; color: #64748B; }
+        .meta strong { display: block; margin-top: .6mm; font-size: 8.6pt; }
 
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        thead th {
-            height: 7mm; padding: 0 2mm; background: var(--ink); color: #FFFFFF; text-align: left;
-            font-size: 6.8pt; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+        .grid { table-layout: fixed; }
+        .grid th {
+            height: 7mm; padding: 0 2mm; background: #0B0F14; color: #FFFFFF; text-align: left;
+            font-size: 6.6pt; font-weight: bold; text-transform: uppercase; letter-spacing: .06em;
         }
-        thead th:first-child { border-radius: 1.6mm 0 0 1.6mm; }
-        thead th:last-child { border-radius: 0 1.6mm 1.6mm 0; }
-        tbody td { height: 7.15mm; padding: 0 2mm; border-bottom: .5pt solid var(--line); vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        tbody tr:nth-child(even) td { background: #FAFBFC; }
-        .c-num { width: 9mm; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
-        .c-ref { width: 27mm; font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 7.6pt; }
-        .c-name .n { font-weight: 600; }
-        .c-name .s { margin-left: 1.5mm; color: var(--muted); font-size: 7pt; }
-        .c-qty { width: 21mm; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-        .c-qty small { margin-left: .8mm; color: var(--muted); font-weight: 500; font-size: 6.6pt; }
-        .c-price { width: 27mm; border-left: .5pt dashed #CBD5E1; }
-        th.c-price, th.c-qty { text-align: right; }
-        tr.blank td { color: #CBD5E1; }
+        .grid td { height: 7.1mm; padding: 0 2mm; border-bottom: .5pt solid #E2E8F0; vertical-align: middle; white-space: nowrap; overflow: hidden; }
+        .grid tbody tr:nth-child(even) td { background: #FAFBFC; }
+        .c-num { width: 9mm; text-align: center; color: #64748B; }
+        .grid td.c-num { color: #64748B; }
+        .c-ref { width: 27mm; }
+        .grid td.c-ref { font-family: {!! $isPdf ? "'DejaVu Sans Mono', monospace" : "ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" !!}; font-size: 7.2pt; }
+        .c-name .n { font-weight: bold; }
+        .c-name .s { color: #64748B; font-size: 6.8pt; }
+        .c-qty { width: 22mm; text-align: right; }
+        .grid td.c-qty { font-weight: bold; }
+        .c-qty small { color: #64748B; font-weight: normal; font-size: 6.4pt; }
+        .c-price { width: 26mm; }
+        .grid td.c-price { border-left: .5pt dashed #CBD5E1; }
+        .grid th.c-price, .grid th.c-qty { text-align: right; }
+        .grid th.c-num { text-align: center; }
 
-        .foot { margin-top: auto; padding-top: 3mm; display: flex; align-items: center; justify-content: space-between; gap: 6mm; border-top: .5pt solid var(--line); color: var(--muted); font-size: 7pt; }
-        .foot .page { color: var(--ink); font-weight: 700; }
-        .foot .sign { display: flex; align-items: center; gap: 2mm; }
+        .foot { margin-top: {{ $isPdf ? '4mm' : 'auto' }}; }
+        .foot td { padding-top: 3mm; border-top: .5pt solid #E2E8F0; color: #64748B; font-size: 6.8pt; vertical-align: middle; }
+        .foot .page { text-align: center; color: #0B0F14; font-weight: bold; }
+        .foot .sign { text-align: right; }
         .foot .sign i { display: inline-block; width: 38mm; border-bottom: .5pt solid #94A3B8; }
 
-        .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--muted); }
-        .empty strong { color: var(--ink); font-size: 13pt; }
+        .empty { padding: 90mm 0; text-align: center; color: #64748B; }
+        .empty strong { color: #0B0F14; font-size: 13pt; }
 
         @media print {
             body { background: #FFFFFF; }
@@ -141,7 +146,7 @@
 @endunless
 
 @if($chunks->isEmpty())
-    <section class="sheet">
+    <section class="sheet is-last">
         <div class="empty">
             <strong>Aucun produit à afficher</strong>
             <p>Aucun article ne correspond à ce catalogue (filtres ou entrepôt sans stock).</p>
@@ -155,38 +160,46 @@
         $index = 0;
     @endphp
     @foreach($section['chunks'] as $pageRows)
-        @php $pageNumber++; @endphp
-        <section class="sheet">
-            <header class="head">
-                <div class="brand">
-                    @if($logoSrc)
-                        <img src="{{ $logoSrc }}" alt="{{ $companyName }}">
-                    @else
-                        <span class="name">{{ $companyName }}</span>
-                    @endif
-                </div>
-                <div class="title">
-                    <h1>Catalogue produits</h1>
-                    <p>
-                        @if($warehouse)
-                            Entrepôt <strong>{{ $warehouse->name }}</strong> · {{ $warehouse->code }}@if($warehouse->address) · {{ $warehouse->address }}@endif
+        @php
+            $pageNumber++;
+        @endphp
+        <section class="sheet{{ $pageNumber === $totalPages ? ' is-last' : '' }}">
+            <table class="head">
+                <tr>
+                    <td class="brand">
+                        @if($logoSrc)
+                            <img src="{{ $logoSrc }}" alt="{{ $companyName }}">
                         @else
-                            Stock global · tous entrepôts
+                            <span class="name">{{ $companyName }}</span>
                         @endif
-                    </p>
-                </div>
-            </header>
+                    </td>
+                    <td class="title">
+                        <h1>Catalogue produits</h1>
+                        <p>
+                            @if($warehouse)
+                                Entrepôt <strong>{{ $warehouse->name }}</strong> · {{ $warehouse->code }}@if($warehouse->address) · {{ Str::limit($warehouse->address, 40) }}@endif
+                            @else
+                                Stock global · tous entrepôts
+                            @endif
+                        </p>
+                    </td>
+                </tr>
+            </table>
 
-            <div class="meta">
-                <div><span>Édité le</span><strong>{{ $editedAt }}</strong></div>
-                <div><span>Articles</span><strong>{{ number_format($section['rows']->count(), 0, ',', ' ') }}</strong></div>
-                @if($warehouse?->manager)
-                    <div><span>Responsable</span><strong>{{ $warehouse->manager }}</strong></div>
-                @endif
-                <div><span>Édité par</span><strong>{{ $editor ?: '—' }}</strong></div>
+            <div class="meta-wrap">
+                <table class="meta">
+                    <tr>
+                        <td><span>Édité le</span><strong>{{ $editedAt }}</strong></td>
+                        <td><span>Articles</span><strong>{{ number_format($section['rows']->count(), 0, ',', ' ') }}</strong></td>
+                        @if($warehouse?->manager)
+                            <td><span>Responsable</span><strong>{{ Str::limit($warehouse->manager, 24) }}</strong></td>
+                        @endif
+                        <td><span>Édité par</span><strong>{{ $editor ? Str::limit($editor, 24) : '—' }}</strong></td>
+                    </tr>
+                </table>
             </div>
 
-            <table>
+            <table class="grid">
                 <thead>
                     <tr>
                         <th class="c-num">N°</th>
@@ -202,19 +215,22 @@
                         @php
                             $product = $row['product'];
                             $index++;
+                            $productName = Str::limit($product->name, $nameLimit);
+                            $detailsRoom = $lineLimit - mb_strlen($productName);
                             $details = collect([$product->brand?->name, $product->category?->name])->filter()->implode(' · ');
+                            $details = $detailsRoom >= 10 ? Str::limit($details, $detailsRoom) : '';
                         @endphp
                         <tr>
                             <td class="c-num">{{ $index }}</td>
-                            <td class="c-ref">{{ $product->sku }}</td>
-                            <td class="c-name"><span class="n">{{ $product->name }}</span>@if($details)<span class="s">{{ $details }}</span>@endif</td>
-                            <td class="c-qty">{{ number_format($row['quantity'], 0, ',', ' ') }}<small>{{ $product->unit ?? 'pcs' }}</small></td>
+                            <td class="c-ref">{{ Str::limit((string) $product->sku, 16) }}</td>
+                            <td class="c-name"><span class="n">{{ $productName }}</span>@if($details) <span class="s">{{ $details }}</span>@endif</td>
+                            <td class="c-qty">{{ number_format($row['quantity'], 0, ',', ' ') }} <small>{{ $product->unit ?? 'pcs' }}</small></td>
                             <td class="c-price"></td>
                             <td class="c-price"></td>
                         </tr>
                     @endforeach
                     @for($i = $pageRows->count(); $i < $rowsPerPage; $i++)
-                        <tr class="blank">
+                        <tr>
                             <td class="c-num">{{ $index + ($i - $pageRows->count() + 1) }}</td>
                             <td class="c-ref"></td>
                             <td class="c-name"></td>
@@ -226,11 +242,13 @@
                 </tbody>
             </table>
 
-            <footer class="foot">
-                <span>{{ $companyName }} · Catalogue{{ $warehouse ? ' '.$warehouse->code : '' }} · {{ $editedAt }}</span>
-                <span class="page">Page {{ $pageNumber }} / {{ $totalPages }}</span>
-                <span class="sign">Visa <i></i></span>
-            </footer>
+            <table class="foot">
+                <tr>
+                    <td>{{ Str::limit($companyName, 30) }} · Catalogue{{ $warehouse ? ' '.$warehouse->code : '' }} · {{ $editedAt }}</td>
+                    <td class="page">Page {{ $pageNumber }} / {{ $totalPages }}</td>
+                    <td class="sign">Visa <i></i></td>
+                </tr>
+            </table>
         </section>
     @endforeach
 @endforeach
