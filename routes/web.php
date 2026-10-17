@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DomainController;
 use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\UserInvitationController;
 use App\Http\Controllers\Ai\AiAssistantController;
 use App\Http\Controllers\Analytics\AnalyticsController;
 use App\Http\Controllers\Assurance\AssuranceDashboardController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Assurance\InsuranceCommissionController;
 use App\Http\Controllers\Assurance\InsuranceContractController;
 use App\Http\Controllers\Assurance\InsuranceProductController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Automation\AlertController;
 use App\Http\Controllers\Automation\AutomationController;
@@ -117,6 +119,10 @@ Route::prefix('offres')->name('offres.')->group(function () {
     Route::get('paiement/{subscription:reference}/recapitulatif', [OfferController::class, 'pdf'])->name('payment.pdf');
 });
 
+// Inscription d'un collaborateur par lien à usage unique
+Route::get('/invitation/{token}', [InvitationController::class, 'show'])->middleware('throttle:30,1')->name('invitations.show');
+Route::post('/invitation/{token}', [InvitationController::class, 'register'])->middleware('throttle:10,1')->name('invitations.register');
+
 // Authentification
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -148,6 +154,8 @@ Route::middleware('auth')->group(function () {
         // Utilisateurs
         Route::resource('users', UserController::class)->except(['show']);
         Route::patch('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
+        Route::post('users/invitations', [UserInvitationController::class, 'store'])->name('users.invitations.store');
+        Route::delete('users/invitations/{invitation}', [UserInvitationController::class, 'destroy'])->name('users.invitations.destroy');
 
         // Abonnements des clients (espace Ivosphere uniquement)
         Route::get('subscriptions', [SubscriptionAdminController::class, 'index'])->name('subscriptions.index');

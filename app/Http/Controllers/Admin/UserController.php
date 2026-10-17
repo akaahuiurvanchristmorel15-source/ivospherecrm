@@ -7,6 +7,7 @@ use App\Models\Domain;
 use App\Models\Employee;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\UserInvitation;
 use App\Services\ActivityLogger;
 use App\Services\EmployeeSyncService;
 use App\Support\TenantAccess;
@@ -44,8 +45,10 @@ class UserController extends Controller
         $users = $query->paginate(15)->withQueryString();
         $roles = Role::all();
         $domains = Domain::all();
+        $invitations = UserInvitation::usable()->with('creator')->latest()->get();
+        $validityDays = UserInvitationController::VALIDITY_DAYS;
 
-        return view('admin.users.index', compact('users', 'roles', 'domains'));
+        return view('admin.users.index', compact('users', 'roles', 'domains', 'invitations', 'validityDays'));
     }
 
     /**
