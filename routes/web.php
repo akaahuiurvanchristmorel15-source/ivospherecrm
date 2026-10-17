@@ -106,6 +106,9 @@ Route::prefix('offres')->name('offres.')->group(function () {
     Route::get('/', [OfferController::class, 'index'])->name('index');
     Route::get('{plan:code}/inscription', [OfferController::class, 'signup'])->name('signup');
     Route::post('{plan:code}/inscription', [OfferController::class, 'register'])->middleware('throttle:10,1')->name('register');
+    Route::get('{plan:code}/google', [OfferController::class, 'googleRedirect'])->middleware('throttle:10,1')->name('google.redirect');
+    Route::get('google/callback', [OfferController::class, 'googleCallback'])->middleware('throttle:10,1')->name('google.callback');
+    Route::post('google/oublier', [OfferController::class, 'googleForget'])->name('google.forget');
     Route::post('paiement/notification', [OfferController::class, 'notify'])->name('payment.notify');
     Route::get('paiement/{subscription:reference}/simulation', [OfferController::class, 'simulation'])->name('payment.simulation');
     Route::post('paiement/{subscription:reference}/simulation', [OfferController::class, 'simulate'])->name('payment.simulate');
