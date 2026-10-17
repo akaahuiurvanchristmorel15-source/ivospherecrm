@@ -27,7 +27,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  */
 class OfferController extends Controller
 {
-    private const GOOGLE_STATE = 'offer_google_state';
+    private const GOOGLE_STATE = GoogleEmailVerifier::PENDING_SESSION_KEY;
 
     private const GOOGLE_IDENTITY = 'offer_google_identity';
 
@@ -67,15 +67,16 @@ class OfferController extends Controller
         $state = Str::random(40);
         $request->session()->put(self::GOOGLE_STATE, [
             'state' => $state,
-            'plan' => $plan->code,
-            'cycle' => $request->query('cycle') === 'yearly' ? 'yearly' : 'monthly',
+            'identity_key' => self::GOOGLE_IDENTITY,
+            'return_url' => route('offres.signup', ['plan' => $plan->code, 'cycle' => $request->query('cycle') === 'yearly' ? 'yearly' : 'monthly']),
         ]);
 
         return redirect()->away($googleVerifier->authorizationUrl($state));
     }
 
     /**
-     * Retour de Google : l'adresse n'est retenue que si Google la déclare vérifiée.
+     * Retour de Google (inscription aux offres et liens d'invitation) : l'adresse n'est retenue que si
+     * Google la déclare vérifiée ; elle est rangée sous la clé de session demandée par la page d'origine.
      */
     public function googleCallback(Request $request, GoogleEmailVerifier $googleVerifier): RedirectResponse
     {
@@ -85,7 +86,7 @@ class OfferController extends Controller
             return redirect()->route('offres.index')->with('warning', 'La vérification Google a expiré. Recommencez votre inscription.');
         }
 
-        $signupUrl = route('offres.signup', ['plan' => $pending['plan'], 'cycle' => $pending['cycle']]);
+        $signupUrl = (string) $pending['return_url'];
 
         if ($request->filled('error') || blank($request->query('code'))) {
             return redirect($signupUrl)->with('warning', 'La vérification Google a été annulée.');
@@ -99,7 +100,7 @@ class OfferController extends Controller
             return redirect($signupUrl)->with('error', "La vérification Google n'a pas abouti. Réessayez ou saisissez votre adresse manuellement.");
         }
 
-        $request->session()->put(self::GOOGLE_IDENTITY, $identity);
+        $request->session()->put((string) $pending['identity_key'], $identity + ($pending['identity_extra'] ?? []));
 
         return redirect($signupUrl)->with('success', 'Adresse e-mail vérifiée par Google : '.$identity['email']);
     }

@@ -12,6 +12,11 @@ use RuntimeException;
  */
 class GoogleEmailVerifier
 {
+    /**
+     * Vérification en cours : état anti-falsification, clé de session où ranger l'identité et page de retour.
+     */
+    public const PENDING_SESSION_KEY = 'offer_google_state';
+
     private const AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 
     private const TOKEN_URL = 'https://oauth2.googleapis.com/token';
