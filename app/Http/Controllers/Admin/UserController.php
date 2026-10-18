@@ -42,13 +42,18 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->paginate(15)->withQueryString();
-        $roles = Role::all();
+        if (in_array($request->input('status'), ['active', 'inactive'], true)) {
+            $query->where('is_active', $request->input('status') === 'active');
+        }
+
+        $users = $query->paginate(24)->withQueryString();
+        $userCounts = ['total' => User::count(), 'active' => User::where('is_active', true)->count()];
+        $roles = Role::withCount('users')->orderBy('name')->get();
         $domains = Domain::all();
         $invitations = UserInvitation::usable()->with('creator')->latest()->get();
         $validityDays = UserInvitationController::VALIDITY_DAYS;
 
-        return view('admin.users.index', compact('users', 'roles', 'domains', 'invitations', 'validityDays'));
+        return view('admin.users.index', compact('users', 'userCounts', 'roles', 'domains', 'invitations', 'validityDays'));
     }
 
     /**

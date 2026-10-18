@@ -15,6 +15,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['tenant_id', 'name', 'email', 'password', 'phone', 'avatar', 'is_active', 'all_domains'])]
 #[Hidden(['password', 'remember_token'])]
@@ -63,6 +64,24 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'all_domains' => 'boolean',
         ];
+    }
+
+    /**
+     * Adresse publique de la photo de profil (null si aucune photo).
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar && Storage::disk('public')->exists($this->avatar) ? Storage::disk('public')->url($this->avatar) : null;
+    }
+
+    /**
+     * Initiales affichées à la place de la photo (ex. « Awa Koné » → « AK »).
+     */
+    public function initials(): string
+    {
+        $words = preg_split('/\s+/', trim((string) $this->name)) ?: [];
+
+        return mb_strtoupper(count($words) > 1 ? mb_substr($words[0], 0, 1).mb_substr($words[1], 0, 1) : mb_substr($words[0] ?? 'IV', 0, 2));
     }
 
     /**

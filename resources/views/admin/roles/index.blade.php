@@ -67,7 +67,7 @@
         $allPermsFlat = $permissions->flatten()->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'slug' => $p->slug, 'group' => $p->group])->values()->all();
     @endphp
 
-    <div class="mx-auto w-full max-w-7xl space-y-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:space-y-5" x-data="{ activeRoleId: '{{ $initialRoleId }}', roleSearch: '' }">
+    <div class="mx-auto w-full max-w-7xl space-y-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:space-y-5" x-data="{ activeRoleId: '{{ $initialRoleId }}', roleSearch: '', createOpen: {{ $errors->hasAny(['name', 'description', 'copy_from']) ? 'true' : 'false' }} }">
 
         {{-- Résumé --}}
         <dl class="sticky top-0 z-10 grid shrink-0 grid-cols-3 divide-x divide-[#E2E8F0] rounded-2xl border border-[#E2E8F0] bg-white shadow-sm lg:static lg:shadow-none">
@@ -89,13 +89,18 @@
 
             {{-- Liste des rôles --}}
             <aside class="rounded-2xl border border-[#E2E8F0] bg-white lg:flex lg:min-h-0 lg:flex-col">
-                <div class="border-b border-[#E2E8F0] p-3">
+                <div class="flex gap-2 border-b border-[#E2E8F0] p-3">
                     <label for="role-search" class="sr-only">Rechercher un rôle</label>
-                    <div class="relative">
+                    <div class="relative min-w-0 flex-1">
                         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input id="role-search" type="search" x-model="roleSearch" placeholder="Rechercher un rôle…"
                                class="h-10 w-full rounded-xl border border-[#E2E8F0] bg-[#F5F7FA] pl-9 pr-3 text-xs text-[#0B0F14] placeholder-[#64748B] focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
                     </div>
+                    <button type="button" @click="createOpen = true" title="Nouveau rôle" aria-label="Nouveau rôle"
+                            class="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-[#0066FF] px-3 text-xs font-semibold text-white transition hover:bg-[#0052CC]">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <span class="lg:hidden xl:inline">Nouveau</span>
+                    </button>
                 </div>
                 <nav class="flex gap-2 overflow-x-auto p-2 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-0.5 lg:overflow-y-auto lg:overflow-x-visible" role="tablist" aria-label="Rôles">
                     @foreach($roles as $r)
@@ -185,6 +190,13 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                @unless(in_array($role->slug, \App\Http\Controllers\Admin\RolePermissionController::SYSTEM_ROLES, true))
+                                    <div class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-[#E2E8F0] p-3 text-xs text-[#64748B]">
+                                        <span>Rôle créé par l'administrateur.</span>
+                                        <button type="submit" form="delete-role-{{ $role->id }}" class="font-semibold text-rose-600 hover:underline">Supprimer ce rôle</button>
+                                    </div>
+                                @endunless
 
                                 @if($role->slug === 'administrateur')
                                     <p class="mt-4 flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-800">
@@ -277,9 +289,52 @@
                                 </div>
                             </div>
                         </form>
+                        @unless(in_array($role->slug, \App\Http\Controllers\Admin\RolePermissionController::SYSTEM_ROLES, true))
+                            <form id="delete-role-{{ $role->id }}" method="POST" action="{{ route('admin.roles.destroy', $role) }}" class="hidden"
+                                  onsubmit="return confirm('Supprimer le rôle « {{ addslashes($role->name) }} » ?');">
+                                @csrf
+                                @method('DELETE')
+                            </form>
+                        @endunless
                     </div>
                 @endforeach
             </div>
+        </div>
+
+        {{-- Création d'un rôle --}}
+        <div x-show="createOpen" x-cloak @keydown.escape.window="createOpen = false" class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="create-role-title">
+            <div class="absolute inset-0 bg-black/50" @click="createOpen = false"></div>
+            <form method="POST" action="{{ route('admin.roles.store') }}" class="relative w-full max-w-md space-y-4 rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl">
+                @csrf
+                <div>
+                    <h2 id="create-role-title" class="text-base font-semibold text-[#0B0F14]">Nouveau rôle</h2>
+                    <p class="mt-1 text-xs text-[#64748B]">Donnez-lui un nom, puis activez ses permissions dans la page.</p>
+                </div>
+                <div>
+                    <label for="role-name" class="mb-1.5 block text-xs font-semibold text-[#0B0F14]">Nom du rôle</label>
+                    <input id="role-name" name="name" type="text" value="{{ old('name') }}" required maxlength="100" placeholder="Ex : Agent de livraison"
+                           class="h-10 w-full rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
+                    @error('name')<p class="mt-1 text-[11px] text-rose-600">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="role-description" class="mb-1.5 block text-xs font-semibold text-[#0B0F14]">Description <span class="font-normal text-[#64748B]">(facultatif)</span></label>
+                    <input id="role-description" name="description" type="text" value="{{ old('description') }}" maxlength="255" placeholder="Ce que fait ce rôle"
+                           class="h-10 w-full rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm text-[#0B0F14] focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
+                </div>
+                <div>
+                    <label for="role-copy" class="mb-1.5 block text-xs font-semibold text-[#0B0F14]">Reprendre les permissions de <span class="font-normal text-[#64748B]">(facultatif)</span></label>
+                    <select id="role-copy" name="copy_from" class="h-10 w-full rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm text-[#0B0F14]">
+                        <option value="">Aucun — commencer sans permission</option>
+                        @foreach($roles as $r)
+                            <option value="{{ $r->id }}" @selected(old('copy_from') == $r->id)>{{ $r->name }} ({{ $r->permissions->count() }} droits)</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                    <button type="button" @click="createOpen = false" class="h-10 rounded-xl border border-[#E2E8F0] px-4 text-sm font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">Annuler</button>
+                    <button type="submit" class="h-10 rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white transition hover:bg-[#0052CC]">Créer le rôle</button>
+                </div>
+            </form>
         </div>
     </div>
 </x-layouts.app>

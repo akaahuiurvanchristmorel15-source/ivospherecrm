@@ -8,10 +8,41 @@
 @endphp
 
 <x-layouts.app>
-    <x-slot:title>Mot de passe</x-slot>
+    <x-slot:title>Mon compte</x-slot>
 
     <div class="mx-auto max-w-xl space-y-5">
-        <x-page-header title="Mot de passe" description="Modifiez le mot de passe de votre compte {{ auth()->user()->email }}." />
+        <x-page-header title="Mon compte" description="Photo de profil et mot de passe de votre compte {{ auth()->user()->email }}." />
+
+        {{-- Photo de profil --}}
+        <x-card>
+            <div class="flex flex-col items-center gap-5 sm:flex-row"
+                 x-data="{ preview: null, pick(event) { const file = event.target.files[0]; if (file) { this.preview = URL.createObjectURL(file); } } }">
+                <div class="relative">
+                    <template x-if="preview"><img :src="preview" alt="" class="h-20 w-20 rounded-full object-cover"></template>
+                    <div x-show="! preview"><x-user-avatar :user="auth()->user()" size="xl" /></div>
+                </div>
+                <div class="min-w-0 flex-1 text-center sm:text-left">
+                    <p class="text-sm font-semibold text-[#0B0F14]">Photo de profil</p>
+                    <p class="mt-0.5 text-xs text-[#64748B]">JPG, PNG ou WebP, 3 Mo maximum. Elle s'affiche dans la barre du haut et la liste des utilisateurs.</p>
+                    <form method="POST" action="{{ route('profile.photo.update') }}" enctype="multipart/form-data" class="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+                        @csrf
+                        <label class="inline-flex h-10 cursor-pointer items-center rounded-xl border border-[#E2E8F0] px-4 text-xs font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">
+                            Choisir une photo
+                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" capture="user" class="sr-only" @change="pick($event)">
+                        </label>
+                        <button type="submit" x-show="preview" x-cloak class="h-10 rounded-xl bg-[#0066FF] px-4 text-xs font-semibold text-white transition hover:bg-[#0052CC]">Enregistrer la photo</button>
+                    </form>
+                    @if(auth()->user()->avatar)
+                        <form method="POST" action="{{ route('profile.photo.destroy') }}" class="mt-2" x-show="! preview">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-xs font-medium text-rose-600 hover:underline">Retirer la photo</button>
+                        </form>
+                    @endif
+                    @error('avatar')<p class="mt-2 text-xs font-medium text-rose-600">{{ $message }}</p>@enderror
+                </div>
+            </div>
+        </x-card>
 
         <x-card>
             <form method="POST" action="{{ route('password.update') }}" x-data="{ show: false, password: '' }" class="space-y-5">
