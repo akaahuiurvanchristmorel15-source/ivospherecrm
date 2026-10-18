@@ -74,7 +74,7 @@ return [
     | Pages accessibles à tout utilisateur d'un espace abonné, quel que soit son plan.
     */
     'always_allowed_routes' => [
-        'space.*', 'offres.*', 'password.*', 'logout', 'api.search', 'livewire.*',
+        'space.*', 'offres.*', 'password.*', 'profile.*', 'my-day', 'logout', 'api.search', 'livewire.*',
     ],
 
     /*

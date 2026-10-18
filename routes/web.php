@@ -17,6 +17,7 @@ use App\Http\Controllers\Assurance\InsuranceProductController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Auth\ProfilePhotoController;
 use App\Http\Controllers\Automation\AlertController;
 use App\Http\Controllers\Automation\AutomationController;
 use App\Http\Controllers\Calendar\CalendarController;
@@ -88,6 +89,7 @@ use App\Http\Controllers\Tech\TechDashboardController;
 use App\Http\Controllers\Tech\TechProjectController;
 use App\Http\Controllers\Tools\GlobalSearchController;
 use App\Http\Controllers\Tools\SimulatorController;
+use App\Http\Controllers\UserDayController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -144,12 +146,17 @@ Route::middleware('auth')->group(function () {
     // Mon compte : changement du mot de passe
     Route::get('/mon-compte/mot-de-passe', [PasswordController::class, 'edit'])->name('password.edit');
     Route::put('/mon-compte/mot-de-passe', [PasswordController::class, 'update'])->middleware('throttle:6,1')->name('password.update');
+    Route::post('/mon-compte/photo', [ProfilePhotoController::class, 'update'])->middleware('throttle:10,1')->name('profile.photo.update');
+    Route::delete('/mon-compte/photo', [ProfilePhotoController::class, 'destroy'])->name('profile.photo.destroy');
 
     // Espace abonné : accueil et abonnement
     Route::get('/espace-abonne', [SpaceController::class, 'home'])->name('space.home');
     Route::get('/mon-abonnement', [SpaceController::class, 'subscription'])->name('space.subscription');
     Route::post('/mon-abonnement/renouveler', [SpaceController::class, 'renew'])->middleware('throttle:10,1')->name('space.subscription.renew');
     Route::get('/mon-abonnement/{subscription}/recapitulatif', [SpaceController::class, 'pdf'])->name('space.subscription.pdf');
+
+    // Tableau de bord journalier de l'utilisateur connecté
+    Route::get('/ma-journee', [UserDayController::class, 'mine'])->name('my-day');
 
     // Tableau de bord principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -162,6 +169,7 @@ Route::middleware('auth')->group(function () {
         // Utilisateurs
         Route::resource('users', UserController::class)->except(['show']);
         Route::patch('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
+        Route::get('users/{user}/journee', [UserDayController::class, 'show'])->name('users.day');
         Route::post('users/invitations', [UserInvitationController::class, 'store'])->name('users.invitations.store');
         Route::delete('users/invitations/{invitation}', [UserInvitationController::class, 'destroy'])->name('users.invitations.destroy');
 
@@ -176,6 +184,8 @@ Route::middleware('auth')->group(function () {
         // Rôles & Permissions
         Route::get('roles', [RolePermissionController::class, 'index'])->name('roles.index');
         Route::put('roles/{role}/permissions', [RolePermissionController::class, 'updateRolePermissions'])->name('roles.update');
+        Route::post('roles', [RolePermissionController::class, 'store'])->name('roles.store');
+        Route::delete('roles/{role}', [RolePermissionController::class, 'destroy'])->name('roles.destroy');
 
         // Domaines IVOSPHERE
         Route::post('domains/batch', [DomainController::class, 'storeBatch'])->name('domains.batch');

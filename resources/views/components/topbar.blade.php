@@ -34,7 +34,6 @@
     }
     $poles = array_values(array_filter($poles, fn (array $p): bool => \App\Support\TenantAccess::allows($p['route'])));
 
-    $initials = strtoupper(substr(auth()->user()->name ?? 'IV', 0, 2));
 
     $navigation = app(\App\Services\NavigationService::class);
     $currentModuleKey = $navigation->currentModuleKey();
@@ -333,7 +332,7 @@
                 class="flex items-center gap-2 p-0.5 md:pr-2 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
                 aria-label="Menu profil"
             >
-                <span class="w-8 h-8 rounded-full bg-[#0B0F14] text-white flex items-center justify-center text-[11px] font-medium">{{ $initials }}</span>
+                <x-user-avatar :user="auth()->user()" size="sm" />
                 <span class="hidden lg:block text-left leading-tight">
                     <span class="block text-xs font-medium text-slate-900">{{ auth()->user()->name ?? 'Utilisateur' }}</span>
                     <span class="block text-[10px] text-slate-400">{{ auth()->user()->primary_role ?? 'Collaborateur' }}</span>
@@ -369,9 +368,13 @@
                         Mon Espace Collaborateur
                     </a>
                     @endif
+                    <a href="{{ route('my-day') }}" class="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#0066FF] transition-colors">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+                        Ma journée
+                    </a>
                     <a href="{{ route('password.edit') }}" class="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#0066FF] transition-colors">
                         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
-                        Changer mon mot de passe
+                        Mon compte (photo, mot de passe)
                     </a>
                     @unless($isTenantSpace)
                     <a href="{{ route('messages.index') }}" class="md:hidden flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors">

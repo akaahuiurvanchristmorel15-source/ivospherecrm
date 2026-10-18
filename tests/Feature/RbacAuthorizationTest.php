@@ -19,7 +19,7 @@ test('admin can access user management', function () {
     $response = $this->actingAs($admin)->get('/admin/users');
 
     $response->assertStatus(200);
-    $response->assertSee('Utilisateurs de la Plateforme');
+    $response->assertSee('Comptes, rôles, accès et journée de chaque collaborateur.');
 });
 
 test('non-admin cannot access user management', function () {
