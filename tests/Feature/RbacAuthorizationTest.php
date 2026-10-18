@@ -53,7 +53,7 @@ test('admin can access role and permission management matrix', function () {
     $response = $this->actingAs($admin)->get('/admin/roles');
 
     $response->assertStatus(200);
-    $response->assertSee('Rôles & permissions');
+    $response->assertSee('Rechercher un rôle');
     $response->assertSee('Administrateur');
     $response->assertSee('Droits disponibles');
 });

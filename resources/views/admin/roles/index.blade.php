@@ -69,27 +69,6 @@
 
     <div class="mx-auto max-w-7xl space-y-6" x-data="{ activeRoleId: '{{ $initialRoleId }}', roleSearch: '' }">
 
-        {{-- En-tête --}}
-        <x-page-header
-            title="Rôles & permissions"
-            description="Choisissez un rôle puis activez ou désactivez ses droits, module par module."
-            :breadcrumbs="[
-                ['label' => 'Administration', 'url' => route('admin.users.index')],
-                ['label' => 'Rôles & Permissions']
-            ]"
-        >
-            <x-slot:actions>
-                <a href="{{ route('admin.users.index') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 text-xs font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">
-                    <svg class="h-4 w-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    Utilisateurs
-                </a>
-                <a href="{{ route('admin.logs.index') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 text-xs font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">
-                    <svg class="h-4 w-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Journal d'audit
-                </a>
-            </x-slot:actions>
-        </x-page-header>
-
         @if(session('success'))
             <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800" role="status">
                 <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
