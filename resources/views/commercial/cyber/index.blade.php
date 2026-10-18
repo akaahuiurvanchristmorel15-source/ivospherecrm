@@ -54,6 +54,8 @@
             </x-alert>
         @endif
 
+        @include('commercial.cyber._deposits')
+
         <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_340px] lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
 
             {{-- ===================== CATALOGUE ===================== --}}
@@ -651,6 +653,83 @@
 
                 money(value) {
                     return Math.round(value || 0).toLocaleString('fr-FR');
+                },
+
+                // Dépôt reçu par QR code : une ligne d'impression, quantité = pages × exemplaires
+                addDeposit(deposit, serviceId) {
+                    const service = this.services.find(s => s.id === Number(serviceId));
+                    if (!service) return;
+                    this.cart.push({
+                        key: nextKey++,
+                        cyber_service_id: service.id,
+                        name: service.name + ' · dépôt ' + deposit.code,
+                        unit: service.unit,
+                        unit_price: Number(service.price),
+                        quantity: Math.max(1, Number(deposit.total_pages) || 1),
+                    });
+                },
+            };
+        }
+
+        function cyberDeposits(config) {
+            return {
+                url: config.url,
+                printServices: config.printServices,
+                deposits: [],
+                newIds: [],
+                open: true,
+                showDone: false,
+                lastRefresh: null,
+                timer: null,
+
+                get visible() {
+                    return this.deposits.filter(d => this.showDone || d.status === 'recu' || d.status === 'imprime');
+                },
+
+                get waitingCount() {
+                    return this.deposits.filter(d => d.status === 'recu').length;
+                },
+
+                init() {
+                    this.refresh();
+                    this.timer = setInterval(() => this.refresh(), 15000);
+                },
+
+                destroy() {
+                    clearInterval(this.timer);
+                },
+
+                defaultService(deposit) {
+                    const pattern = deposit.color ? /couleur/i : /(noir|n\s*&\s*b|\bnb\b)/i;
+                    return (this.printServices.find(s => pattern.test(s.name)) || this.printServices[0] || {}).id ?? null;
+                },
+
+                async refresh() {
+                    try {
+                        const response = await fetch(this.url, { headers: { Accept: 'application/json' } });
+                        if (!response.ok) return;
+                        const data = await response.json();
+                        const known = this.deposits.map(d => d.id);
+                        const previous = Object.fromEntries(this.deposits.map(d => [d.id, d.service_id]));
+                        this.newIds = known.length ? data.deposits.filter(d => !known.includes(d.id)).map(d => d.id) : [];
+                        this.deposits = data.deposits.map(d => ({ ...d, service_id: previous[d.id] ?? this.defaultService(d) }));
+                        this.lastRefresh = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    } catch (e) {}
+                },
+
+                async setStatus(deposit, status) {
+                    const response = await fetch(deposit.status_url, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                        body: JSON.stringify({ status }),
+                    });
+                    if (response.ok) {
+                        await this.refresh();
+                    }
+                },
+
+                statusClass(status) {
+                    return { recu: 'bg-blue-50 text-[#0066FF]', imprime: 'bg-amber-50 text-amber-700', retire: 'bg-emerald-50 text-emerald-700', annule: 'bg-slate-100 text-slate-600' }[status] || '';
                 },
             };
         }
