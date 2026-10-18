@@ -4,6 +4,8 @@
     $canAdjustProducts = auth()->user()->hasPermission('products.adjust');
     $canDeleteProducts = auth()->user()->hasPermission('products.delete');
     $canSelectProducts = $canEditProducts || $canDeleteProducts;
+    $canCreateProducts = auth()->user()->hasPermission('products.create');
+    $canPrintCatalog = auth()->user()->hasPermission('stocks.catalog');
 @endphp
 <x-layouts.app title="Gestion des Stocks & Entrepôts (WMS)">
     <div x-data="{
@@ -66,7 +68,9 @@
                         <a href="{{ route('stock.scanner') }}" class="block px-4 py-2.5 text-xs text-[#0B0F14] hover:bg-[#F5F7FA]">Mode Scan / Magasinier</a>
                         <a href="{{ route('stock.warehouses.index') }}" class="block px-4 py-2.5 text-xs text-[#0B0F14] hover:bg-[#F5F7FA]">Entrepôts</a>
                         <a href="{{ route('stock.movements.create') }}" class="block px-4 py-2.5 text-xs text-[#0B0F14] hover:bg-[#F5F7FA]">Nouveau mouvement</a>
+                        @if($canCreateProducts)
                         <a href="{{ route('stock.products.bulk-create') }}" class="block px-4 py-2.5 text-xs text-[#0B0F14] hover:bg-[#F5F7FA]">Ajout groupé</a>
+                        @endif
                     </div>
                 </div>
 
@@ -79,12 +83,14 @@
                 </a>
                 @endif
 
+                @if($canCreateProducts)
                 <a href="{{ route('stock.products.create') }}"
                    class="flex h-10 items-center gap-1.5 rounded-xl bg-[#0066FF] px-4 text-xs font-semibold text-white hover:bg-[#0052cc]">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                     <span class="hidden sm:inline">Nouveau produit</span>
                     <span class="sm:hidden">Produit</span>
                 </a>
+                @endif
             </div>
         </header>
 
@@ -293,6 +299,7 @@
                                 <svg class="h-3.5 w-3.5 text-[#64748B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                             <div x-show="open" x-cloak x-transition class="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white py-1 text-xs shadow-lg">
+                                @if($canPrintCatalog)
                                 <a href="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}"
                                    :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
                                    data-base="{{ route('stock.products.print-catalog', request()->except('warehouse_id')) }}" target="_blank" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Aperçu du catalogue (A4)</a>
@@ -300,6 +307,7 @@
                                    :href="filterWarehouse === '' ? $el.dataset.base : $el.dataset.base + ($el.dataset.base.includes('?') ? '&' : '?') + 'warehouse_id=' + filterWarehouse"
                                    data-base="{{ route('stock.products.download-catalog', request()->except('warehouse_id')) }}" class="block px-4 py-2.5 font-semibold text-[#0B0F14] hover:bg-[#F5F7FA]">Télécharger le catalogue (PDF)</a>
                                 <a href="{{ route('stock.products.download-catalog', array_merge(request()->except('warehouse_id'), ['per_warehouse' => 1])) }}" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Télécharger par entrepôt (PDF)</a>
+                                @endif
                                 <a href="{{ route('stock.export') }}" class="block px-4 py-2.5 text-[#0B0F14] hover:bg-[#F5F7FA]">Export CSV</a>
                             </div>
                         </div>

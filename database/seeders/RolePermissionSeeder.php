@@ -67,6 +67,8 @@ class RolePermissionSeeder extends Seeder
             ['slug' => 'stocks.view', 'name' => 'Consulter les stocks', 'group' => 'stock'],
             ['slug' => 'stocks.manage', 'name' => 'Gérer les entrepôts et stocks', 'group' => 'stock'],
             ['slug' => 'stocks.movements', 'name' => 'Effectuer des mouvements de stocks', 'group' => 'stock'],
+            ['slug' => 'products.create', 'name' => 'Ajouter des produits au catalogue', 'group' => 'stock'],
+            ['slug' => 'stocks.catalog', 'name' => 'Imprimer et télécharger le catalogue', 'group' => 'stock'],
             ['slug' => 'products.edit', 'name' => 'Modifier les produits du catalogue (fiche, prix, photos)', 'group' => 'stock'],
             ['slug' => 'products.adjust', 'name' => 'Ajuster le stock des produits du catalogue', 'group' => 'stock'],
             ['slug' => 'products.delete', 'name' => 'Supprimer des produits du catalogue', 'group' => 'stock'],
@@ -229,6 +231,13 @@ class RolePermissionSeeder extends Seeder
                 ],
             ],
         ];
+
+        // Ajout de produits et catalogue PDF : ouverts par défaut aux rôles qui consultent le stock
+        foreach ($roles as $slug => $data) {
+            if (in_array('stocks.view', $roles[$slug]['permissions'], true)) {
+                $roles[$slug]['permissions'] = array_values(array_unique([...$data['permissions'], 'products.create', 'stocks.catalog']));
+            }
+        }
 
         foreach ($roles as $slug => $data) {
             $role = Role::updateOrCreate(

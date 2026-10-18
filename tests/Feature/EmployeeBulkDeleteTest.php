@@ -93,3 +93,21 @@ test('only rh managers can bulk delete employees', function () {
 
     expect(Employee::find($target->id))->not->toBeNull();
 });
+
+test('deleting employees requires the employee deletion permission', function () {
+    $target = employeeWithAccount('Awa Koné', 'awa@ivosphere.ci');
+    $manager = User::create(['name' => 'Responsable', 'email' => 'responsable@ivosphere.ci', 'password' => 'MotDePasse!2026', 'is_active' => true, 'all_domains' => true]);
+    $manager->roles()->sync([Role::where('slug', 'responsable')->value('id')]);
+
+    $this->actingAs($manager)->get(route('rh.employees.index'))->assertOk()->assertDontSee('Tout sélectionner sur cette page');
+    $this->actingAs($manager)->delete(route('rh.employees.bulk-destroy'), ['employee_ids' => [$target->id]])->assertForbidden();
+    $this->actingAs($manager)->delete(route('rh.employees.destroy', $target))->assertForbidden();
+
+    expect(Employee::find($target->id))->not->toBeNull();
+
+    $hrManager = User::create(['name' => 'RH', 'email' => 'rh.test@ivosphere.ci', 'password' => 'MotDePasse!2026', 'is_active' => true, 'all_domains' => true]);
+    $hrManager->roles()->sync([Role::where('slug', 'responsable_rh')->value('id')]);
+
+    $this->actingAs($hrManager)->delete(route('rh.employees.bulk-destroy'), ['employee_ids' => [$target->id]])->assertSessionHas('success');
+    expect(Employee::find($target->id))->toBeNull();
+});

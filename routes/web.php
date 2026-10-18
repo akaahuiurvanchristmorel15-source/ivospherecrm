@@ -188,8 +188,9 @@ Route::middleware('auth')->group(function () {
     // Pôles Transversaux — Navigation d'accès selon les Rôles et Domaines
     Route::prefix('rh')->name('rh.')->middleware('role:administrateur,responsable,responsable_rh')->group(function () {
         Route::get('/', [RhDashboardController::class, 'index'])->name('index');
-        Route::delete('employees', [EmployeeController::class, 'bulkDestroy'])->name('employees.bulk-destroy');
-        Route::resource('employees', EmployeeController::class);
+        Route::delete('employees', [EmployeeController::class, 'bulkDestroy'])->middleware('permission:employees.delete')->name('employees.bulk-destroy');
+        Route::resource('employees', EmployeeController::class)->only(['destroy'])->middleware('permission:employees.delete');
+        Route::resource('employees', EmployeeController::class)->except(['destroy']);
         Route::resource('leaves', LeaveRequestController::class)->except(['show', 'edit', 'update']);
         Route::patch('leaves/{leave}/approve', [LeaveRequestController::class, 'approve'])->name('leaves.approve');
         Route::patch('leaves/{leave}/reject', [LeaveRequestController::class, 'reject'])->name('leaves.reject');
@@ -298,11 +299,12 @@ Route::middleware('auth')->group(function () {
         Route::resource('appointments', CommercialAppointmentController::class);
 
         // Produits & Catalogue (avec QR Code & EAN)
-        Route::get('products/print-catalog', [ProductController::class, 'printCatalog'])->name('products.print-catalog');
+        Route::get('products/print-catalog', [ProductController::class, 'printCatalog'])->middleware('permission:stocks.catalog')->name('products.print-catalog');
         Route::get('products/{product}/qr-download', [ProductController::class, 'downloadQr'])->name('products.qr-download');
         Route::resource('products', ProductController::class)->only(['edit', 'update'])->middleware('permission:products.edit');
         Route::resource('products', ProductController::class)->only(['destroy'])->middleware('permission:products.delete');
-        Route::resource('products', ProductController::class)->only(['index', 'create', 'store', 'show']);
+        Route::resource('products', ProductController::class)->only(['create', 'store'])->middleware('permission:products.create');
+        Route::resource('products', ProductController::class)->only(['index', 'show']);
 
         // Devis
         Route::get('quotations/{quotation}/print', [QuotationController::class, 'print'])->name('quotations.print');
@@ -429,8 +431,11 @@ Route::middleware('auth')->group(function () {
         Route::post('revenue-booster/secure-stock', [StockDashboardController::class, 'secureStock'])->name('revenue-booster.secure-stock');
 
         Route::resource('warehouses', WarehouseController::class);
-        Route::get('products/bulk-create', [StockProductController::class, 'bulkCreate'])->name('products.bulk-create');
-        Route::post('products/bulk-store', [StockProductController::class, 'bulkStore'])->name('products.bulk-store');
+        Route::middleware('permission:products.create')->group(function () {
+            Route::get('products/bulk-create', [StockProductController::class, 'bulkCreate'])->name('products.bulk-create');
+            Route::post('products/bulk-store', [StockProductController::class, 'bulkStore'])->name('products.bulk-store');
+            Route::resource('products', StockProductController::class)->only(['create', 'store']);
+        });
         // Catalogue : modification et suppression réservées (permissions products.edit / products.delete)
         Route::middleware('permission:products.edit')->group(function () {
             Route::match(['get', 'post'], 'products/bulk-edit', [StockProductController::class, 'bulkEdit'])->name('products.bulk-edit');
@@ -442,10 +447,10 @@ Route::middleware('auth')->group(function () {
             Route::post('products/bulk-destroy', [StockProductController::class, 'bulkDestroy'])->name('products.bulk-destroy');
             Route::resource('products', StockProductController::class)->only(['destroy']);
         });
-        Route::get('products/print-catalog', [StockProductController::class, 'printCatalog'])->name('products.print-catalog');
-        Route::get('products/download-catalog', [StockProductController::class, 'downloadCatalog'])->name('products.download-catalog');
+        Route::get('products/print-catalog', [StockProductController::class, 'printCatalog'])->middleware('permission:stocks.catalog')->name('products.print-catalog');
+        Route::get('products/download-catalog', [StockProductController::class, 'downloadCatalog'])->middleware('permission:stocks.catalog')->name('products.download-catalog');
         Route::get('products/{product}/qr-download', [StockProductController::class, 'downloadQr'])->name('products.qr-download');
-        Route::resource('products', StockProductController::class)->only(['index', 'create', 'store']);
+        Route::resource('products', StockProductController::class)->only(['index']);
         Route::get('movements', [StockMovementController::class, 'index'])->name('movements.index');
         Route::get('movements/create', [StockMovementController::class, 'create'])->name('movements.create');
         Route::post('movements', [StockMovementController::class, 'store'])->name('movements.store');
