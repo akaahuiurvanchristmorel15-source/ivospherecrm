@@ -24,6 +24,7 @@ use App\Http\Controllers\ClientPortal\ClientPortalController;
 use App\Http\Controllers\Commercial\CommercialAppointmentController;
 use App\Http\Controllers\Commercial\CustomerController;
 use App\Http\Controllers\Commercial\CyberController;
+use App\Http\Controllers\Commercial\CyberDepositDeskController;
 use App\Http\Controllers\Commercial\DeliveryController;
 use App\Http\Controllers\Commercial\InvoiceController;
 use App\Http\Controllers\Commercial\OrderController;
@@ -34,6 +35,7 @@ use App\Http\Controllers\Commercial\ProspectController;
 use App\Http\Controllers\Commercial\QuotationController;
 use App\Http\Controllers\Commercial\SupplierController;
 use App\Http\Controllers\Contract\ContractController;
+use App\Http\Controllers\CyberDepositController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Finance\AssetMaintenanceController;
 use App\Http\Controllers\Finance\AssetRentalController;
@@ -118,6 +120,10 @@ Route::prefix('offres')->name('offres.')->group(function () {
     Route::post('paiement/{subscription:reference}/relancer', [OfferController::class, 'retry'])->middleware('throttle:10,1')->name('payment.retry');
     Route::get('paiement/{subscription:reference}/recapitulatif', [OfferController::class, 'pdf'])->name('payment.pdf');
 });
+
+// Cyber : dépôt de documents à imprimer par les clients (QR code du comptoir)
+Route::get('/depot-impression/{token}', [CyberDepositController::class, 'show'])->middleware('throttle:60,1')->name('cyber.deposit.show');
+Route::post('/depot-impression/{token}', [CyberDepositController::class, 'store'])->middleware('throttle:10,1')->name('cyber.deposit.store');
 
 // Inscription d'un collaborateur par lien à usage unique
 Route::get('/invitation/{token}', [InvitationController::class, 'show'])->middleware('throttle:30,1')->name('invitations.show');
@@ -283,6 +289,12 @@ Route::middleware('auth')->group(function () {
         Route::post('cyber/services', [CyberController::class, 'storeService'])->name('cyber.services.store');
         Route::put('cyber/services/{cyberService}', [CyberController::class, 'updateService'])->name('cyber.services.update');
         Route::delete('cyber/services/{cyberService}', [CyberController::class, 'destroyService'])->name('cyber.services.destroy');
+        // Documents déposés par les clients via le QR code du comptoir
+        Route::get('cyber/qr', [CyberDepositDeskController::class, 'qr'])->name('cyber.qr');
+        Route::post('cyber/qr/regenerer', [CyberDepositDeskController::class, 'regenerateQr'])->name('cyber.qr.regenerate');
+        Route::get('cyber/depots', [CyberDepositDeskController::class, 'index'])->name('cyber.deposits.index');
+        Route::get('cyber/depots/{cyberPrintRequest}/fichiers/{cyberPrintFile}', [CyberDepositDeskController::class, 'download'])->name('cyber.deposits.download');
+        Route::patch('cyber/depots/{cyberPrintRequest}/statut', [CyberDepositDeskController::class, 'updateStatus'])->name('cyber.deposits.status');
 
         // Clients
         Route::resource('customers', CustomerController::class);

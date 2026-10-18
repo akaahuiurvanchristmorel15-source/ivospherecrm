@@ -42,6 +42,11 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    // Conversion Word / Excel en PDF pour compter exactement les pages (cyber). false = désactivé.
+    'libreoffice' => [
+        'binary' => env('LIBREOFFICE_BINARY'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
