@@ -6,7 +6,8 @@
     ];
     $statusFilters = ['' => 'Tous', 'actif' => 'Actifs', 'suspendu' => 'Suspendus', 'inactif' => 'Inactifs'];
     $avatarTints = ['bg-blue-50 text-[#0066FF]', 'bg-emerald-50 text-emerald-700', 'bg-purple-50 text-purple-700', 'bg-amber-50 text-amber-700', 'bg-rose-50 text-rose-700'];
-    $selectableEmployees = $employees->getCollection()
+    $canDeleteEmployees = auth()->user()->hasPermission('employees.delete');
+    $selectableEmployees = ! $canDeleteEmployees ? collect() : $employees->getCollection()
         ->reject(fn ($employee) => $employee->user_id !== null && $employee->user_id === auth()->id())
         ->mapWithKeys(fn ($employee) => [$employee->id => $employee->full_name]);
     $hasFilters = request()->hasAny(['search', 'domain_id', 'status']) && collect(request()->only(['search', 'domain_id', 'status']))->filter()->isNotEmpty();
@@ -86,6 +87,7 @@
             </div>
         @else
             {{-- Sélection multiple --}}
+            @if($canDeleteEmployees)
             <div class="flex flex-wrap items-center gap-3">
                 <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-2 text-xs font-medium text-[#0B0F14]">
                     <input type="checkbox" :checked="allSelected" @change="toggleAll()" class="h-4 w-4 rounded border-[#E2E8F0] text-[#0066FF] focus:ring-[#0066FF]/30">
@@ -93,6 +95,7 @@
                 </label>
                 <p x-show="selected.length" x-cloak class="text-xs text-[#64748B]"><span class="font-semibold text-[#0B0F14]" x-text="selected.length"></span> sélectionné(s)</p>
             </div>
+            @endif
 
             <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 @foreach($employees as $employee)
@@ -142,6 +145,7 @@
                             <a href="{{ route('rh.employees.edit', $employee) }}" class="rounded-lg p-2 transition hover:bg-slate-100 hover:text-[#0B0F14]" title="Modifier">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </a>
+                            @if($canDeleteEmployees)
                             <form action="{{ route('rh.employees.destroy', $employee) }}" method="POST" onsubmit="return confirm('Désactiver {{ addslashes($employee->full_name) }} ?');">
                                 @csrf
                                 @method('DELETE')
@@ -149,6 +153,7 @@
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </li>
                 @endforeach

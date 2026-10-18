@@ -110,7 +110,7 @@
             </a>
             @endif
 
-            @if(\App\Support\TenantAccess::allows('stock.products.create'))
+            @if(\App\Support\TenantAccess::allows('stock.products.create') && auth()->user()->hasPermission('products.create'))
             <a href="{{ route('stock.products.create') }}" class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#E2E8F0] bg-white hover:bg-slate-50 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200/60">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>

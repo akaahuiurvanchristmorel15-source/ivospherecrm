@@ -73,3 +73,31 @@ test('the administrator can grant a catalogue permission to a role', function ()
     $this->actingAs($this->manager->fresh())->get(route('stock.products.edit', $this->product))->assertOk();
     $this->actingAs($this->manager->fresh())->delete(route('stock.products.destroy', $this->product))->assertForbidden();
 });
+
+test('adding products and printing the catalogue are granted to the roles that see the stock and can be withdrawn', function () {
+    $stockRoles = Permission::where('slug', 'stocks.view')->firstOrFail()->roles()->pluck('slug')->push('administrateur')->unique()->sort()->values()->all();
+
+    foreach (['products.create', 'stocks.catalog'] as $slug) {
+        expect(Permission::where('slug', $slug)->firstOrFail()->roles()->pluck('slug')->sort()->values()->all())->toBe($stockRoles);
+    }
+
+    $this->actingAs($this->manager)->get(route('stock.products.create'))->assertOk();
+    $this->actingAs($this->manager)->get(route('stock.products.print-catalog'))->assertOk();
+
+    $manager = Role::where('slug', 'responsable')->firstOrFail();
+    $manager->permissions()->detach(Permission::whereIn('slug', ['products.create', 'stocks.catalog'])->pluck('id'));
+    $this->manager = $this->manager->fresh();
+
+    $this->actingAs($this->manager);
+    $this->get(route('stock.products.create'))->assertForbidden();
+    $this->get(route('stock.products.bulk-create'))->assertForbidden();
+    $this->post(route('stock.products.store'), ['name' => 'Nouveau'])->assertForbidden();
+    $this->post(route('commercial.products.store'), ['name' => 'Nouveau'])->assertForbidden();
+    $this->get(route('stock.products.print-catalog'))->assertForbidden();
+    $this->get(route('stock.products.download-catalog'))->assertForbidden();
+
+    $this->get(route('stock.index'))
+        ->assertOk()
+        ->assertDontSee(route('stock.products.create'), false)
+        ->assertDontSee(route('stock.products.download-catalog'), false);
+});
