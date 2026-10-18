@@ -1,4 +1,4 @@
-<x-layouts.app>
+<x-layouts.app fit-screen>
     <x-slot:title>Gestion des Rôles & Permissions (RBAC) — IVOSPHERE ERP</x-slot>
 
     @php
@@ -67,17 +67,10 @@
         $allPermsFlat = $permissions->flatten()->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'slug' => $p->slug, 'group' => $p->group])->values()->all();
     @endphp
 
-    <div class="mx-auto max-w-7xl space-y-6" x-data="{ activeRoleId: '{{ $initialRoleId }}', roleSearch: '' }">
-
-        @if(session('success'))
-            <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800" role="status">
-                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                {{ session('success') }}
-            </div>
-        @endif
+    <div class="mx-auto w-full max-w-7xl space-y-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:space-y-5" x-data="{ activeRoleId: '{{ $initialRoleId }}', roleSearch: '' }">
 
         {{-- Résumé --}}
-        <dl class="grid grid-cols-3 divide-x divide-[#E2E8F0] rounded-2xl border border-[#E2E8F0] bg-white">
+        <dl class="sticky top-0 z-10 grid shrink-0 grid-cols-3 divide-x divide-[#E2E8F0] rounded-2xl border border-[#E2E8F0] bg-white shadow-sm lg:static lg:shadow-none">
             <div class="px-4 py-3 sm:px-5">
                 <dt class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Rôles</dt>
                 <dd class="mt-0.5 text-xl font-bold text-[#0B0F14]">{{ $roles->count() }}</dd>
@@ -92,10 +85,10 @@
             </div>
         </dl>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+        <div class="grid grid-cols-1 gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[300px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
 
             {{-- Liste des rôles --}}
-            <aside class="rounded-2xl border border-[#E2E8F0] bg-white lg:sticky lg:top-24">
+            <aside class="rounded-2xl border border-[#E2E8F0] bg-white lg:flex lg:min-h-0 lg:flex-col">
                 <div class="border-b border-[#E2E8F0] p-3">
                     <label for="role-search" class="sr-only">Rechercher un rôle</label>
                     <div class="relative">
@@ -104,7 +97,7 @@
                                class="h-10 w-full rounded-xl border border-[#E2E8F0] bg-[#F5F7FA] pl-9 pr-3 text-xs text-[#0B0F14] placeholder-[#64748B] focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
                     </div>
                 </div>
-                <nav class="flex gap-2 overflow-x-auto p-2 lg:max-h-[calc(100vh-14rem)] lg:flex-col lg:gap-0.5 lg:overflow-y-auto lg:overflow-x-visible" role="tablist" aria-label="Rôles">
+                <nav class="flex gap-2 overflow-x-auto p-2 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-0.5 lg:overflow-y-auto lg:overflow-x-visible" role="tablist" aria-label="Rôles">
                     @foreach($roles as $r)
                         @php
                             $rPermsCount = $r->permissions->count();
@@ -140,8 +133,8 @@
                 </nav>
             </aside>
 
-            {{-- Droits du rôle sélectionné --}}
-            <div class="min-w-0">
+            {{-- Droits du rôle sélectionné (défile seul sur ordinateur) --}}
+            <div class="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
                 @foreach($roles as $role)
                     @php
                         $rolePermIds = $role->permissions->pluck('id')->values()->all();
@@ -270,7 +263,7 @@
 
                             {{-- Barre d'enregistrement --}}
                             <div x-show="isDirty()" x-cloak x-transition.opacity
-                                 class="sticky bottom-24 z-20 flex flex-col gap-3 rounded-2xl border border-amber-300 bg-white p-3 pl-4 shadow-lg sm:flex-row sm:items-center lg:bottom-4">
+                                 class="sticky bottom-24 z-20 flex flex-col gap-3 rounded-2xl border border-amber-300 bg-white p-3 pl-4 shadow-lg sm:flex-row sm:items-center lg:bottom-0">
                                 <p class="flex flex-1 items-center gap-2 text-xs font-semibold text-amber-700">
                                     <span class="h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>Modifications non enregistrées pour {{ $role->name }}
                                 </p>

@@ -31,9 +31,13 @@
         <x-module-nav />
 
         <!-- Scrollable Content Area (#F5F7FA with safe bottom padding for mobile tab bar) -->
-        <main class="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 bg-[#F5F7FA]">
-            <div class="max-w-7xl mx-auto flex flex-col min-h-full">
-                <div class="flex-1 space-y-5 sm:space-y-6">
+        {{-- fit-screen : la page occupe exactement l'écran (ordinateur) et fait défiler ses propres zones --}}
+        @php
+            $fitScreen = $attributes->has('fit-screen');
+        @endphp
+        <main class="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 bg-[#F5F7FA] {{ $fitScreen ? 'lg:overflow-hidden' : '' }}">
+            <div class="max-w-7xl mx-auto flex flex-col min-h-full {{ $fitScreen ? 'lg:h-full' : '' }}">
+                <div class="flex-1 space-y-5 sm:space-y-6 {{ $fitScreen ? 'lg:flex lg:min-h-0 lg:flex-col' : '' }}">
 
                     <!-- Global Flash Notifications -->
                     @if(session('success'))
@@ -72,7 +76,9 @@
                 </div>
 
                 <!-- Pied de page discret (§ Structure générale) -->
-                <x-footer />
+                <div class="{{ $fitScreen ? 'lg:hidden' : '' }}">
+                    <x-footer />
+                </div>
             </div>
         </main>
 
