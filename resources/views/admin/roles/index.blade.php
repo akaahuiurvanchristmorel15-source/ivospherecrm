@@ -250,7 +250,7 @@
                                     <div x-show="open" x-collapse class="grid grid-cols-1 border-t border-[#E2E8F0] xl:grid-cols-2">
                                         @foreach($perms as $perm)
                                             <label x-show="matches({{ Js::from($perm->name) }}, {{ Js::from($perm->slug) }})"
-                                                   class="flex cursor-pointer items-center gap-3 border-b border-[#E2E8F0] px-4 py-3 transition hover:bg-[#F5F7FA] xl:odd:border-r">
+                                                   class="relative flex cursor-pointer items-center gap-3 border-b border-[#E2E8F0] px-4 py-3 transition hover:bg-[#F5F7FA] xl:odd:border-r">
                                                 <span class="min-w-0 flex-1">
                                                     <span class="block text-xs font-semibold text-[#0B0F14]">{{ $perm->name }}</span>
                                                     <span class="block truncate font-mono text-[10px] text-[#64748B]">{{ $perm->slug }}</span>
