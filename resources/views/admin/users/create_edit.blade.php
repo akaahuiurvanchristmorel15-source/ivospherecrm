@@ -556,5 +556,22 @@
             </x-card>
 
         </form>
+
+        @if($isEdit && $user->hasTwoFactorEnabled() && $user->id !== auth()->id())
+            <x-card>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="font-semibold text-[#0B0F14]">Double authentification activée</p>
+                        <p class="text-[11px] text-[#64748B]">Depuis le {{ $user->two_factor_confirmed_at->format('d/m/Y') }}. À réinitialiser si l'utilisateur a perdu son téléphone et ses codes de récupération.</p>
+                    </div>
+                    <form method="POST" action="{{ route('admin.users.two-factor.reset', $user) }}"
+                          onsubmit="return confirm('Réinitialiser la double authentification de {{ addslashes($user->name) }} ?')">
+                        @csrf
+                        @method('DELETE')
+                        <x-button variant="secondary" type="submit">Réinitialiser la 2FA</x-button>
+                    </form>
+                </div>
+            </x-card>
+        @endif
     </div>
 </x-layouts.app>

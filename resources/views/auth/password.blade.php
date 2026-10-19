@@ -11,7 +11,7 @@
     <x-slot:title>Mon compte</x-slot>
 
     <div class="mx-auto max-w-xl space-y-5">
-        <x-page-header title="Mon compte" description="Photo de profil et mot de passe de votre compte {{ auth()->user()->email }}." />
+        <x-page-header title="Mon compte" description="Photo de profil, mot de passe et double authentification de votre compte {{ auth()->user()->email }}." />
 
         {{-- Photo de profil --}}
         <x-card>
@@ -88,5 +88,7 @@
                 </div>
             </form>
         </x-card>
+
+        @include('auth.partials.two-factor')
     </div>
 </x-layouts.app>

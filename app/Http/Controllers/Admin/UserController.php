@@ -267,4 +267,28 @@ class UserController extends Controller
 
         return back()->with('success', 'Statut du compte et du profil collaborateur mis à jour.');
     }
+
+    /**
+     * Réinitialise la double authentification d'un compte (téléphone perdu sans code de récupération).
+     */
+    public function resetTwoFactor(User $user): RedirectResponse
+    {
+        if ($user->id === Auth::id()) {
+            return back()->with('error', 'Gérez votre propre double authentification depuis « Mon compte ».');
+        }
+
+        $user->forceFill([
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+        ])->save();
+
+        ActivityLogger::log(
+            action: 'two_factor_reset',
+            description: "A réinitialisé la double authentification de {$user->name}",
+            subject: $user
+        );
+
+        return back()->with('success', "Double authentification de {$user->name} réinitialisée : elle devra être réactivée depuis « Mon compte ».");
+    }
 }

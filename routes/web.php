@@ -18,6 +18,8 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\ProfilePhotoController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\Automation\AlertController;
 use App\Http\Controllers\Automation\AutomationController;
 use App\Http\Controllers\Calendar\CalendarController;
@@ -140,6 +142,12 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:20,1');
 });
 
+// Seconde étape de connexion : code de l'application d'authentification
+Route::middleware('guest')->group(function () {
+    Route::get('/connexion/verification', [TwoFactorChallengeController::class, 'create'])->name('two-factor.challenge');
+    Route::post('/connexion/verification', [TwoFactorChallengeController::class, 'store'])->middleware('throttle:20,1')->name('two-factor.challenge.store');
+});
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 // Espace Authentifié
@@ -149,6 +157,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/mon-compte/mot-de-passe', [PasswordController::class, 'update'])->middleware('throttle:6,1')->name('password.update');
     Route::post('/mon-compte/photo', [ProfilePhotoController::class, 'update'])->middleware('throttle:10,1')->name('profile.photo.update');
     Route::delete('/mon-compte/photo', [ProfilePhotoController::class, 'destroy'])->name('profile.photo.destroy');
+    Route::post('/mon-compte/double-authentification', [TwoFactorController::class, 'store'])->middleware('throttle:6,1')->name('two-factor.enable');
+    Route::post('/mon-compte/double-authentification/confirmer', [TwoFactorController::class, 'confirm'])->middleware('throttle:10,1')->name('two-factor.confirm');
+    Route::post('/mon-compte/double-authentification/codes-de-recuperation', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:6,1')->name('two-factor.recovery-codes');
+    Route::delete('/mon-compte/double-authentification', [TwoFactorController::class, 'destroy'])->middleware('throttle:6,1')->name('two-factor.disable');
 
     // Espace abonné : accueil et abonnement
     Route::get('/espace-abonne', [SpaceController::class, 'home'])->name('space.home');
@@ -171,6 +183,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::patch('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
         Route::get('users/{user}/journee', [UserDayController::class, 'show'])->name('users.day');
+        Route::delete('users/{user}/double-authentification', [UserController::class, 'resetTwoFactor'])->name('users.two-factor.reset');
         Route::post('users/invitations', [UserInvitationController::class, 'store'])->name('users.invitations.store');
         Route::delete('users/invitations/{invitation}', [UserInvitationController::class, 'destroy'])->name('users.invitations.destroy');
 

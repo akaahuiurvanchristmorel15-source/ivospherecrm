@@ -5,14 +5,22 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Services\ActivityLogger;
+use App\Services\TwoFactorAuthenticator;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PasswordController extends Controller
 {
-    public function edit(): View
+    public function edit(Request $request, TwoFactorAuthenticator $authenticator): View
     {
-        return view('auth.password');
+        $user = $request->user();
+        $isTwoFactorPending = $user->two_factor_secret && ! $user->hasTwoFactorEnabled();
+
+        return view('auth.password', [
+            'twoFactorQrCode' => $isTwoFactorPending ? $authenticator->qrCodeSvg($user) : null,
+            'twoFactorSecret' => $isTwoFactorPending ? $user->two_factor_secret : null,
+        ]);
     }
 
     public function update(UpdatePasswordRequest $request): RedirectResponse

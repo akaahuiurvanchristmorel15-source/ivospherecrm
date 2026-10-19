@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureTwoFactorIsConfigured;
+use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,20 +50,35 @@ class AuthController extends Controller
             ]);
         }
 
-        if (Auth::attempt($credentials, $remember)) {
+        if (Auth::validate($credentials)) {
             RateLimiter::clear($throttleKey);
-            $request->session()->regenerate();
 
-            $user = Auth::user();
+            /** @var User $user */
+            $user = Auth::getLastAttempted();
 
             if (! $user->is_active) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
                 throw ValidationException::withMessages([
                     'email' => 'Votre compte a été désactivé. Veuillez contacter un administrateur.',
                 ]);
+            }
+
+            // Mot de passe correct : la session ne s'ouvre qu'après le code de l'application d'authentification.
+            if ($user->hasTwoFactorEnabled()) {
+                $request->session()->regenerate();
+                $request->session()->put(TwoFactorChallengeController::SESSION_KEY, [
+                    'user_id' => $user->id,
+                    'remember' => $remember,
+                    'expires_at' => now()->addMinutes(10)->getTimestamp(),
+                ]);
+
+                return redirect()->route('two-factor.challenge');
+            }
+
+            Auth::login($user, $remember);
+            $request->session()->regenerate();
+
+            if ($user->requiresTwoFactor()) {
+                $request->session()->put(EnsureTwoFactorIsConfigured::SESSION_KEY, true);
             }
 
             ActivityLogger::log(

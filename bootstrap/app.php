@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnforceTenantAccess;
+use App\Http\Middleware\EnsureTwoFactorIsConfigured;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Espaces abonnés : accès limité aux modules du plan et à un abonnement actif.
         $middleware->appendToGroup('web', EnforceTenantAccess::class);
+
+        // Administrateurs : double authentification à activer avant d'accéder à l'application.
+        $middleware->appendToGroup('web', EnsureTwoFactorIsConfigured::class);
 
         // Retours et notifications du prestataire de paiement (état toujours revérifié par son API).
         $middleware->preventRequestForgery(except: [

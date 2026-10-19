@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['tenant_id', 'name', 'email', 'password', 'phone', 'avatar', 'is_active', 'all_domains'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -63,7 +63,26 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'all_domains' => 'boolean',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * La double authentification est active (clé confirmée par un premier code).
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
+    }
+
+    /**
+     * Le rôle du compte impose la double authentification (administrateurs).
+     */
+    public function requiresTwoFactor(): bool
+    {
+        return $this->isAdmin();
     }
 
     /**
