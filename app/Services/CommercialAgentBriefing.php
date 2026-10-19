@@ -20,6 +20,10 @@ use Illuminate\Support\Carbon;
  */
 class CommercialAgentBriefing
 {
+    public function __construct(
+        protected BusinessForecastService $forecasts,
+    ) {}
+
     /**
      * @var list<string>
      */
@@ -149,6 +153,8 @@ class CommercialAgentBriefing
             ];
         }
 
+        $messages = [...$messages, ...$this->forecastMessages()];
+
         $alerts = collect($messages)->whereIn('tone', ['alert', 'warn'])->count();
 
         return [
@@ -158,6 +164,43 @@ class CommercialAgentBriefing
             'week' => $this->lastSevenDays($now),
             'top_products' => $topProducts,
         ];
+    }
+
+    /**
+     * Prévisions IA : ventes des 7 prochains jours et produits qui risquent la rupture.
+     *
+     * @return list<array{tone: string, icon: string, text: string, action: ?array{label: string, url: string}}>
+     */
+    private function forecastMessages(): array
+    {
+        $forecast = $this->forecasts->latest();
+        $messages = [];
+
+        if ((float) $forecast['sales']['next_7_days'] > 0) {
+            $trend = $forecast['sales']['trend_pct'];
+            $messages[] = [
+                'tone' => $trend !== null && $trend < -10 ? 'warn' : 'info',
+                'icon' => 'trend',
+                'text' => "Prévision : environ **{$this->money((float) $forecast['sales']['next_7_days'])}** de ventes sur les 7 prochains jours"
+                    .($trend !== null ? ' (tendance sur 30 jours : **'.($trend > 0 ? '+' : '')."{$trend} %**)" : '').'.',
+                'action' => null,
+            ];
+        }
+
+        $soon = collect($forecast['stockouts'])->filter(fn (array $product) => $product['days_left'] <= 7)->values();
+        if ($soon->isNotEmpty()) {
+            $first = $soon->first();
+            $messages[] = [
+                'tone' => 'alert',
+                'icon' => 'stock',
+                'text' => "**{$soon->count()} produit(s)** risquent la rupture d'ici 7 jours, dont **{$first['name']}** "
+                    .($first['days_left'] < 1 ? 'dès aujourd\'hui' : 'dans **'.(int) floor($first['days_left']).' jour(s)**')
+                    .($first['reorder_qty'] > 0 ? " : commandez-en environ **{$first['reorder_qty']}**." : '.'),
+                'action' => ['label' => 'Voir les produits', 'url' => route('commercial.products.index')],
+            ];
+        }
+
+        return $messages;
     }
 
     /**

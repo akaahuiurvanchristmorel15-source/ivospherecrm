@@ -47,6 +47,12 @@ return [
         'binary' => env('LIBREOFFICE_BINARY'),
     ],
 
+    // Python des prévisions IA (environnement « Setup Python App » de cPanel)
+    'python' => [
+        'binary' => env('PYTHON_BINARY'),
+        'timeout' => (int) env('PYTHON_TIMEOUT', 120),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
