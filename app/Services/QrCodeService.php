@@ -58,6 +58,43 @@ class QrCodeService
     }
 
     /**
+     * Génère un SVG compact du QR code (un seul tracé, zone de silence incluse), adapté au rendu PDF sans GD.
+     */
+    public function generateCompactSvg(string $data, int $margin = 2): string
+    {
+        $encoder = new QRCodeEncoder($data, ['s' => 'qrm']);
+        $matrixData = $encoder->getMatrix();
+        $matrix = $matrixData['b'];
+        $size = $matrixData['s'][0];
+        $total = $size + $margin * 2;
+
+        $path = '';
+        for ($y = 0; $y < $size; $y++) {
+            $x = 0;
+            while ($x < $size) {
+                if (empty($matrix[$y][$x])) {
+                    $x++;
+
+                    continue;
+                }
+
+                $runStart = $x;
+                while ($x < $size && ! empty($matrix[$y][$x])) {
+                    $x++;
+                }
+
+                $path .= sprintf('M%d %dh%dv1h-%dz', $runStart + $margin, $y + $margin, $x - $runStart, $x - $runStart);
+            }
+        }
+
+        return sprintf(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="%1$d" height="%1$d" viewBox="0 0 %1$d %1$d" shape-rendering="crispEdges"><rect width="%1$d" height="%1$d" fill="#FFFFFF"/><path fill="#0B0F14" d="%2$s"/></svg>',
+            $total,
+            $path
+        );
+    }
+
+    /**
      * Génère une étiquette article commerciale & stock complète en PNG haute résolution (600x750 px).
      */
     public function generateProductLabelPng(Product $product): string

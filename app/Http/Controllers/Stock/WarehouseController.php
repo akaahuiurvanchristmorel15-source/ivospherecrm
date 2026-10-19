@@ -4,17 +4,30 @@ namespace App\Http\Controllers\Stock;
 
 use App\Http\Controllers\Controller;
 use App\Models\Domain;
+use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\ActivityLogger;
+use App\Services\QrCodeService;
 use App\Services\StockService;
+use App\Support\PdfRenderer;
 use App\Support\TenantRule;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Throwable;
 
 class WarehouseController extends Controller
 {
+    /**
+     * Nombre de QR codes par page A4 (grille de 3 colonnes × 4 lignes).
+     */
+    public const QR_CODES_PER_PAGE = 12;
+
+    public const QR_CODES_PER_ROW = 3;
+
     public function index(Request $request)
     {
         $query = Warehouse::with('domain')->orderBy('label_number');
@@ -92,6 +105,52 @@ class WarehouseController extends Controller
             ->get();
 
         return view('stock.warehouses.show', compact('warehouse', 'stockLevels', 'recentMovements'));
+    }
+
+    /**
+     * PDF A4 des QR codes des produits en stock dans l'entrepôt (grille découpable, nom au-dessus, SKU en dessous).
+     */
+    public function downloadQrCodes(Warehouse $warehouse, QrCodeService $qrCodeService, PdfRenderer $pdfRenderer): Response|RedirectResponse
+    {
+        $products = Product::whereHas('warehouseStocks', fn ($query) => $query
+            ->where('warehouse_id', $warehouse->id)
+            ->where('physical_quantity', '>', 0))
+            ->orderBy('name')
+            ->get();
+
+        if ($products->isEmpty()) {
+            return redirect()
+                ->route('stock.warehouses.show', $warehouse)
+                ->with('error', "Aucun produit en stock dans l'entrepôt « {$warehouse->name} » : il n'y a aucun QR code à imprimer.");
+        }
+
+        $labels = $products->map(fn (Product $product) => [
+            'product' => $product,
+            'qrSrc' => 'data:image/svg+xml;base64,'.base64_encode($qrCodeService->generateCompactSvg($product->ean)),
+        ]);
+
+        $data = [
+            'warehouse' => $warehouse,
+            'pages' => $labels->chunk(self::QR_CODES_PER_PAGE)->map(fn ($page) => $page->chunk(self::QR_CODES_PER_ROW)),
+            'productCount' => $products->count(),
+            'perRow' => self::QR_CODES_PER_ROW,
+            'rowsPerPage' => intdiv(self::QR_CODES_PER_PAGE, self::QR_CODES_PER_ROW),
+        ];
+
+        try {
+            $pdf = $pdfRenderer->fromHtml(view('stock.warehouses.qr_codes', $data + ['isPdf' => true])->render());
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->view('stock.warehouses.qr_codes', $data + ['isPdf' => false]);
+        }
+
+        $filename = 'QR-codes-'.Str::slug((string) $warehouse->code).'-'.now()->format('Y-m-d').'.pdf';
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     public function edit(Warehouse $warehouse)

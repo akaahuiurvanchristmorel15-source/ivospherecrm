@@ -36,6 +36,10 @@
                         Télécharger (PDF)
                     </x-button>
                     @endif
+                    <x-button href="{{ route('stock.warehouses.qr-codes', $warehouse) }}" variant="secondary">
+                        <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>
+                        PDF des QR codes
+                    </x-button>
                     <x-button href="{{ route('stock.warehouses.edit', $warehouse) }}" variant="secondary">
                         Modifier
                     </x-button>

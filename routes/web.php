@@ -458,6 +458,7 @@ Route::middleware('auth')->group(function () {
         Route::post('revenue-booster/optimize-price', [StockDashboardController::class, 'optimizePrice'])->name('revenue-booster.optimize-price');
         Route::post('revenue-booster/secure-stock', [StockDashboardController::class, 'secureStock'])->name('revenue-booster.secure-stock');
 
+        Route::get('warehouses/{warehouse}/qr-codes', [WarehouseController::class, 'downloadQrCodes'])->name('warehouses.qr-codes');
         Route::resource('warehouses', WarehouseController::class);
         Route::middleware('permission:products.create')->group(function () {
             Route::get('products/bulk-create', [StockProductController::class, 'bulkCreate'])->name('products.bulk-create');

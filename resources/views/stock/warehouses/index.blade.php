@@ -116,6 +116,11 @@
                         Accéder au stock
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
+                    <a href="{{ route('stock.warehouses.qr-codes', $warehouse) }}" title="Télécharger le PDF A4 des QR codes des produits de l'entrepôt"
+                       class="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] text-xs font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>
+                        PDF des QR codes
+                    </a>
                     <div class="grid gap-2 {{ $canPrintCatalog ? 'grid-cols-4' : 'grid-cols-2' }}">
                         <a href="{{ route('stock.warehouses.edit', $warehouse) }}" title="Paramètres de l'entrepôt"
                            class="flex flex-col items-center gap-1 rounded-xl border border-[#E2E8F0] py-2 text-[11px] font-medium text-[#64748B] transition hover:bg-[#F5F7FA] hover:text-[#0B0F14]">
