@@ -91,7 +91,8 @@ class PosController extends Controller
                 );
             }
 
-            $domainId = $request->domain_id ?? $customer->domain_id ?? Domain::first()?->id;
+            // Domaine de la vente : celui des articles vendus (le plus important en montant si plusieurs domaines)
+            $domainId = self::dominantProductDomain($request->items) ?? $request->domain_id ?? Domain::first()?->id;
 
             // Calculate totals
             $subtotal = 0;
@@ -200,5 +201,32 @@ class PosController extends Controller
 
             return redirect()->route('commercial.invoices.print', $invoice)->with('success', 'Vente enregistrée avec succès ! Ticket généré.');
         });
+    }
+
+    /**
+     * Domaine qui pèse le plus dans le ticket, d'après le domaine de chaque article vendu.
+     *
+     * @param  array<int, array{product_id: int|string, quantity: int|string, unit_price: float|int|string, discount?: float|int|string|null}>  $items
+     */
+    public static function dominantProductDomain(array $items): ?int
+    {
+        $domains = Product::whereIn('id', collect($items)->pluck('product_id'))->pluck('domain_id', 'id');
+        $amounts = [];
+
+        foreach ($items as $item) {
+            $domainId = $domains[(int) $item['product_id']] ?? null;
+            if ($domainId !== null) {
+                $line = (float) $item['quantity'] * (float) $item['unit_price'] - (float) ($item['discount'] ?? 0);
+                $amounts[$domainId] = ($amounts[$domainId] ?? 0) + max(0, $line);
+            }
+        }
+
+        if ($amounts === []) {
+            return null;
+        }
+
+        arsort($amounts);
+
+        return (int) array_key_first($amounts);
     }
 }
