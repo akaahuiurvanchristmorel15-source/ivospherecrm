@@ -87,39 +87,20 @@
                 </div>
             @else
                 <p class="ivo-in mt-6 max-w-md text-center text-sm text-black/50 night:text-white/50" style="--d:160ms">
-                    L'assistant IA n'est pas activé pour votre rôle. Accédez directement à vos modules ci-dessous.
+                    L'assistant IA n'est pas activé pour votre rôle. Accédez directement à vos modules :
                 </p>
-            @endif
-
-            {{-- ─────────── Vos modules ─────────── --}}
-            <section class="w-full pt-16 sm:pt-24 pb-6">
-                <div class="flex justify-center">
-                    <span class="px-3 py-1 rounded-full border border-black/10 bg-white/60 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">Vos modules</span>
-                </div>
-                <h2 class="mt-5 text-center text-2xl sm:text-4xl font-semibold tracking-tight">Tout IVOSPHERE, à portée de question</h2>
-
-                <div class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="ivo-in mt-5 flex max-w-3xl flex-wrap justify-center gap-2" style="--d:220ms">
                     @foreach($modules as $moduleLabel => $pages)
                         @continue($moduleLabel === 'Général')
-                        <a href="{{ $pages->first()['url'] }}"
-                           @if($canUseAssistant) @click.prevent="ask(@js('Que contient le module '.$moduleLabel.' ?'))" @endif
-                           class="ivo-in group rounded-3xl border border-black/[0.08] bg-white/55 p-5 backdrop-blur-2xl hover:border-black/20 hover:bg-white/70 night:border-white/10 night:bg-white/[0.04] night:hover:border-white/20 night:hover:bg-white/[0.07] transition"
-                           style="--d:{{ 340 + $loop->index * 50 }}ms">
-                            <span class="text-4xl font-semibold tracking-tighter text-black/10 night:text-white/15">{{ str_pad((string) $pages->count(), 2, '0', STR_PAD_LEFT) }}</span>
-                            <p class="mt-5 text-sm font-semibold">{{ $moduleLabel }}</p>
-                            <p class="mt-1 flex items-center gap-1 text-xs text-black/45 night:text-white/45">
-                                {{ $pages->count() }} page(s)
-                                <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </p>
-                        </a>
+                        <a href="{{ $pages->first()['url'] }}" class="rounded-full border border-black/10 bg-white/55 px-3.5 py-1.5 text-xs text-black/60 backdrop-blur-xl hover:border-black/25 hover:text-black night:border-white/15 night:bg-white/[0.04] night:text-white/65 night:hover:border-white/30 night:hover:text-white transition">{{ $moduleLabel }}</a>
                     @endforeach
                 </div>
+            @endif
 
-                <div class="mt-8 flex justify-center gap-6 text-xs text-black/45 night:text-white/45">
-                    <a href="{{ route('my-day') }}" class="hover:text-black night:hover:text-white transition">Ma journée</a>
-                    <a href="{{ route('dashboard.indicators') }}" class="hover:text-black night:hover:text-white transition">Voir les indicateurs →</a>
-                </div>
-            </section>
+            <div class="ivo-in mt-10 pb-6 flex justify-center gap-6 text-xs text-black/45 night:text-white/45" style="--d:340ms">
+                <a href="{{ route('my-day') }}" class="hover:text-black night:hover:text-white transition">Ma journée</a>
+                <a href="{{ route('dashboard.indicators') }}" class="hover:text-black night:hover:text-white transition">Voir les indicateurs →</a>
+            </div>
         </div>
 
         {{-- ─────────── Conversation ─────────── --}}
