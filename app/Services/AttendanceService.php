@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Request;
 
 class AttendanceService
 {
+    public function __construct(
+        protected GeofenceService $geofenceService
+    ) {}
+
     /**
      * Génère la charge utile signée et horodatée du QR code dynamique des locaux.
      *
@@ -133,9 +137,9 @@ class AttendanceService
 
     /**
      * Enregistre un pointage d'arrivée avec vérification simultanée :
-     * QR code + Utilisateur + Heure + Planning (sans géolocalisation).
+     * QR code + Utilisateur + Position GPS (lieux de pointage) + Heure + Planning.
      *
-     * @param  array{qr_payload: string, device_fingerprint: string|null, device_info: string|null}  $data
+     * @param  array{qr_payload: string, latitude?: float|null, longitude?: float|null, accuracy?: float|null, device_fingerprint?: string|null, device_info?: string|null}  $data
      * @return array{success: bool, message: string, error?: string, attendance?: Attendance, delay_minutes?: int, punctuality_score?: float}
      */
     public function checkIn(User $user, array $data): array
@@ -183,6 +187,13 @@ class AttendanceService
             ];
         }
 
+        // 2 bis. Restriction géographique : quel que soit le QR (affiche, borne ou badge/matricule),
+        // la position GPS doit se trouver dans le rayon d'un lieu de pointage actif.
+        $geofence = $this->geofenceService->check($data);
+        if (! $geofence['allowed']) {
+            return $this->geofenceRefusal($geofence);
+        }
+
         $today = today();
 
         // 3. Vérification du planning de l'employé
@@ -228,11 +239,12 @@ class AttendanceService
             [
                 'check_in' => $now->format('H:i:s'),
                 'check_in_at' => $now,
-                'latitude' => null,
-                'longitude' => null,
-                'accuracy_meters' => null,
-                'distance_meters' => null,
-                'location_verified' => false,
+                'latitude' => $geofence['latitude'] ?? null,
+                'longitude' => $geofence['longitude'] ?? null,
+                'accuracy_meters' => $geofence['accuracy_meters'] ?? null,
+                'distance_meters' => $geofence['distance_meters'] ?? null,
+                'location_verified' => $geofence['enforced'],
+                'check_in_location_id' => $geofence['location']?->id ?? null,
                 'qr_type' => $qrType,
                 'device_fingerprint' => $data['device_fingerprint'] ?? null,
                 'device_info' => $data['device_info'] ?? Request::userAgent(),
@@ -275,7 +287,9 @@ class AttendanceService
     }
 
     /**
-     * Enregistre un pointage de départ manuel par l'employé.
+     * Enregistre un pointage de départ manuel par l'employé (position GPS vérifiée comme à l'arrivée).
+     *
+     * @param  array{latitude?: float|null, longitude?: float|null, accuracy?: float|null}  $data
      */
     public function checkOut(User $user, array $data = []): array
     {
@@ -311,11 +325,21 @@ class AttendanceService
             ];
         }
 
+        $geofence = $this->geofenceService->check($data);
+        if (! $geofence['allowed']) {
+            return $this->geofenceRefusal($geofence);
+        }
+
         $now = now();
         $attendance->update([
             'check_out' => $now->format('H:i:s'),
             'check_out_at' => $now,
             'check_out_type' => 'manual',
+            'check_out_latitude' => $geofence['latitude'] ?? null,
+            'check_out_longitude' => $geofence['longitude'] ?? null,
+            'check_out_accuracy_meters' => $geofence['accuracy_meters'] ?? null,
+            'check_out_distance_meters' => $geofence['distance_meters'] ?? null,
+            'check_out_location_id' => $geofence['location']?->id ?? null,
             'notes' => ($attendance->notes ? $attendance->notes.' • ' : '')."Départ scanné à {$now->format('H:i')}.",
         ]);
 
@@ -329,6 +353,24 @@ class AttendanceService
             'success' => true,
             'message' => "Pointage de départ enregistré avec succès à {$now->format('H:i')} (Mode manuel).",
             'attendance' => $attendance,
+        ];
+    }
+
+    /**
+     * Réponse de refus d'un pointage effectué hors des lieux autorisés (journalisée pour le RH).
+     *
+     * @param  array{error?: string, message?: string, distance_meters?: float}  $geofence
+     * @return array{success: false, error: string, message: string, distance_meters: float|null}
+     */
+    protected function geofenceRefusal(array $geofence): array
+    {
+        ActivityLogger::log('pointage_refuse_hors_zone', $geofence['message'], null);
+
+        return [
+            'success' => false,
+            'error' => $geofence['error'],
+            'message' => $geofence['message'],
+            'distance_meters' => $geofence['distance_meters'] ?? null,
         ];
     }
 

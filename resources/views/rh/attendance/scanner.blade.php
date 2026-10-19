@@ -27,6 +27,11 @@
                 videoStream: null,
                 barcodeDetector: null,
                 scanInterval: null,
+                geofenceEnabled: @js($geofenceEnabled),
+                maxAccuracy: @js((int) config('attendance.geofence.max_accuracy_meters', 100)),
+                locating: false,
+                lastFix: null,
+                locationWatchId: null,
 
                 init() {
                     if ('BarcodeDetector' in window) {
@@ -38,9 +43,91 @@
                     }
                 },
 
+                // 0. Géolocalisation haute précision (la vérification de distance est faite par le serveur)
+                warmUpLocation() {
+                    if (!this.geofenceEnabled || !navigator.geolocation || this.locationWatchId !== null) return;
+                    this.locationWatchId = navigator.geolocation.watchPosition(
+                        (pos) => this.rememberFix(pos),
+                        () => {},
+                        { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+                    );
+                },
+
+                rememberFix(pos) {
+                    const fix = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy, at: Date.now() };
+                    if (!this.lastFix || Date.now() - this.lastFix.at > 15000 || fix.accuracy <= this.lastFix.accuracy) {
+                        this.lastFix = fix;
+                    }
+                },
+
+                stopLocation() {
+                    if (this.locationWatchId !== null) {
+                        navigator.geolocation.clearWatch(this.locationWatchId);
+                        this.locationWatchId = null;
+                    }
+                },
+
+                locate() {
+                    return new Promise((resolve, reject) => {
+                        if (!window.isSecureContext) {
+                            return reject(new Error('La localisation nécessite une connexion sécurisée (HTTPS). Ouvrez IVOSPHERE via son adresse https:// puis réessayez.'));
+                        }
+                        if (!navigator.geolocation) {
+                            return reject(new Error('Votre navigateur ne permet pas la localisation : impossible de pointer depuis cet appareil.'));
+                        }
+                        const isFresh = (fix) => fix && Date.now() - fix.at < 15000;
+                        if (isFresh(this.lastFix) && this.lastFix.accuracy <= this.maxAccuracy) {
+                            return resolve(this.lastFix);
+                        }
+                        const notFound = 'Position GPS introuvable. Activez la localisation (GPS) de votre téléphone puis réessayez.';
+                        let settled = false;
+                        let watchId = null;
+                        let timer = null;
+                        const finish = (fn, value) => {
+                            if (settled) return;
+                            settled = true;
+                            navigator.geolocation.clearWatch(watchId);
+                            clearTimeout(timer);
+                            fn(value);
+                        };
+                        watchId = navigator.geolocation.watchPosition(
+                            (pos) => {
+                                this.rememberFix(pos);
+                                if (this.lastFix.accuracy <= this.maxAccuracy) finish(resolve, this.lastFix);
+                            },
+                            (err) => {
+                                if (err.code === err.PERMISSION_DENIED) {
+                                    finish(reject, new Error('Localisation refusée : autorisez l\'accès à votre position pour IVOSPHERE dans les réglages du navigateur, puis réessayez.'));
+                                } else if (isFresh(this.lastFix)) {
+                                    finish(resolve, this.lastFix);
+                                } else {
+                                    finish(reject, new Error(notFound));
+                                }
+                            },
+                            { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+                        );
+                        // Au bout de 12 s, on transmet la meilleure position obtenue : le serveur juge sa précision.
+                        timer = setTimeout(() => {
+                            isFresh(this.lastFix) ? finish(resolve, this.lastFix) : finish(reject, new Error(notFound));
+                        }, 12000);
+                    });
+                },
+
+                async positionPayload() {
+                    if (!this.geofenceEnabled) return {};
+                    this.locating = true;
+                    try {
+                        const fix = await this.locate();
+                        return { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy };
+                    } finally {
+                        this.locating = false;
+                    }
+                },
+
                 // 1. Activation Caméra pour scan QR
                 async startCamera() {
                     this.resultMessage = '';
+                    this.warmUpLocation();
                     try {
                         const stream = await navigator.mediaDevices.getUserMedia({
                             video: { facingMode: 'environment' }
@@ -96,6 +183,17 @@
                     this.submitting = true;
                     this.resultMessage = '';
 
+                    let position;
+                    try {
+                        position = await this.positionPayload();
+                    } catch (err) {
+                        this.submitting = false;
+                        this.resultType = 'error';
+                        this.resultMessage = err.message;
+                        if (navigator.vibrate) navigator.vibrate(300);
+                        return;
+                    }
+
                     try {
                         const res = await fetch('{{ route('rh.attendance.check-in') }}', {
                             method: 'POST',
@@ -106,12 +204,14 @@
                             },
                             body: JSON.stringify({
                                 qr_payload: qrPayload,
+                                ...position,
                                 device_fingerprint: navigator.userAgent
                             })
                         });
 
                         const data = await res.json();
                         this.submitting = false;
+                        this.stopLocation();
 
                         if (res.ok && data.success) {
                             this.resultType = 'success';
@@ -136,6 +236,17 @@
                     this.submitting = true;
                     this.resultMessage = '';
 
+                    let position;
+                    try {
+                        position = await this.positionPayload();
+                    } catch (err) {
+                        this.submitting = false;
+                        this.resultType = 'error';
+                        this.resultMessage = err.message;
+                        if (navigator.vibrate) navigator.vibrate(300);
+                        return;
+                    }
+
                     try {
                         const res = await fetch('{{ route('rh.attendance.check-out') }}', {
                             method: 'POST',
@@ -143,7 +254,8 @@
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                                 'Accept': 'application/json'
-                            }
+                            },
+                            body: JSON.stringify(position)
                         });
 
                         const data = await res.json();
@@ -167,6 +279,13 @@
             }"
             class="space-y-4"
         >
+
+            @if($geofenceEnabled)
+                <div class="flex items-start gap-2.5 rounded-2xl border border-blue-100 bg-blue-50/70 p-3 text-xs text-blue-900">
+                    <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#0066FF]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <p>Le pointage (arrivée et départ) n'est accepté que sur un lieu autorisé de l'entreprise. Votre position GPS est vérifiée au moment du scan : autorisez la localisation lorsque le téléphone le demande.</p>
+                </div>
+            @endif
 
             <!-- 2. Statut du Jour de l'Employé -->
             <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
@@ -221,7 +340,7 @@
                                 class="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                                 <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                <span x-text="submitting ? 'Enregistrement...' : 'Pointer mon départ (Fin de journée)'"></span>
+                                <span x-text="locating ? 'Localisation en cours…' : (submitting ? 'Enregistrement...' : 'Pointer mon départ (Fin de journée)')"></span>
                             </button>
                         @endif
                     </div>
@@ -263,6 +382,11 @@
                         Annuler
                     </button>
                 </div>
+            </div>
+
+            <div x-show="locating" class="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-3.5 text-xs font-semibold text-slate-600" style="display: none;">
+                <svg class="h-4 w-4 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                <span>Vérification de votre position GPS…</span>
             </div>
 
             <!-- Messages de retour -->

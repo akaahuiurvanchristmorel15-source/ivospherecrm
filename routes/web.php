@@ -61,6 +61,7 @@ use App\Http\Controllers\Print\PrintDashboardController;
 use App\Http\Controllers\Print\PrintJobController;
 use App\Http\Controllers\QuoteRequestController;
 use App\Http\Controllers\Rh\AttendanceController;
+use App\Http\Controllers\Rh\AttendanceLocationController;
 use App\Http\Controllers\Rh\DailyTaskSheetController;
 use App\Http\Controllers\Rh\EmployeeController;
 use App\Http\Controllers\Rh\EmployeeGoalController;
@@ -215,6 +216,11 @@ Route::middleware('auth')->group(function () {
         Route::get('attendance/terminal', [AttendanceController::class, 'terminal'])->name('attendance.terminal');
         Route::get('attendance/dynamic-qr-token', [AttendanceController::class, 'dynamicQrToken'])->name('attendance.dynamic-qr-token');
         Route::get('attendance/poster', [AttendanceController::class, 'poster'])->name('attendance.poster');
+        Route::resource('attendance/locations', AttendanceLocationController::class)
+            ->only(['index', 'store', 'update', 'destroy'])
+            ->parameters(['locations' => 'location'])
+            ->names('attendance.locations')
+            ->middleware('permission:attendance.manage');
 
         // Plannings des Employés (Matrice Hebdomadaire & Règle des 6 jours max)
         Route::get('schedules', [ScheduleController::class, 'index'])->name('schedules.index');

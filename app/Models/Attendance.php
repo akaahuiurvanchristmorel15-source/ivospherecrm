@@ -25,6 +25,12 @@ class Attendance extends Model
         'accuracy_meters',
         'distance_meters',
         'location_verified',
+        'check_in_location_id',
+        'check_out_latitude',
+        'check_out_longitude',
+        'check_out_accuracy_meters',
+        'check_out_distance_meters',
+        'check_out_location_id',
         'qr_type',
         'device_fingerprint',
         'device_info',
@@ -46,6 +52,10 @@ class Attendance extends Model
             'longitude' => 'decimal:7',
             'accuracy_meters' => 'decimal:2',
             'distance_meters' => 'decimal:2',
+            'check_out_latitude' => 'decimal:7',
+            'check_out_longitude' => 'decimal:7',
+            'check_out_accuracy_meters' => 'decimal:2',
+            'check_out_distance_meters' => 'decimal:2',
             'delay_minutes' => 'integer',
             'punctuality_score' => 'decimal:2',
         ];
@@ -54,6 +64,16 @@ class Attendance extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function checkInLocation(): BelongsTo
+    {
+        return $this->belongsTo(AttendanceLocation::class, 'check_in_location_id');
+    }
+
+    public function checkOutLocation(): BelongsTo
+    {
+        return $this->belongsTo(AttendanceLocation::class, 'check_out_location_id');
     }
 
     public function scopeForDate(Builder $query, $date): void

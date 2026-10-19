@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Rh;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Models\AttendanceLocation;
 use App\Models\Employee;
 use App\Models\HrSetting;
 use App\Services\ActivityLogger;
@@ -131,8 +132,9 @@ class AttendanceController extends Controller
         $employee = $user?->employee ?: Employee::where('user_id', $user?->id)->orWhere('email', $user?->email)->first();
         $settings = HrSetting::current();
         $todayAttendance = $employee ? Attendance::where('employee_id', $employee->id)->whereDate('date', today())->first() : null;
+        $geofenceEnabled = AttendanceLocation::query()->active()->exists();
 
-        return view('rh.attendance.scanner', compact('employee', 'settings', 'todayAttendance'));
+        return view('rh.attendance.scanner', compact('employee', 'settings', 'todayAttendance', 'geofenceEnabled'));
     }
 
     /**
@@ -142,6 +144,7 @@ class AttendanceController extends Controller
     {
         $validated = $request->validate([
             'qr_payload' => ['required', 'string'],
+            ...$this->positionRules(),
             'device_fingerprint' => ['nullable', 'string'],
             'device_info' => ['nullable', 'string'],
         ]);
@@ -156,9 +159,25 @@ class AttendanceController extends Controller
      */
     public function checkOut(Request $request): JsonResponse
     {
-        $result = $this->attendanceService->checkOut(auth()->user(), $request->all());
+        $validated = $request->validate($this->positionRules());
+
+        $result = $this->attendanceService->checkOut(auth()->user(), $validated);
 
         return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Règles de validation de la position GPS capturée par le navigateur au moment du pointage.
+     *
+     * @return array<string, array<int, string>>
+     */
+    protected function positionRules(): array
+    {
+        return [
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'accuracy' => ['nullable', 'numeric', 'min:0'],
+        ];
     }
 
     /**
