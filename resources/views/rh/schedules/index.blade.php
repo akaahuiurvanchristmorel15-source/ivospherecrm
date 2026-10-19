@@ -1,5 +1,5 @@
 @php
-    $maxDays = (int) $settings->max_work_days_per_week;
+    $maxDays = $settings->maxWorkDays();
     $coveragePct = $totalActive > 0 ? min(100, round($totalScheduledEmployees / $totalActive * 100)) : 0;
 @endphp
 
@@ -17,7 +17,7 @@
                     <p class="text-sm text-[#64748B]">Semaines de travail de l'équipe — {{ $maxDays }} jours maximum, repos obligatoire.</p>
                 </div>
                 <div class="grid grid-cols-2 gap-2 sm:flex">
-                    <form action="{{ route('rh.schedules.apply-standard') }}" method="POST" onsubmit="return confirm('Appliquer la semaine standard (lundi–samedi, dimanche repos) aux {{ $totalActive }} collaborateurs actifs pour cette semaine ?');">
+                    <form action="{{ route('rh.schedules.apply-standard') }}" method="POST" onsubmit="return confirm(@js('Appliquer la semaine standard ('.$settings->standardWeekLabel().') aux '.$allActiveEmployees->count().' collaborateurs actifs pour cette semaine ? Les plannings déjà saisis cette semaine seront remplacés.'));">
                         @csrf
                         <input type="hidden" name="week" value="{{ $weekStart->toDateString() }}">
                         <button type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-medium text-[#0B0F14] transition hover:border-[#0066FF] hover:text-[#0066FF]">

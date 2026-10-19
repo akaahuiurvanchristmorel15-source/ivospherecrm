@@ -89,6 +89,41 @@ class HrSetting extends Model
     }
 
     /**
+     * Nombre maximum de jours travaillés par semaine (entre 1 et 6 : au moins un jour de repos).
+     */
+    public function maxWorkDays(): int
+    {
+        return max(1, min(6, (int) $this->max_work_days_per_week ?: 6));
+    }
+
+    /**
+     * Semaine standard : les N premiers jours (à partir du lundi) sont travaillés, les suivants sont des jours de repos.
+     *
+     * @param  int  $dayOfWeek  1 = lundi … 7 = dimanche
+     */
+    public function isStandardWorkingDay(int $dayOfWeek): bool
+    {
+        return $dayOfWeek <= $this->maxWorkDays();
+    }
+
+    /**
+     * Description lisible de la semaine standard (ex. « lundi au samedi, 08:00 – 20:00 · repos le dimanche »).
+     */
+    public function standardWeekLabel(): string
+    {
+        $dayNames = [1 => 'lundi', 2 => 'mardi', 3 => 'mercredi', 4 => 'jeudi', 5 => 'vendredi', 6 => 'samedi', 7 => 'dimanche'];
+        $max = $this->maxWorkDays();
+
+        $working = $max === 1 ? $dayNames[1] : "{$dayNames[1]} au {$dayNames[$max]}";
+        $restDays = array_slice($dayNames, $max, null, false);
+        $rest = count($restDays) === 1
+            ? "repos le {$restDays[0]}"
+            : 'repos du '.$restDays[0].' au '.end($restDays);
+
+        return "{$working}, {$this->work_start_time} – {$this->work_end_time} · {$rest}";
+    }
+
+    /**
      * Calcule la distance en mètres entre deux coordonnées géographiques (formule Haversine).
      */
     public function calculateDistanceMeters(float $latitude, float $longitude): float

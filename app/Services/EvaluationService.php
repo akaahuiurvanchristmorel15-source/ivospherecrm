@@ -62,7 +62,7 @@ class EvaluationService
                 $q->where('employee_id', $employee->id);
             })->whereDate('date', $dateStr)->first();
 
-            $isWorkingDay = $scheduleDay ? (bool) $scheduleDay->is_working_day : ($currentDate->dayOfWeekIso <= 6);
+            $isWorkingDay = $scheduleDay ? (bool) $scheduleDay->is_working_day : $settings->isStandardWorkingDay($currentDate->dayOfWeekIso);
 
             if ($isWorkingDay) {
                 $workingDaysCount++;

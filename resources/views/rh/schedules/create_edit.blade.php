@@ -27,16 +27,14 @@
             action="{{ route('rh.schedules.store') }}" 
             class="space-y-6"
             x-data="{
-                days: {
-                    @foreach($scheduleDaysData as $i => $d)
-                        {{ $i }}: {
-                            working: {{ $d['is_working_day'] ? 'true' : 'false' }},
-                            start: '{{ $d['start_time'] ?? '08:00' }}',
-                            end: '{{ $d['end_time'] ?? '20:00' }}'
-                        },
-                    @endforeach
-                },
-                maxAllowed: {{ (int) $settings->max_work_days_per_week ?: 6 }},
+                days: @js(collect($scheduleDaysData)->map(fn ($d) => [
+                    'working' => (bool) $d['is_working_day'],
+                    'start' => substr((string) ($d['start_time'] ?: $settings->work_start_time), 0, 5),
+                    'end' => substr((string) ($d['end_time'] ?: $settings->work_end_time), 0, 5),
+                ])->all()),
+                maxAllowed: @js($settings->maxWorkDays()),
+                standardStart: @js($settings->work_start_time),
+                standardEnd: @js($settings->work_end_time),
                 
                 get totalWorkingDays() {
                     return Object.values(this.days).filter(d => d.working).length;
@@ -48,15 +46,31 @@
 
                 applyStandardWeek() {
                     for (let i = 1; i <= 7; i++) {
-                        this.days[i].working = (i <= 6); // Lun à Sam = travail (6j), Dim = repos
-                        this.days[i].start = '08:00';
-                        this.days[i].end = '20:00';
+                        this.days[i].working = (i <= this.maxAllowed);
+                        this.days[i].start = this.standardStart;
+                        this.days[i].end = this.standardEnd;
                     }
+                },
+
+                // Changer de collaborateur recharge son planning existant pour cette semaine
+                switchEmployee(id) {
+                    const url = new URL(@js(route('rh.schedules.create')), window.location.origin);
+                    url.searchParams.set('week', @js($weekStart->toDateString()));
+                    if (id) url.searchParams.set('employee_id', id);
+                    window.location.href = url.toString();
                 }
             }"
         >
             @csrf
             <input type="hidden" name="week_start_date" value="{{ $weekStart->toDateString() }}">
+
+            @if($errors->any())
+                <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-1" role="alert">
+                    @foreach($errors->all() as $error)
+                        <p>{{ $error }}</p>
+                    @endforeach
+                </div>
+            @endif
 
             <!-- 1. Sélection Collaborateur & Raccourcis -->
             <x-card title="1. Collaborateur & Semaine" subtitle="Sélectionnez l'employé et appliquez le modèle souhaité">
@@ -67,13 +81,14 @@
                         </label>
                         <select 
                             name="employee_id" 
-                            id="employee_id" 
+                            id="employee_id"
+                            @change="switchEmployee($event.target.value)"
                             class="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm text-[#0B0F14] focus:border-[#0066FF] outline-none"
                             required
                         >
                             <option value="">Sélectionner un collaborateur...</option>
                             @foreach($employees as $emp)
-                                <option value="{{ $emp->id }}" @selected(($employee && $employee->id == $emp->id) || old('employee_id') == $emp->id)>
+                                <option value="{{ $emp->id }}" @selected(old('employee_id', $employee?->id) == $emp->id)>
                                     {{ $emp->full_name }} ({{ $emp->employee_code }} • {{ $emp->department ?? 'Général' }})
                                 </option>
                             @endforeach
@@ -87,7 +102,7 @@
                             class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition"
                         >
                             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Appliquer la semaine standard (Lun–Sam 8h–20h, Dim Repos)</span>
+                            <span>Appliquer la semaine standard ({{ $settings->standardWeekLabel() }})</span>
                         </button>
                     </div>
                 </div>
@@ -107,7 +122,7 @@
                     <h4 class="text-sm font-extrabold text-rose-950">Règle RH Stricte Non Respectée</h4>
                     <p class="text-xs text-rose-800 mt-0.5">
                         Vous avez sélectionné <strong x-text="totalWorkingDays"></strong> jours travaillés. 
-                        Selon les paramètres RH d'IVOSPHERE, un collaborateur ne peut pas être programmé plus de <strong>{{ $settings->max_work_days_per_week }} jours</strong> sur une semaine. Le 7e jour doit obligatoirement être un jour de repos.
+                        Selon les paramètres RH d'IVOSPHERE, un collaborateur ne peut pas être programmé plus de <strong>{{ $settings->maxWorkDays() }} jours</strong> sur une semaine.
                     </p>
                 </div>
             </div>

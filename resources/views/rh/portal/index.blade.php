@@ -210,13 +210,13 @@
                 {{-- Planning --}}
                 <section class="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-6">
                     <h2 class="text-sm font-semibold text-[#0B0F14]">Planning de la semaine</h2>
-                    <p class="text-[11px] text-[#64748B] mt-0.5">6 jours travaillés maximum · 1 jour de repos</p>
+                    <p class="text-[11px] text-[#64748B] mt-0.5">{{ $settings->maxWorkDays() }} jours travaillés maximum · {{ 7 - $settings->maxWorkDays() }} jour(s) de repos</p>
 
                     @if($currentSchedule && $currentSchedule->days->isNotEmpty())
                         <div class="mt-4 -mx-4 px-4 sm:mx-0 sm:px-0 flex sm:grid sm:grid-cols-7 gap-2 overflow-x-auto no-scrollbar snap-x">
                             @foreach($currentSchedule->days as $d)
                                 @php
-                                    $isToday = (int) $d->day_of_week === (int) now()->isoWeekday();
+                                    $isToday = $d->date?->isToday() ?? false;
                                 @endphp
                                 <div class="snap-start shrink-0 w-[4.5rem] sm:w-auto rounded-xl px-2 py-3 text-center {{ $isToday ? 'bg-[#0B0F14] text-white' : 'bg-[#F5F7FA]' }}">
                                     <p class="text-[10px] uppercase tracking-wider {{ $isToday ? 'text-white/70' : 'text-[#64748B]' }}">{{ mb_substr($d->day_name_fr, 0, 3) }}</p>
@@ -231,7 +231,7 @@
                             @endforeach
                         </div>
                     @else
-                        <p class="mt-4 text-xs text-[#64748B]">Planning standard : lundi au samedi 08:00 – 20:00, dimanche repos.</p>
+                        <p class="mt-4 text-xs text-[#64748B]">Aucun planning saisi cette semaine. Horaires standard : {{ $settings->standardWeekLabel() }}.</p>
                     @endif
                 </section>
 

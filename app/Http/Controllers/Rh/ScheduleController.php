@@ -11,6 +11,7 @@ use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ScheduleController extends Controller
@@ -22,12 +23,7 @@ class ScheduleController extends Controller
     {
         $settings = HrSetting::current();
 
-        // Détermine le lundi de la semaine sélectionnée
-        if ($request->filled('week')) {
-            $weekStart = Carbon::parse($request->week)->startOfWeek();
-        } else {
-            $weekStart = now()->startOfWeek();
-        }
+        $weekStart = $this->resolveWeekStart($request->input('week'));
 
         $weekEnd = $weekStart->copy()->endOfWeek();
         $prevWeek = $weekStart->copy()->subWeek()->toDateString();
@@ -116,9 +112,7 @@ class ScheduleController extends Controller
         $employee = $employeeId ? Employee::findOrFail($employeeId) : null;
         $employees = Employee::where('status', 'actif')->orderBy('first_name')->get();
 
-        $weekStart = $request->filled('week')
-            ? Carbon::parse($request->week)->startOfWeek()
-            : now()->startOfWeek();
+        $weekStart = $this->resolveWeekStart($request->input('week'));
 
         // Vérifier si un planning existe déjà pour cet employé cette semaine
         $existingSchedule = null;
@@ -134,6 +128,7 @@ class ScheduleController extends Controller
             4 => 'Jeudi', 5 => 'Vendredi', 6 => 'Samedi', 7 => 'Dimanche',
         ];
 
+        $oldDays = $request->old('days');
         $scheduleDaysData = [];
         for ($i = 1; $i <= 7; $i++) {
             $date = $weekStart->copy()->addDays($i - 1);
@@ -144,12 +139,19 @@ class ScheduleController extends Controller
                 'name' => $dayNames[$i],
                 'date' => $date->toDateString(),
                 'formatted' => $date->format('d/m/Y'),
-                // Par défaut : Lundi à Samedi = Travail (1..6), Dimanche = Repos (7)
-                'is_working_day' => $existingDay ? (bool) $existingDay->is_working_day : ($i <= 6),
-                'start_time' => $existingDay ? $existingDay->start_time : $settings->work_start_time,
-                'end_time' => $existingDay ? $existingDay->end_time : $settings->work_end_time,
+                // Par défaut : semaine standard définie par les paramètres RH (jours max, horaires)
+                'is_working_day' => $existingDay ? (bool) $existingDay->is_working_day : $settings->isStandardWorkingDay($i),
+                'start_time' => $existingDay?->start_time ?: $settings->work_start_time,
+                'end_time' => $existingDay?->end_time ?: $settings->work_end_time,
                 'notes' => $existingDay ? $existingDay->notes : null,
             ];
+
+            if (is_array($oldDays)) {
+                $scheduleDaysData[$i]['is_working_day'] = ! empty($oldDays[$i]['is_working_day']);
+                $scheduleDaysData[$i]['start_time'] = $oldDays[$i]['start_time'] ?? $scheduleDaysData[$i]['start_time'];
+                $scheduleDaysData[$i]['end_time'] = $oldDays[$i]['end_time'] ?? $scheduleDaysData[$i]['end_time'];
+                $scheduleDaysData[$i]['notes'] = $oldDays[$i]['notes'] ?? null;
+            }
         }
 
         return view('rh.schedules.create_edit', compact(
@@ -168,17 +170,32 @@ class ScheduleController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $settings = HrSetting::current();
-        $maxAllowed = (int) $settings->max_work_days_per_week ?: 6;
+        $maxAllowed = $settings->maxWorkDays();
+        $timeFormat = 'regex:/^(?:2[0-3]|[01][0-9]):[0-5][0-9](?::[0-5][0-9])?$/';
 
         $validated = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
             'week_start_date' => ['required', 'date'],
             'days' => ['required', 'array', 'size:7'],
             'days.*.is_working_day' => ['nullable', 'boolean'],
-            'days.*.start_time' => ['nullable', 'string'],
-            'days.*.end_time' => ['nullable', 'string'],
+            'days.*.start_time' => ['nullable', 'required_if_accepted:days.*.is_working_day', 'string', $timeFormat],
+            'days.*.end_time' => ['nullable', 'required_if_accepted:days.*.is_working_day', 'string', $timeFormat],
             'days.*.notes' => ['nullable', 'string', 'max:255'],
+        ], [
+            'days.*.start_time.required_if_accepted' => 'Indiquez l\'heure de début de chaque jour travaillé.',
+            'days.*.end_time.required_if_accepted' => 'Indiquez l\'heure de fin de chaque jour travaillé.',
+            'days.*.start_time.regex' => 'L\'heure de début doit être au format HH:MM.',
+            'days.*.end_time.regex' => 'L\'heure de fin doit être au format HH:MM.',
         ]);
+
+        $dayNames = [1 => 'lundi', 2 => 'mardi', 3 => 'mercredi', 4 => 'jeudi', 5 => 'vendredi', 6 => 'samedi', 7 => 'dimanche'];
+        foreach ($validated['days'] as $dayOfWeek => $day) {
+            if (! empty($day['is_working_day']) && substr($day['end_time'], 0, 5) <= substr($day['start_time'], 0, 5)) {
+                return back()->withInput()->withErrors([
+                    "days.{$dayOfWeek}.end_time" => 'L\'heure de fin du '.($dayNames[$dayOfWeek] ?? 'jour').' doit être postérieure à l\'heure de début.',
+                ]);
+            }
+        }
 
         $employee = Employee::findOrFail($validated['employee_id']);
         $weekStart = Carbon::parse($validated['week_start_date'])->startOfWeek();
@@ -198,40 +215,35 @@ class ScheduleController extends Controller
             );
         }
 
-        // Création ou mise à jour du planning hebdomadaire
-        $schedule = WorkSchedule::updateOrCreate(
-            [
-                'employee_id' => $employee->id,
-                'week_start_date' => $weekStart->toDateString(),
-            ],
-            [
+        // Planning et 7 jours enregistrés ensemble : jamais de planning partiel en cas d'erreur
+        $schedule = DB::transaction(function () use ($employee, $weekStart, $workingDaysCount, $validated, $request, $settings): WorkSchedule {
+            // Création ou mise à jour du planning hebdomadaire
+            $schedule = $this->saveWeekSchedule($employee, $weekStart, [
                 'status' => 'valide',
                 'total_working_days' => $workingDaysCount,
                 'notes' => $request->input('notes'),
                 'created_by' => auth()->id(),
             ]
-        );
+            );
 
-        // Synchronisation des 7 jours
-        for ($i = 1; $i <= 7; $i++) {
-            $dayData = $validated['days'][$i] ?? [];
-            $date = $weekStart->copy()->addDays($i - 1);
-            $isWorking = ! empty($dayData['is_working_day']);
+            // Synchronisation des 7 jours
+            for ($i = 1; $i <= 7; $i++) {
+                $dayData = $validated['days'][$i] ?? [];
+                $date = $weekStart->copy()->addDays($i - 1);
+                $isWorking = ! empty($dayData['is_working_day']);
 
-            ScheduleDay::updateOrCreate(
-                [
-                    'work_schedule_id' => $schedule->id,
-                    'date' => $date->toDateString(),
-                ],
-                [
+                $this->saveScheduleDay($schedule, $date, [
                     'day_of_week' => $i,
                     'is_working_day' => $isWorking,
                     'start_time' => $isWorking ? ($dayData['start_time'] ?? $settings->work_start_time) : null,
                     'end_time' => $isWorking ? ($dayData['end_time'] ?? $settings->work_end_time) : null,
                     'notes' => $dayData['notes'] ?? null,
                 ]
-            );
-        }
+                );
+            }
+
+            return $schedule;
+        });
 
         ActivityLogger::log(
             'enregistrement_planning',
@@ -244,61 +256,99 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Application rapide du planning standard (Lun–Sam 8h–20h, Dim Repos) pour tous les collaborateurs actifs.
+     * Application rapide de la semaine standard (jours max et horaires des paramètres RH) à tous les collaborateurs actifs.
      */
     public function applyStandardToAll(Request $request): RedirectResponse
     {
         $settings = HrSetting::current();
-        $weekStart = $request->filled('week')
-            ? Carbon::parse($request->week)->startOfWeek()
-            : now()->startOfWeek();
+        $weekStart = $this->resolveWeekStart($request->input('week'));
+        $workingDaysCount = $settings->maxWorkDays();
 
         $employees = Employee::where('status', 'actif')->get();
         $count = 0;
 
-        foreach ($employees as $employee) {
-            $schedule = WorkSchedule::updateOrCreate(
-                [
-                    'employee_id' => $employee->id,
-                    'week_start_date' => $weekStart->toDateString(),
-                ],
-                [
+        DB::transaction(function () use ($employees, $weekStart, $workingDaysCount, $settings, &$count): void {
+            foreach ($employees as $employee) {
+                $schedule = $this->saveWeekSchedule($employee, $weekStart, [
                     'status' => 'valide',
-                    'total_working_days' => 6,
-                    'notes' => 'Planning standard d\'entreprise appliqué en lot (6 jours max).',
+                    'total_working_days' => $workingDaysCount,
+                    'notes' => "Planning standard d'entreprise appliqué en lot ({$workingDaysCount} jours max).",
                     'created_by' => auth()->id(),
                 ]
-            );
+                );
 
-            for ($i = 1; $i <= 7; $i++) {
-                $date = $weekStart->copy()->addDays($i - 1);
-                $isWorking = ($i <= 6); // Lundi à Samedi = Travail (6 jours), Dimanche = Repos
+                for ($i = 1; $i <= 7; $i++) {
+                    $date = $weekStart->copy()->addDays($i - 1);
+                    $isWorking = $settings->isStandardWorkingDay($i);
 
-                ScheduleDay::updateOrCreate(
-                    [
-                        'work_schedule_id' => $schedule->id,
-                        'date' => $date->toDateString(),
-                    ],
-                    [
+                    $this->saveScheduleDay($schedule, $date, [
                         'day_of_week' => $i,
                         'is_working_day' => $isWorking,
                         'start_time' => $isWorking ? $settings->work_start_time : null,
                         'end_time' => $isWorking ? $settings->work_end_time : null,
                         'notes' => $isWorking ? null : 'Jour de repos hebdomadaire',
                     ]
-                );
+                    );
+                }
+                $count++;
             }
-            $count++;
-        }
+        });
 
         ActivityLogger::log(
             'application_planning_standard_lot',
-            "Application du planning standard (6 jours max) pour {$count} collaborateurs — Semaine du {$weekStart->format('d/m/Y')}",
+            "Application du planning standard ({$workingDaysCount} jours max) pour {$count} collaborateurs — Semaine du {$weekStart->format('d/m/Y')}",
             null
         );
 
         return redirect()->route('rh.schedules.index', ['week' => $weekStart->toDateString()])
-            ->with('success', "Planning standard (6 jours de 8h à 20h, Dimanche repos) appliqué avec succès à {$count} collaborateurs.");
+            ->with('success', "Planning standard ({$settings->standardWeekLabel()}) appliqué avec succès à {$count} collaborateur(s).");
+    }
+
+    /**
+     * Crée ou met à jour le planning d'un collaborateur pour une semaine (recherche par date, quel que soit le format stocké).
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function saveWeekSchedule(Employee $employee, Carbon $weekStart, array $attributes): WorkSchedule
+    {
+        $schedule = WorkSchedule::where('employee_id', $employee->id)
+            ->whereDate('week_start_date', $weekStart->toDateString())
+            ->first() ?? new WorkSchedule(['employee_id' => $employee->id, 'week_start_date' => $weekStart->toDateString()]);
+
+        $schedule->fill($attributes)->save();
+
+        return $schedule;
+    }
+
+    /**
+     * Crée ou met à jour la programmation d'un jour du planning.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function saveScheduleDay(WorkSchedule $schedule, Carbon $date, array $attributes): ScheduleDay
+    {
+        $day = $schedule->days()->whereDate('date', $date->toDateString())->first()
+            ?? new ScheduleDay(['work_schedule_id' => $schedule->id, 'date' => $date->toDateString()]);
+
+        $day->fill($attributes)->save();
+
+        return $day;
+    }
+
+    /**
+     * Lundi de la semaine demandée ; semaine en cours si le paramètre est absent ou invalide.
+     */
+    protected function resolveWeekStart(mixed $week): Carbon
+    {
+        if (is_string($week) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $week)) {
+            try {
+                return Carbon::createFromFormat('!Y-m-d', $week)->startOfWeek();
+            } catch (\Throwable) {
+                // Date impossible (ex. 2026-02-31) : semaine en cours
+            }
+        }
+
+        return now()->startOfWeek();
     }
 
     /**
@@ -309,6 +359,8 @@ class ScheduleController extends Controller
         $empName = $schedule->employee?->full_name ?? 'Collaborateur';
         $weekStr = $schedule->week_start_date->format('d/m/Y');
         $schedule->delete();
+
+        ActivityLogger::log('suppression_planning', "Planning de {$empName} supprimé — Semaine du {$weekStr}");
 
         return back()->with('success', "Planning de {$empName} pour la semaine du {$weekStr} supprimé.");
     }
