@@ -34,6 +34,7 @@ class RolePermissionSeeder extends Seeder
             ['slug' => 'leaves.manage', 'name' => 'Gérer les congés et absences', 'group' => 'rh'],
             ['slug' => 'attendance.manage', 'name' => 'Suivre les présences et horaires', 'group' => 'rh'],
             ['slug' => 'trainings.manage', 'name' => 'Gérer les formations et évaluations', 'group' => 'rh'],
+            ['slug' => 'observations.manage', 'name' => 'Saisir des observations sur les collaborateurs', 'group' => 'rh'],
 
             // Pôle Commercial & CRM
             ['slug' => 'customers.view', 'name' => 'Consulter les clients', 'group' => 'commercial'],
@@ -118,7 +119,7 @@ class RolePermissionSeeder extends Seeder
                     'communication.campaigns', 'communication.publications',
                     'print.manage', 'sport.manage', 'tech.manage', 'media.manage', 'insurance.manage',
                     'cyber.services', 'monetique.transactions', 'tech.interventions',
-                    'logs.view',
+                    'observations.manage', 'logs.view',
                 ],
             ],
             'responsable_rh' => [
@@ -127,7 +128,7 @@ class RolePermissionSeeder extends Seeder
                 'permissions' => [
                     'employees.view', 'employees.create', 'employees.edit', 'employees.delete',
                     'contracts.manage', 'leaves.manage', 'attendance.manage', 'trainings.manage',
-                    'logs.view',
+                    'observations.manage', 'logs.view',
                 ],
             ],
             'responsable_commercial' => [
@@ -138,7 +139,7 @@ class RolePermissionSeeder extends Seeder
                     'prospects.manage', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.delete',
                     'orders.manage', 'sales.reports', 'pos.sales', 'invoices.view', 'stocks.view',
                     'print.manage', 'sport.manage', 'tech.manage', 'media.manage', 'insurance.manage',
-                    'logs.view',
+                    'observations.manage', 'logs.view',
                 ],
             ],
             'responsable_financiere' => [
@@ -150,7 +151,7 @@ class RolePermissionSeeder extends Seeder
                     'finance.expenses', 'finance.revenues', 'finance.cash', 'finance.bank', 'finance.reports',
                     'monetique.transactions',
                     'quotations.view', 'orders.manage', 'customers.view',
-                    'logs.view',
+                    'observations.manage', 'logs.view',
                 ],
             ],
             'responsable_communication' => [
@@ -159,7 +160,7 @@ class RolePermissionSeeder extends Seeder
                 'permissions' => [
                     'communication.campaigns', 'communication.publications', 'communication.calendar',
                     'tech.manage', 'media.manage',
-                    'logs.view',
+                    'observations.manage', 'logs.view',
                 ],
             ],
             'agent_commercial_terrain' => [

@@ -67,6 +67,7 @@ use App\Http\Controllers\Rh\AttendanceLocationController;
 use App\Http\Controllers\Rh\DailyTaskSheetController;
 use App\Http\Controllers\Rh\EmployeeController;
 use App\Http\Controllers\Rh\EmployeeGoalController;
+use App\Http\Controllers\Rh\EmployeeObservationController;
 use App\Http\Controllers\Rh\EmployeePortalController;
 use App\Http\Controllers\Rh\EvaluationController;
 use App\Http\Controllers\Rh\EvaluationCriterionController;
@@ -290,6 +291,14 @@ Route::middleware('auth')->group(function () {
         Route::post('pips', [PerformanceImprovementPlanController::class, 'store'])->name('pips.store');
         Route::match(['put', 'patch'], 'pips/{pip}', [PerformanceImprovementPlanController::class, 'update'])->name('pips.update');
         Route::delete('pips/{pip}', [PerformanceImprovementPlanController::class, 'destroy'])->name('pips.destroy');
+    });
+
+    // Observations des responsables sur les collaborateurs (permission dédiée, ouverte aussi aux responsables de pôle)
+    Route::prefix('rh/observations')->name('rh.observations.')->middleware('permission:observations.manage')->group(function () {
+        Route::get('/', [EmployeeObservationController::class, 'index'])->name('index');
+        Route::post('/', [EmployeeObservationController::class, 'store'])->name('store');
+        Route::put('{observation}', [EmployeeObservationController::class, 'update'])->name('update');
+        Route::delete('{observation}', [EmployeeObservationController::class, 'destroy'])->name('destroy');
     });
 
     // Pointage Collaborateurs & Soumission Tâches (Tous rôles — Mobile Friendly)

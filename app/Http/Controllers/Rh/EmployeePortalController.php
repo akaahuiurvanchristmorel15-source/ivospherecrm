@@ -89,6 +89,15 @@ class EmployeePortalController extends Controller
             ->take(4)
             ->get();
 
+        // Observations des responsables partagées avec le collaborateur
+        $sharedObservations = $employee->observations()
+            ->visibleToEmployee()
+            ->with('author')
+            ->latest('observed_on')
+            ->latest('id')
+            ->take(10)
+            ->get();
+
         return view('rh.portal.index', compact(
             'employee',
             'settings',
@@ -99,7 +108,8 @@ class EmployeePortalController extends Controller
             'currentEvaluation',
             'pastEvaluations',
             'recentLeaves',
-            'allEmployees'
+            'allEmployees',
+            'sharedObservations'
         ));
     }
 

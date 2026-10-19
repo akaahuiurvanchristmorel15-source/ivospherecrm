@@ -47,6 +47,12 @@
                     <svg class="w-4 h-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
                     Mon badge
                 </a>
+                @can('viewAny', \App\Models\EmployeeObservation::class)
+                    <a href="{{ route('rh.observations.index') }}" class="h-10 px-4 rounded-xl border border-[#E2E8F0] bg-white text-xs font-medium text-[#0B0F14] hover:bg-slate-50 transition flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M8 10h8M8 14h5m-9 6l2.5-3H19a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14z"/></svg>
+                        Observations équipe
+                    </a>
+                @endcan
                 <button type="button" @click="leaveModalOpen = true" class="h-10 px-4 rounded-xl bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-medium transition flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 5v14m7-7H5"/></svg>
                     Demander un congé
@@ -262,6 +268,38 @@
                         </ul>
                     @else
                         <p class="mt-4 text-xs text-[#64748B]">Aucune demande récente.</p>
+                    @endif
+                </section>
+
+                {{-- Observations partagées par les responsables --}}
+                <section class="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-6">
+                    <h2 class="text-sm font-semibold text-[#0B0F14]">Observations de mes responsables</h2>
+
+                    @if($sharedObservations->isNotEmpty())
+                        <ul class="mt-3 divide-y divide-slate-100">
+                            @foreach($sharedObservations as $obs)
+                                @php
+                                    $obsTone = match ($obs->nature) {
+                                        'positive' => 'bg-emerald-500',
+                                        'a_ameliorer' => 'bg-amber-500',
+                                        default => 'bg-slate-400',
+                                    };
+                                @endphp
+                                <li class="py-3 space-y-1">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <p class="text-sm font-medium text-[#0B0F14] break-words">{{ $obs->title }}</p>
+                                        <span class="inline-flex items-center gap-1.5 text-[11px] text-[#64748B] shrink-0">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $obsTone }}"></span>
+                                            {{ $obs->nature_label }}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-[#0B0F14] leading-relaxed whitespace-pre-line break-words">{{ $obs->content }}</p>
+                                    <p class="text-[11px] text-[#64748B]">{{ $obs->category_label }} · {{ $obs->observed_on->format('d/m/Y') }} · {{ $obs->author?->name ?? 'Responsable' }}</p>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="mt-4 text-xs text-[#64748B]">Aucune observation partagée avec vous pour le moment.</p>
                     @endif
                 </section>
             </div>

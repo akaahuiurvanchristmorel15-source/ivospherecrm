@@ -152,6 +152,11 @@ class Employee extends Model
         return $this->hasMany(PerformanceImprovementPlan::class);
     }
 
+    public function observations(): HasMany
+    {
+        return $this->hasMany(EmployeeObservation::class);
+    }
+
     public function todayAttendance(): HasOne
     {
         return $this->hasOne(Attendance::class)->whereDate('date', today());
@@ -179,6 +184,25 @@ class Employee extends Model
     public function scopeActive(Builder $query): void
     {
         $query->where('status', 'actif');
+    }
+
+    /**
+     * Collaborateurs sur lesquels l'utilisateur peut saisir des observations : tous pour ceux qui
+     * consultent déjà les employés (ou ont accès à tous les domaines), sinon ceux de ses domaines.
+     * On ne s'observe jamais soi-même.
+     */
+    public function scopeObservableBy(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $q) => $q->whereNull('user_id')->orWhere('user_id', '!=', $user->id));
+
+        if (! $user->all_domains && ! $user->hasPermission('employees.view')) {
+            $query->whereIn('domain_id', $user->domains->pluck('id'));
+        }
+    }
+
+    public function isObservableBy(User $user): bool
+    {
+        return self::query()->whereKey($this->id)->observableBy($user)->exists();
     }
 
     public function scopeByDomain(Builder $query, int $domainId): void

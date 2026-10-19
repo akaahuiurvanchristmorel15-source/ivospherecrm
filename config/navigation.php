@@ -66,6 +66,7 @@ return [
                 ['route' => 'rh.goals.index', 'label' => 'Objectifs', 'active' => 'rh.goals.*'],
                 ['route' => 'rh.sales-targets.index', 'label' => 'Objectifs ventes', 'active' => 'rh.sales-targets.*'],
                 ['route' => 'rh.pips.index', 'label' => 'PIP', 'active' => 'rh.pips.*'],
+                ['route' => 'rh.observations.index', 'label' => 'Observations', 'active' => 'rh.observations.*'],
                 ['route' => 'rh.settings.index', 'label' => 'Paramètres', 'active' => 'rh.settings.*'],
             ],
         ],

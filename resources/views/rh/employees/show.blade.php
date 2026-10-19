@@ -121,6 +121,19 @@
                     {{ $employee->salesTargets->count() }}
                 </span>
             </button>
+            @if($canObserve)
+                <button 
+                    type="button" 
+                    @click="tab = 'observations'" 
+                    :class="tab === 'observations' ? 'bg-[#0066FF] text-white shadow-xs' : 'text-[#64748B] hover:text-[#0B0F14] bg-white border border-[#E2E8F0]'"
+                    class="px-3.5 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                    <span>Observations</span>
+                    <span :class="tab === 'observations' ? 'bg-white/20 text-white' : 'bg-[#F5F7FA] text-[#0B0F14]'" class="px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+                        {{ $observations->count() }}
+                    </span>
+                </button>
+            @endif
         </div>
 
         <!-- Contenu des Onglets -->
@@ -501,6 +514,39 @@
                     @endforelse
                 </div>
             </div>
+
+            <!-- 6. Observations Tab -->
+            @if($canObserve)
+                <div x-show="tab === 'observations'" style="display: none;" class="space-y-4" x-data="{ creating: {{ $errors->any() ? 'true' : 'false' }} }">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="text-sm font-bold text-[#0B0F14]">Observations des responsables</h3>
+                        <button type="button" @click="creating = !creating" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-bold transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>Nouvelle observation</span>
+                        </button>
+                    </div>
+
+                    @if($errors->any())
+                        <x-alert type="error">
+                            <ul class="list-disc list-inside space-y-0.5">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </x-alert>
+                    @endif
+
+                    <div x-show="creating" x-cloak style="display: none;" class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                        @include('rh.observations._form', ['observation' => null, 'employee' => $employee, 'employees' => null])
+                    </div>
+
+                    @forelse($observations as $observation)
+                        @include('rh.observations._card', ['observation' => $observation, 'showEmployee' => false])
+                    @empty
+                        <div class="py-8 text-center text-[#64748B] text-xs">Aucune observation enregistrée pour ce collaborateur.</div>
+                    @endforelse
+                </div>
+            @endif
         </x-card>
     </div>
 </x-layouts.app>

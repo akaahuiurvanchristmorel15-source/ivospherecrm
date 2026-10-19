@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Rh;
 use App\Http\Controllers\Controller;
 use App\Models\Domain;
 use App\Models\Employee;
+use App\Models\EmployeeObservation;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\ActivityLogger;
@@ -13,6 +14,7 @@ use App\Services\PhoneNumberFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -145,7 +147,12 @@ class EmployeeController extends Controller
             'user.roles',
         ]);
 
-        return view('rh.employees.show', compact('employee'));
+        $canObserve = Gate::allows('create', [EmployeeObservation::class, $employee]);
+        $observations = $canObserve
+            ? $employee->observations()->with('author')->latest('observed_on')->latest('id')->get()
+            : collect();
+
+        return view('rh.employees.show', compact('employee', 'canObserve', 'observations'));
     }
 
     public function edit(Employee $employee): View
