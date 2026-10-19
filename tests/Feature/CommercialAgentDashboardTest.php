@@ -42,7 +42,8 @@ test('the commercial dashboard shows the animated agent with its briefing', func
     $this->get(route('commercial.index'))
         ->assertOk()
         ->assertSee('id="commercial-agent"', false)
-        ->assertSee('Agent commercial intelligent')
+        ->assertSee('Briefing du jour')
+        ->assertSee('Je suis Ivo, votre agent commercial', false)
         ->assertSee('commercialAgent(', false)
         ->assertSee('Quels sont les produits les plus vendus ce mois-ci ?');
 });
