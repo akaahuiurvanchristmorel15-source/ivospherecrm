@@ -1,7 +1,7 @@
 @props([])
 
 @if(!request()->routeIs('commercial.pos.*'))
-@php($isTenantSpace = auth()->check() && ! auth()->user()->belongsToMainTenant())
+@php $isTenantSpace = auth()->check() && ! auth()->user()->belongsToMainTenant(); @endphp
 <div x-data="{ quickActionsOpen: false }" @open-quick-actions.window="quickActionsOpen = true" class="md:hidden">
     <!-- Backdrop pour la feuille d'actions mobile -->
     <div 
@@ -148,79 +148,54 @@
         </div>
     </div>
 
-    <!-- Mobile Bottom Navigation Bar (Minimalist & Crisp) -->
-    <nav 
-        class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] px-2 py-1 grid grid-cols-5 items-center select-none"
-        style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));"
+    @php
+        $homeActive = request()->routeIs('dashboard', 'space.home') && ! request('domain');
+        $salesActive = request()->routeIs('commercial.orders.*', 'commercial.quotations.*');
+        $customersActive = request()->routeIs('commercial.customers.*', 'commercial.prospects.*');
+        $menuActive = request()->routeIs('menu.*', 'space.subscription');
+        $tabItem = 'relative flex h-12 flex-1 items-center justify-center rounded-full transition-colors active:scale-95';
+        $tabIdle = 'text-[#A1A1AA] hover:text-[#52525B] dark:text-white/35 dark:hover:text-white/60 night:text-white/35 night:hover:text-white/60';
+        $tabActive = 'text-[#18181B] dark:text-white night:text-white';
+    @endphp
+
+    <!-- Barre d'onglets mobile : pilule flottante + bouton de création séparé -->
+    <nav
+        class="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 px-4 pt-2 select-none pointer-events-none"
+        style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));"
         aria-label="Navigation principale mobile"
     >
-        <!-- 1. Accueil / Dashboard -->
-        <a 
-            href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" 
-            class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('dashboard', 'space.home') && !request('domain') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
-            aria-label="Tableau de bord"
-        >
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-            </svg>
-            <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('dashboard') && !request('domain') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">Accueil</span>
-        </a>
+        <div class="pointer-events-auto flex h-16 flex-1 items-center rounded-full border border-white/80 bg-[#F4F4F5]/90 px-2 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl dark:border-white/10 dark:bg-[#111827]/90 dark:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.7)] night:border-white/10 night:bg-white/[0.08] night:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.8)]">
+            <a href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" class="{{ $tabItem }} {{ $homeActive ? $tabActive : $tabIdle }}" aria-label="Accueil" @if($homeActive) aria-current="page" @endif>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.689z"/><path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z"/></svg>
+            </a>
 
-        <!-- 2. Ventes / Commandes / Devis -->
-        @if(\App\Support\TenantAccess::allows('commercial.orders.index'))
-        <a 
-            href="{{ route('commercial.orders.index') }}" 
-            class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('commercial.orders.*') || request()->routeIs('commercial.quotations.*') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
-            aria-label="Ventes et Commandes"
-        >
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-            </svg>
-            <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('commercial.orders.*') || request()->routeIs('commercial.quotations.*') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">Ventes</span>
-        </a>
-        @endif
+            @if(\App\Support\TenantAccess::allows('commercial.orders.index'))
+            <a href="{{ route('commercial.orders.index') }}" class="{{ $tabItem }} {{ $salesActive ? $tabActive : $tabIdle }}" aria-label="Ventes et commandes" @if($salesActive) aria-current="page" @endif>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.375 2.625a1.875 1.875 0 00-1.875 1.875v15c0 1.036.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875v-15c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg>
+            </a>
+            @endif
 
-        <!-- 3. Bouton Central Action Express (+) -->
-        <div class="flex flex-col items-center justify-center -mt-4">
-            <button 
-                type="button" 
-                @click="quickActionsOpen = !quickActionsOpen" 
-                class="w-11 h-11 rounded-full bg-[#0066FF] hover:bg-[#0052cc] text-white flex items-center justify-center active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]"
-                title="Création rapide"
-                aria-label="Création rapide"
-            >
-                <svg class="w-5 h-5 transition-transform duration-200" :class="quickActionsOpen ? 'rotate-45' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-            </button>
-            <span class="text-[9px] text-[#64748B] font-medium mt-0.5">Créer</span>
+            @if(\App\Support\TenantAccess::allows('commercial.customers.index'))
+            <a href="{{ route('commercial.customers.index') }}" class="{{ $tabItem }} {{ $customersActive ? $tabActive : $tabIdle }}" aria-label="Clients et prospects" @if($customersActive) aria-current="page" @endif>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd"/></svg>
+            </a>
+            @endif
+
+            <a href="{{ $isTenantSpace ? route('space.subscription') : route('menu.index') }}" class="{{ $tabItem }} {{ $menuActive ? $tabActive : $tabIdle }}" aria-label="{{ $isTenantSpace ? 'Mon abonnement' : 'Menu général' }}" @if($menuActive) aria-current="page" @endif>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clip-rule="evenodd"/></svg>
+            </a>
         </div>
 
-        <!-- 4. Contacts / Clients -->
-        @if(\App\Support\TenantAccess::allows('commercial.customers.index'))
-        <a 
-            href="{{ route('commercial.customers.index') }}" 
-            class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('commercial.customers.*') || request()->routeIs('commercial.prospects.*') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
-            aria-label="Clients et Contacts"
+        <button
+            type="button"
+            @click="quickActionsOpen = ! quickActionsOpen"
+            class="pointer-events-auto flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-white/80 bg-[#F4F4F5]/90 text-[#3F3F46] shadow-[0_12px_32px_-12px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl transition active:scale-95 dark:border-white/10 dark:bg-[#111827]/90 dark:text-white/80 night:border-white/10 night:bg-white/[0.08] night:text-white/80"
+            :class="quickActionsOpen && 'bg-[#18181B]! text-white! dark:bg-white! dark:text-[#18181B]! night:bg-white! night:text-black!'"
+            title="Création rapide"
+            aria-label="Création rapide"
         >
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-            </svg>
-            <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('commercial.customers.*') || request()->routeIs('commercial.prospects.*') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">Clients</span>
-        </a>
-        @endif
-
-        <!-- 5. Hub / Menu des 8 Pôles -->
-        <a 
-            href="{{ $isTenantSpace ? route('space.subscription') : route('menu.index') }}" 
-            class="flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('menu.*') ? 'text-[#0066FF]' : 'text-slate-400 hover:text-[#0B0F14]' }}"
-            aria-label="{{ $isTenantSpace ? 'Mon abonnement' : 'Menu Général' }}"
-        >
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-            </svg>
-            <span class="text-[10px] tracking-tight mt-0.5 {{ request()->routeIs('menu.*') ? 'font-semibold text-[#0066FF]' : 'font-medium' }}">{{ $isTenantSpace ? 'Compte' : 'Menu' }}</span>
-        </a>
+            <svg class="h-6 w-6 transition-transform duration-200" :class="quickActionsOpen && 'rotate-45'" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5"/></svg>
+        </button>
     </nav>
 </div>
 @endif
