@@ -6,14 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Prospect;
 use App\Models\Quotation;
+use App\Services\CommercialAgentBriefing;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, CommercialAgentBriefing $briefing): View
     {
         $period = $request->query('period', 'this_month');
         $now = Carbon::now();
@@ -86,7 +88,28 @@ class DashboardController extends Controller
         $unpaidInvoices = Invoice::whereIn('status', ['non_payee', 'partielle']);
         $impayes = (float) $unpaidInvoices->sum('total') - (float) $unpaidInvoices->sum('paid_amount');
 
+        // Pipeline prospects par étape
+        $pipeline = collect([
+            'nouveau' => ['Nouveau', 10],
+            'contacte' => ['Contacté', 25],
+            'interesse' => ['Intéressé', 50],
+            'devis_envoye' => ['Devis envoyé', 70],
+            'negociation' => ['Négociation', 85],
+            'gagne' => ['Gagné', 100],
+        ])->map(fn (array $stage, string $key) => [
+            'label' => $stage[0],
+            'probability' => $stage[1],
+            'count' => Prospect::where('stage', $key)->orWhere('status', $key)->count(),
+        ]);
+
+        $latestQuotations = Quotation::with('customer')->latest()->take(5)->get();
+
+        $agent = $briefing->build(explode(' ', trim((string) $request->user()->name))[0] ?: 'à vous', $now);
+
         return view('commercial.index', compact(
+            'agent',
+            'pipeline',
+            'latestQuotations',
             'period',
             'periodLabel',
             'startDate',
