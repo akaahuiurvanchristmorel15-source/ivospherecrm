@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Ai;
 use App\Http\Controllers\Controller;
 use App\Models\Domain;
 use App\Services\AiAssistantService;
+use App\Services\GeneralAssistantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,13 +27,13 @@ class AiAssistantController extends Controller
         ]);
     }
 
-    public function query(Request $request): JsonResponse|View|RedirectResponse
+    public function query(Request $request, GeneralAssistantService $assistant): JsonResponse|View|RedirectResponse
     {
         $validated = $request->validate([
             'query' => ['required', 'string', 'max:500'],
         ]);
 
-        $result = $this->aiService->processQuery($validated['query']);
+        $result = $assistant->answer($validated['query'], $request->user());
 
         if ($request->wantsJson()) {
             return response()->json($result);

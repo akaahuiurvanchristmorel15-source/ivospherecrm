@@ -174,6 +174,7 @@ Route::middleware('auth')->group(function () {
 
     // Tableau de bord principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/indicateurs', [DashboardController::class, 'indicators'])->name('dashboard.indicators');
 
     // Menu Grid — Hub des 8 Pôles Amplifiés
     Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');

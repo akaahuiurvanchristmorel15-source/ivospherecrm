@@ -16,7 +16,7 @@ test('unauthenticated users are redirected to login', function () {
 test('authenticated user can view dashboard with all real-time indicators', function () {
     $user = User::where('email', 'admin@ivosphere.com')->first();
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get('/dashboard/indicateurs');
     $response->assertStatus(200);
 
     // 1. Chiffre d'affaires & Trésorerie
