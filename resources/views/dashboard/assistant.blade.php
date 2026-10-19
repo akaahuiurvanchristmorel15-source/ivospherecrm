@@ -11,6 +11,7 @@
     <style>
         main:has(#home-assistant) { background: #F5F7FA; transition: background-color .3s; }
         [data-offer-theme=night] main:has(#home-assistant) { background: #000000; }
+        [data-offer-theme=night] body:has(#home-assistant) { background: #000000; }
         .ivo-orb-ring { background: conic-gradient(from 0deg, #0066FF, #22D3EE, #7C3AED, #0066FF); animation: ivo-spin 6s linear infinite; }
         .ivo-orb-core { background: radial-gradient(circle at 30% 25%, #FFFFFF 0%, #DCEBFF 22%, #3B82F6 58%, #1E3A8A 100%); animation: ivo-breathe 4s ease-in-out infinite; }
         .is-thinking .ivo-orb-ring { animation-duration: 1.2s; }

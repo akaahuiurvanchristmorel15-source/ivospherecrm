@@ -53,16 +53,16 @@
     x-data="{ mobileMenu: false }"
     x-effect="document.body.classList.toggle('overflow-hidden', mobileMenu)"
     @keydown.escape.window="mobileMenu = false"
-    class="sticky top-0 z-30 flex items-center justify-between gap-3 h-14 md:h-16 px-4 sm:px-6 lg:px-8 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 shadow-[0_1px_0_rgba(15,23,42,0.02)]"
+    class="sticky top-3 z-30 mx-3 mt-3 sm:mx-4 lg:mx-6 flex items-center justify-between gap-3 h-14 md:h-[60px] pl-3 pr-2 sm:pl-4 rounded-full border border-slate-200/70 bg-white/95 md:bg-white/70 md:backdrop-blur-xl shadow-xl shadow-black/5 night:border-white/15 night:bg-[#0B0B0B]/95 md:night:bg-black/60 night:shadow-black/50 transition-colors"
 >
     {{-- ───────── Gauche : burger (mobile) · logo · navigation (desktop) ───────── --}}
-    <div class="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+    <div class="relative z-50 flex items-center gap-3 md:gap-4 min-w-0 flex-1">
 
         {{-- Burger mobile --}}
         <button
             type="button"
             @click="mobileMenu = !mobileMenu"
-            class="md:hidden -ml-1.5 p-2 rounded-full text-slate-700 active:bg-slate-100 transition-colors"
+            class="md:hidden -ml-1 p-2 rounded-full text-slate-700 active:bg-slate-100 night:text-white/80 night:active:bg-white/10 transition-colors"
             :aria-expanded="mobileMenu"
             aria-label="Ouvrir le menu"
         >
@@ -71,19 +71,19 @@
         </button>
 
         {{-- Logo --}}
-        <a href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" class="flex items-center shrink-0 group rounded-lg dark:bg-white dark:px-2 dark:py-1" title="Tableau de bord">
-            <img src="{{ asset('images/logo-emblem.png') }}" alt="IVOSPHERE" width="40" height="36" class="sm:hidden h-9 w-auto transition-transform group-hover:scale-105">
-            <img src="{{ asset('images/logo-horizontal.png') }}" alt="IVOSPHERE" width="147" height="40" class="hidden sm:block h-9 w-auto transition-transform group-hover:scale-[1.03]">
+        <a href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" class="flex items-center shrink-0 group rounded-full dark:bg-white dark:px-2 dark:py-1 night:bg-white night:px-2.5 night:py-1" title="Tableau de bord">
+            <img src="{{ asset('images/logo-emblem.png') }}" alt="IVOSPHERE" width="40" height="36" class="sm:hidden h-8 w-auto transition-transform group-hover:scale-105">
+            <img src="{{ asset('images/logo-horizontal.png') }}" alt="IVOSPHERE" width="147" height="40" class="hidden sm:block h-8 w-auto transition-transform group-hover:scale-[1.03]">
         </a>
 
-        <span class="hidden md:block h-6 w-px bg-slate-200" aria-hidden="true"></span>
+        <span class="hidden md:block h-6 w-px bg-slate-200 night:bg-white/15" aria-hidden="true"></span>
 
         {{-- Menu pôles (desktop) --}}
         <div class="relative hidden md:block" x-data="{ menuOpen: false }">
             <button
                 type="button"
                 @click="menuOpen = !menuOpen"
-                class="inline-flex h-9 items-center gap-2 pl-2.5 pr-3 rounded-full border text-xs font-medium transition-colors {{ request()->routeIs('menu.*') ? 'border-slate-900 bg-slate-900 text-white' : ($currentModule ? 'border-[#0066FF]/20 bg-blue-50/70 text-[#0066FF] hover:bg-blue-50' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900') }}"
+                class="inline-flex h-9 items-center gap-2 pl-2.5 pr-3 rounded-full border text-xs font-medium transition-colors {{ request()->routeIs('menu.*') ? 'border-slate-900 bg-slate-900 text-white night:border-white night:bg-white night:text-black' : ($currentModule ? 'border-[#0066FF]/20 bg-blue-50/70 text-[#0066FF] hover:bg-blue-50' : 'border-slate-200 bg-white/60 text-slate-700 hover:border-slate-300 hover:text-slate-900 night:border-white/15 night:bg-white/5 night:text-white/80 night:hover:border-white/30 night:hover:text-white') }}"
                 :aria-expanded="menuOpen"
                 aria-label="Pôles et modules"
             >
@@ -124,7 +124,7 @@
         </div>
 
         {{-- Liens rapides (desktop large) --}}
-        <nav class="hidden lg:flex items-center gap-0.5 rounded-full bg-slate-100 p-1 text-xs font-medium text-slate-500" aria-label="Accès rapides">
+        <nav class="hidden lg:flex items-center gap-0.5 rounded-full border border-black/5 bg-black/[0.04] p-1 text-xs font-medium text-slate-500 night:border-white/10 night:bg-white/[0.06] night:text-white/50" aria-label="Accès rapides">
             @php
                 $links = [['dashboard', 'Dashboard', request()->routeIs('dashboard') && !request('domain')]];
                 if ($isAdmin) $links[] = ['command-center.index', 'Direction', request()->routeIs('command-center.*')];
@@ -133,21 +133,21 @@
                 $links = $isTenantSpace ? [] : $links;
             @endphp
             @foreach($links as [$r, $label, $active])
-                <a href="{{ route($r) }}" @if($active) aria-current="page" @endif class="px-3.5 py-1.5 rounded-full whitespace-nowrap transition-colors {{ $active ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900' }}">{{ $label }}</a>
+                <a href="{{ route($r) }}" @if($active) aria-current="page" @endif class="px-3.5 py-1.5 rounded-full whitespace-nowrap transition-colors {{ $active ? 'bg-white text-slate-900 shadow-sm night:bg-white night:text-black' : 'hover:text-slate-900 night:hover:text-white' }}">{{ $label }}</a>
             @endforeach
         </nav>
 
     </div>
 
     {{-- ───────── Droite : actions ───────── --}}
-    <div class="flex items-center gap-1 shrink-0 ml-2">
+    <div class="relative z-50 flex items-center gap-1 shrink-0 ml-2">
 
         {{-- Aide + Messages (desktop) --}}
         @unless($isTenantSpace)
-        <a href="{{ route('support.index') }}" class="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Support & Aide">
+        <a href="{{ route('support.index') }}" class="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 night:text-white/60 night:hover:text-white night:hover:bg-white/10 transition-colors" title="Support & Aide">
             <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         </a>
-        <a href="{{ route('messages.index') }}" class="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Messagerie interne">
+        <a href="{{ route('messages.index') }}" class="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 night:text-white/60 night:hover:text-white night:hover:bg-white/10 transition-colors" title="Messagerie interne">
             <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
         </a>
         @endunless
@@ -220,7 +220,7 @@
                 }
             }"
             @click="toggleTheme()"
-            class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 transition-colors"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 night:text-white/60 night:hover:text-white night:hover:bg-white/10 night:active:bg-white/10 transition-colors"
             :aria-label="isDark ? 'Passer en mode jour' : 'Passer en mode nuit'"
         >
             <svg x-show="!isDark" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
@@ -233,13 +233,13 @@
             <button
                 type="button"
                 @click="notifOpen = !notifOpen"
-                class="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 transition-colors"
+                class="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 night:text-white/60 night:hover:text-white night:hover:bg-white/10 night:active:bg-white/10 transition-colors"
                 title="Notifications ({{ $unreadCount }} non lue{{ $unreadCount > 1 ? 's' : '' }})"
                 aria-label="Centre de notifications"
             >
                 <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                 @if($unreadCount > 0)
-                    <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white night:ring-black"></span>
                 @endif
             </button>
 
@@ -252,7 +252,7 @@
                 x-transition:leave="transition ease-in duration-100"
                 x-transition:leave-start="opacity-100"
                 x-transition:leave-end="opacity-0"
-                class="fixed inset-x-3 top-16 md:absolute md:inset-x-auto md:right-0 md:top-full md:mt-3 md:w-96 rounded-2xl bg-white border border-slate-200/80 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.15)] z-50 overflow-hidden"
+                class="fixed inset-x-3 top-[4.75rem] md:absolute md:inset-x-auto md:right-0 md:top-full md:mt-3 md:w-96 rounded-2xl bg-white border border-slate-200/80 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.15)] z-50 overflow-hidden"
                 style="display:none"
             >
                 <div class="px-4 py-3 flex items-center justify-between border-b border-slate-100">
@@ -305,7 +305,7 @@
             </div>
         </div>
 
-        <div class="h-6 w-px bg-slate-200 mx-1.5 hidden md:block"></div>
+        <div class="h-6 w-px bg-slate-200 mx-1.5 hidden md:block night:bg-white/15"></div>
         @endunless
 
         {{-- Profil --}}
@@ -313,13 +313,13 @@
             <button
                 type="button"
                 @click="open = !open"
-                class="flex items-center gap-2.5 p-0.5 lg:pr-3.5 rounded-full lg:border lg:border-slate-200 lg:bg-white hover:bg-slate-100 lg:hover:border-slate-300 transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0066FF]/15"
+                class="flex items-center gap-2.5 p-0.5 lg:pr-3.5 rounded-full lg:border lg:border-slate-200 lg:bg-white/60 hover:bg-slate-100 lg:hover:border-slate-300 night:lg:border-white/15 night:lg:bg-white/5 night:hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0066FF]/15"
                 aria-label="Menu profil"
             >
                 <x-user-avatar :user="auth()->user()" size="sm" />
                 <span class="hidden lg:block max-w-40 text-left leading-tight">
-                    <span class="block truncate text-xs font-semibold text-slate-900">{{ auth()->user()->name ?? 'Utilisateur' }}</span>
-                    <span class="block text-[10px] text-slate-400">{{ auth()->user()->primary_role ?? 'Collaborateur' }}</span>
+                    <span class="block truncate text-xs font-semibold text-slate-900 night:text-white">{{ auth()->user()->name ?? 'Utilisateur' }}</span>
+                    <span class="block text-[10px] text-slate-400 night:text-white/45">{{ auth()->user()->primary_role ?? 'Collaborateur' }}</span>
                 </span>
             </button>
 
@@ -331,7 +331,7 @@
                 x-transition:leave="transition ease-in duration-100"
                 x-transition:leave-start="opacity-100"
                 x-transition:leave-end="opacity-0"
-                class="fixed inset-x-3 top-16 md:absolute md:inset-x-auto md:right-0 md:top-full md:mt-3 md:w-64 rounded-2xl bg-white border border-slate-200/80 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.15)] z-50 overflow-hidden text-xs"
+                class="fixed inset-x-3 top-[4.75rem] md:absolute md:inset-x-auto md:right-0 md:top-full md:mt-3 md:w-64 rounded-2xl bg-white border border-slate-200/80 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.15)] z-50 overflow-hidden text-xs"
                 style="display:none"
             >
                 <div class="px-4 py-3.5 border-b border-slate-100">
@@ -406,7 +406,7 @@
         x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
-        class="md:hidden fixed inset-x-0 top-14 h-[calc(100dvh-3.5rem)] bg-white z-40 overflow-y-auto overscroll-contain"
+        class="md:hidden fixed inset-0 pt-[4.75rem] bg-white night:bg-black z-40 overflow-y-auto overscroll-contain"
         style="display:none"
     >
         <div class="px-4 pt-4 pb-28 space-y-6">
