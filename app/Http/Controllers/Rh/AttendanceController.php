@@ -133,8 +133,9 @@ class AttendanceController extends Controller
         $settings = HrSetting::current();
         $todayAttendance = $employee ? Attendance::where('employee_id', $employee->id)->whereDate('date', today())->first() : null;
         $geofenceEnabled = AttendanceLocation::query()->active()->exists();
+        $expectedStart = $employee ? $this->attendanceService->expectedStartFor($employee, today()) : null;
 
-        return view('rh.attendance.scanner', compact('employee', 'settings', 'todayAttendance', 'geofenceEnabled'));
+        return view('rh.attendance.scanner', compact('employee', 'settings', 'todayAttendance', 'geofenceEnabled', 'expectedStart'));
     }
 
     /**

@@ -196,11 +196,10 @@ class AttendanceService
 
         $today = today();
 
-        // 3. Vérification du planning de l'employé
-        $schedule = $employee->currentWeekSchedule();
-        $scheduleDay = $schedule ? $schedule->getDayForDate($today) : null;
+        // 3. Vérification du planning de l'employé : jour travaillé et heure de prise de poste du jour
+        $expected = $this->expectedStartFor($employee, $today);
 
-        if ($scheduleDay && ! $scheduleDay->is_working_day) {
+        if (! $expected['is_working_day']) {
             return [
                 'success' => false,
                 'error' => 'day_off',
@@ -208,7 +207,7 @@ class AttendanceService
             ];
         }
 
-        $scheduledStartTime = $scheduleDay?->start_time ?: $settings->work_start_time ?: '08:00';
+        $scheduledStartTime = $expected['start_time'];
 
         // 4. Vérification si déjà pointé aujourd'hui
         $attendance = Attendance::where('employee_id', $employee->id)->whereDate('date', $today)->first();
@@ -232,6 +231,7 @@ class AttendanceService
         }
 
         $punctuality = $settings->evaluatePunctuality($delayMinutes);
+        $punctuality['notes'] .= " · prise de poste {$scheduledStartTime}";
 
         // 6. Enregistrement de la présence
         $attendance = Attendance::updateOrCreate(
@@ -283,6 +283,28 @@ class AttendanceService
             'delay_minutes' => $delayMinutes,
             'punctuality_score' => (float) $punctuality['score'],
             'status' => $punctuality['status'],
+        ];
+    }
+
+    /**
+     * Heure de prise de poste attendue pour un employé à une date : celle de son planning de la semaine,
+     * ou l'horaire standard des paramètres RH s'il n'a pas de planning pour ce jour.
+     *
+     * @return array{is_working_day: bool, start_time: string, from_schedule: bool}
+     */
+    public function expectedStartFor(Employee $employee, Carbon $date): array
+    {
+        $settings = HrSetting::current();
+        $scheduleDay = $employee->workSchedules()
+            ->active()
+            ->whereDate('week_start_date', $date->copy()->startOfWeek()->toDateString())
+            ->first()
+            ?->getDayForDate($date);
+
+        return [
+            'is_working_day' => $scheduleDay ? (bool) $scheduleDay->is_working_day : true,
+            'start_time' => substr((string) ($scheduleDay?->start_time ?: $settings->work_start_time ?: '08:00'), 0, 5),
+            'from_schedule' => $scheduleDay !== null,
         ];
     }
 

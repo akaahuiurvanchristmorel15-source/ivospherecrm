@@ -113,7 +113,7 @@
                                 <p class="text-[11px] text-[#64748B]">Arrivée</p>
                                 <p class="mt-0.5 text-2xl font-semibold tabular-nums text-[#0B0F14]">{{ substr($todayAttendance->check_in_time, 0, 5) }}</p>
                                 <p class="mt-1 text-[11px] {{ $todayAttendance->is_late ? 'text-amber-600' : 'text-emerald-600' }}">
-                                    {{ $todayAttendance->is_late ? 'Retard '.$todayAttendance->late_minutes.' min' : 'À l\'heure · +0,33 pt' }}
+                                    {{ $todayAttendance->is_late ? 'Retard '.$todayAttendance->late_minutes.' min' : 'À l\'heure' }} · +{{ number_format((float) $todayAttendance->punctuality_score, 2, ',', ' ') }} pt
                                 </p>
                             </div>
                             <div class="rounded-xl bg-[#F5F7FA] p-3.5">

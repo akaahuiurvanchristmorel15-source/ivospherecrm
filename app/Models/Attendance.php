@@ -100,10 +100,8 @@ class Attendance extends Model
 
     public function scopeLate(Builder $query): void
     {
-        $query->where(function (Builder $q) {
-            $q->where('status', 'retard')
-                ->orWhere('delay_minutes', '>', 0);
-        });
+        // Un retard dans la tolérance RH n'est pas un retard (la note de ponctualité reste complète).
+        $query->where('status', 'retard');
     }
 
     /**
@@ -142,7 +140,7 @@ class Attendance extends Model
 
     public function getIsLateAttribute(): bool
     {
-        return $this->status === 'retard' || ($this->delay_minutes ?? 0) > 0;
+        return $this->status === 'retard';
     }
 
     public function getLateMinutesAttribute(): int

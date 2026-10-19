@@ -298,6 +298,17 @@
                     <span class="text-xs font-mono font-bold text-slate-400">{{ date('d/m/Y') }}</span>
                 </div>
 
+                @if($expectedStart)
+                    <div class="mb-3 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        @if($expectedStart['is_working_day'])
+                            <span>Prise de poste aujourd'hui : <strong class="text-[#0B0F14]">{{ $expectedStart['start_time'] }}</strong></span>
+                            <span class="text-[10px] text-slate-400">{{ $expectedStart['from_schedule'] ? 'Votre planning' : 'Horaire standard' }} · tolérance {{ $settings->punctuality_grace_minutes }} min</span>
+                        @else
+                            <span>Aujourd'hui est un <strong class="text-[#0B0F14]">jour de repos</strong> sur votre planning.</span>
+                        @endif
+                    </div>
+                @endif
+
                 @if($todayAttendance && $todayAttendance->isCheckedIn())
                     <div class="space-y-3">
                         <div class="flex items-center justify-between bg-emerald-50/80 p-3 rounded-xl border border-emerald-100">
