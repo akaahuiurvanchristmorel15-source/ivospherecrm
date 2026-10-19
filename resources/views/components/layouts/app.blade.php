@@ -74,11 +74,6 @@
                     {{ $slot }}
 
                 </div>
-
-                <!-- Pied de page discret (§ Structure générale) -->
-                <div class="{{ $fitScreen ? 'lg:hidden' : '' }}">
-                    <x-footer />
-                </div>
             </div>
         </main>
 

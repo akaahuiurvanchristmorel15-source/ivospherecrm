@@ -67,9 +67,6 @@
                     @yield('content')
 
                 </div>
-
-                <!-- Pied de page discret (§ Structure générale) -->
-                <x-footer />
             </div>
         </main>
 
