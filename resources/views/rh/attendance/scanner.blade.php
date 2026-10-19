@@ -1,20 +1,41 @@
+@php
+    $checkedIn = (bool) $todayAttendance?->isCheckedIn();
+    $checkedOut = (bool) $todayAttendance?->isCheckedOut();
+    $checkInTime = $checkedIn ? ($todayAttendance->check_in_at?->format('H:i') ?? substr((string) $todayAttendance->check_in, 0, 5)) : null;
+    $checkOutTime = $checkedOut ? ($todayAttendance->check_out_at?->format('H:i') ?? substr((string) $todayAttendance->check_out, 0, 5)) : null;
+
+    [$statusLabel, $statusStyle] = match (true) {
+        $checkedOut => ['Journée terminée', 'bg-white/10 text-slate-300'],
+        $checkedIn => ['Présent', 'bg-emerald-500/15 text-emerald-300'],
+        $expectedStart && ! $expectedStart['is_working_day'] => ['Repos', 'bg-white/10 text-slate-300'],
+        default => ['À pointer', 'bg-amber-400/15 text-amber-300'],
+    };
+
+    $lateMinutes = (int) ($todayAttendance?->late_minutes ?? 0);
+    $lateLabel = $lateMinutes >= 60 ? intdiv($lateMinutes, 60).' h '.str_pad((string) ($lateMinutes % 60), 2, '0', STR_PAD_LEFT) : $lateMinutes.' min';
+
+    $displayName = $employee?->full_name ?? auth()->user()->name;
+    $initials = collect(preg_split('/\s+/', trim($displayName)))->filter()->take(2)->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))->implode('');
+    $canOpenTerminal = auth()->user()->isAdmin() || auth()->user()->hasAnyRole(['responsable', 'responsable_rh']);
+@endphp
+
 <x-layouts.app>
-    <x-slot:title>Pointage Collaborateur — IVOSPHERE</x-slot>
+    <x-slot:title>Pointage — IVOSPHERE</x-slot>
 
-    <!-- En-tête mobile épuré -->
-    <div class="max-w-md mx-auto space-y-4">
-        <div class="flex items-center justify-between">
-            <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pointage Sécurisé</span>
-                <h1 class="text-xl font-extrabold text-[#0B0F14] tracking-tight">Pointage de Présence</h1>
+    <div class="mx-auto max-w-md space-y-4 [font-variant-numeric:tabular-nums]">
+        <header class="flex items-end justify-between gap-3">
+            <div class="space-y-0.5">
+                <h1 class="text-2xl font-semibold tracking-tight text-[#0B0F14]">Pointage</h1>
+                <p class="text-sm text-[#64748B]">Scannez le QR code des locaux à l'arrivée, pointez votre départ en fin de journée.</p>
             </div>
-            <a href="{{ route('rh.attendance.terminal') }}" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-[#0066FF] shadow-2xs">
-                <svg class="w-3.5 h-3.5 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
-                <span>Borne QR</span>
-            </a>
-        </div>
+            @if($canOpenTerminal)
+                <a href="{{ route('rh.attendance.terminal') }}" class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 text-xs font-medium text-[#0B0F14] transition hover:border-[#0066FF] hover:text-[#0066FF]">
+                    <svg class="h-4 w-4 text-[#0066FF]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Borne
+                </a>
+            @endif
+        </header>
 
-        <!-- Composant Alpine de Pointage par QR code (caméra) -->
         <div 
             x-data="{
                 hasCamera: false,
@@ -280,161 +301,161 @@
             class="space-y-4"
         >
 
-            @if($geofenceEnabled)
-                <div class="flex items-start gap-2.5 rounded-2xl border border-blue-100 bg-blue-50/70 p-3 text-xs text-blue-900">
-                    <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#0066FF]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <p>Le pointage (arrivée et départ) n'est accepté que sur un lieu autorisé de l'entreprise. Votre position GPS est vérifiée au moment du scan : autorisez la localisation lorsque le téléphone le demande.</p>
+            {{-- ───────── Carte du jour ───────── --}}
+            <section class="overflow-hidden rounded-3xl bg-[#0B0F14] text-white">
+                <div class="space-y-5 p-5">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">{{ $initials }}</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-semibold">{{ $employee?->full_name ?? auth()->user()->name }}</p>
+                            <p class="truncate text-xs text-slate-400">{{ $employee?->position ?? 'Collaborateur' }} · {{ $employee?->employee_code ?? '—' }}</p>
+                        </div>
+                        <span class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium {{ $statusStyle }}">{{ $statusLabel }}</span>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-5xl font-semibold tracking-tight sm:text-6xl"
+                           x-data="{ time: '', tick() { this.time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } }"
+                           x-init="tick(); setInterval(() => tick(), 1000)"
+                           x-text="time">{{ now()->format('H:i') }}</p>
+                        <p class="mt-1 text-xs text-slate-400 first-letter:uppercase">{{ now()->locale('fr')->isoFormat('dddd D MMMM YYYY') }}</p>
+                    </div>
+
+                    @if($expectedStart)
+                        <div class="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.06] px-4 py-3">
+                            @if($expectedStart['is_working_day'])
+                                <div>
+                                    <p class="text-[11px] text-slate-400">Prise de poste</p>
+                                    <p class="text-base font-semibold">{{ $expectedStart['start_time'] }}</p>
+                                </div>
+                                <p class="text-right text-[11px] leading-snug text-slate-400">
+                                    {{ $expectedStart['from_schedule'] ? 'Selon votre planning' : 'Horaire standard' }}<br>
+                                    Tolérance {{ $settings->punctuality_grace_minutes }} min
+                                </p>
+                            @else
+                                <p class="text-sm">Jour de repos sur votre planning</p>
+                                <span class="text-lg" aria-hidden="true">☾</span>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+            </section>
+
+            {{-- ───────── Arrivée / Départ ───────── --}}
+            <section class="grid grid-cols-2 gap-3" aria-label="Pointages du jour">
+                @foreach([
+                    ['Arrivée', $checkInTime, $checkedIn ? ($todayAttendance->is_late ? 'Retard '.$lateLabel : 'À l\'heure') : 'À pointer', $checkedIn ? ($todayAttendance->is_late ? 'text-amber-600' : 'text-emerald-600') : 'text-[#64748B]', 'M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1'],
+                    ['Départ', $checkOutTime, $checkedOut ? ($todayAttendance->isAutomaticCheckout() ? 'Clôture automatique' : 'Pointé') : ($checkedIn ? 'En cours de journée' : '—'), $checkedOut && $todayAttendance->isAutomaticCheckout() ? 'text-amber-600' : 'text-[#64748B]', 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'],
+                ] as [$label, $time, $hint, $hintColor, $icon])
+                    <article class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs text-[#64748B]">{{ $label }}</p>
+                            <svg class="h-4 w-4 {{ $time ? 'text-[#0066FF]' : 'text-slate-300' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
+                        </div>
+                        <p class="mt-2 text-2xl font-semibold {{ $time ? 'text-[#0B0F14]' : 'text-slate-300' }}">{{ $time ?? '--:--' }}</p>
+                        <p class="mt-0.5 truncate text-[11px] {{ $hintColor }}">{{ $hint }}</p>
+                    </article>
+                @endforeach
+            </section>
+
+            @if($checkedIn)
+                <div class="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-xs">
+                    <span class="text-[#64748B]">Note de ponctualité du jour</span>
+                    <span class="font-semibold text-[#0B0F14]">+{{ number_format((float) $todayAttendance->punctuality_score, 2, ',', ' ') }} pt</span>
                 </div>
             @endif
 
-            <!-- 2. Statut du Jour de l'Employé -->
-            <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
-                <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
-                    <div>
-                        <span class="text-[10px] text-slate-400 font-bold uppercase block">{{ $employee?->employee_code ?? 'EMP-0000' }}</span>
-                        <h3 class="text-sm font-bold text-[#0B0F14]">{{ $employee?->full_name ?? auth()->user()->name }}</h3>
-                        <span class="text-xs text-slate-500">{{ $employee?->position ?? 'Collaborateur' }}</span>
-                    </div>
-                    <span class="text-xs font-mono font-bold text-slate-400">{{ date('d/m/Y') }}</span>
-                </div>
-
-                @if($expectedStart)
-                    <div class="mb-3 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        @if($expectedStart['is_working_day'])
-                            <span>Prise de poste aujourd'hui : <strong class="text-[#0B0F14]">{{ $expectedStart['start_time'] }}</strong></span>
-                            <span class="text-[10px] text-slate-400">{{ $expectedStart['from_schedule'] ? 'Votre planning' : 'Horaire standard' }} · tolérance {{ $settings->punctuality_grace_minutes }} min</span>
-                        @else
-                            <span>Aujourd'hui est un <strong class="text-[#0B0F14]">jour de repos</strong> sur votre planning.</span>
-                        @endif
-                    </div>
-                @endif
-
-                @if($todayAttendance && $todayAttendance->isCheckedIn())
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between bg-emerald-50/80 p-3 rounded-xl border border-emerald-100">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-2xs">✓</div>
-                                <div>
-                                    <span class="text-xs font-bold text-emerald-950 block">Arrivée validée</span>
-                                    <span class="text-[11px] text-emerald-700">
-                                        Pointé à {{ $todayAttendance->check_in_at ? $todayAttendance->check_in_at->format('H:i') : substr($todayAttendance->check_in, 0, 5) }}
-                                        ({{ $todayAttendance->notes }})
-                                    </span>
-                                </div>
-                            </div>
-                            <span class="text-xs font-extrabold text-emerald-800 bg-white px-2 py-1 rounded-lg border border-emerald-200/60 shadow-2xs">
-                                +{{ $todayAttendance->punctuality_score }} pt
-                            </span>
-                        </div>
-
-                        @if($todayAttendance->isCheckedOut())
-                            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-xs">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-                                    <span>Départ validé à <strong>{{ $todayAttendance->check_out_at ? $todayAttendance->check_out_at->format('H:i') : substr($todayAttendance->check_out, 0, 5) }}</strong></span>
-                                </div>
-                                @if($todayAttendance->isAutomaticCheckout())
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                        ⚠ Automatique 20h
-                                    </span>
-                                @else
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                                        Manuel
-                                    </span>
-                                @endif
-                            </div>
-                        @else
-                            <button 
-                                type="button" 
-                                @click="submitCheckOut()"
-                                :disabled="submitting"
-                                class="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                                <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                <span x-text="locating ? 'Localisation en cours…' : (submitting ? 'Enregistrement...' : 'Pointer mon départ (Fin de journée)')"></span>
-                            </button>
-                        @endif
-                    </div>
+            {{-- ───────── Action ───────── --}}
+            <section class="space-y-3">
+                @if(! $checkedIn)
+                    <button type="button" @click="startCamera()" :disabled="submitting"
+                            class="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-[#0066FF] text-base font-semibold text-white shadow-lg shadow-[#0066FF]/25 transition hover:bg-[#0052cc] active:scale-[0.99] disabled:opacity-60">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7V5a1 1 0 011-1h2M17 4h2a1 1 0 011 1v2M20 17v2a1 1 0 01-1 1h-2M7 20H5a1 1 0 01-1-1v-2M8 12h8"/></svg>
+                        <span x-text="locating ? 'Localisation en cours…' : (submitting ? 'Validation…' : 'Scanner pour pointer mon arrivée')">Scanner pour pointer mon arrivée</span>
+                    </button>
+                    <button type="button" @click="manualModalOpen = true"
+                            class="w-full py-1 text-center text-xs font-medium text-[#64748B] underline-offset-4 hover:text-[#0066FF] hover:underline">
+                        Le scan ne fonctionne pas ? Saisir le code
+                    </button>
+                @elseif(! $checkedOut)
+                    <button type="button" @click="submitCheckOut()" :disabled="submitting"
+                            class="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-[#0B0F14] text-base font-semibold text-white transition hover:bg-slate-800 active:scale-[0.99] disabled:opacity-60">
+                        <svg class="h-5 w-5 text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        <span x-text="locating ? 'Localisation en cours…' : (submitting ? 'Enregistrement…' : 'Pointer mon départ')">Pointer mon départ</span>
+                    </button>
                 @else
-                    <!-- Si non pointé : Bouton d'activation du Scanner Caméra -->
-                    <div class="space-y-3">
-                        <button 
-                            type="button" 
-                            @click="startCamera()" 
-                            x-show="!cameraActive"
-                            :disabled="submitting"
-                            class="w-full py-3.5 px-4 rounded-2xl bg-[#0066FF] hover:bg-[#0052cc] text-white text-sm font-extrabold shadow-md shadow-[#0066FF]/25 transition flex items-center justify-center gap-2"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
-                            <span>Scanner le QR Code d'Arrivée</span>
-                        </button>
-
-                        <button 
-                            type="button" 
-                            @click="manualModalOpen = true" 
-                            x-show="!cameraActive"
-                            class="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-semibold border border-slate-200/80 transition"
-                        >
-                            Saisir le code / badge manuellement
-                        </button>
+                    <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        </span>
+                        <div>
+                            <p class="text-sm font-semibold text-emerald-900">Journée terminée</p>
+                            <p class="text-xs text-emerald-700">Arrivée et départ enregistrés. Bonne fin de journée !</p>
+                        </div>
                     </div>
                 @endif
+
+                @if($geofenceEnabled && ! $checkedOut)
+                    <p class="flex items-center justify-center gap-1.5 text-center text-[11px] text-[#64748B]">
+                        <svg class="h-3.5 w-3.5 shrink-0 text-[#0066FF]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Votre position GPS est vérifiée : pointez depuis un lieu autorisé.
+                    </p>
+                @endif
+            </section>
+
+            {{-- ───────── Retours ───────── --}}
+            <div x-show="locating" x-transition class="flex items-center justify-center gap-2 rounded-2xl border border-[#E2E8F0] bg-white p-3.5 text-xs font-medium text-[#64748B]" style="display: none;">
+                <svg class="h-4 w-4 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                <span>Vérification de votre position GPS…</span>
             </div>
 
-            <!-- 3. Viseur Caméra en Direct -->
-            <div x-show="cameraActive" class="p-3 bg-black rounded-3xl overflow-hidden relative shadow-xl" style="display: none;">
-                <video id="qrVideo" class="w-full h-64 object-cover rounded-2xl" playsinline></video>
-                <div class="absolute inset-x-0 bottom-6 flex items-center justify-center gap-3">
-                    <button 
-                        type="button" 
-                        @click="stopCamera()" 
-                        class="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-xs font-bold transition"
-                    >
+            <div x-show="resultMessage" x-transition role="status"
+                 class="flex items-start gap-3 rounded-2xl border p-4 text-sm"
+                 :class="resultType === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900'"
+                 style="display: none;">
+                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                      :class="resultType === 'success' ? 'bg-emerald-500' : 'bg-rose-500'"
+                      x-text="resultType === 'success' ? '✓' : '!'"></span>
+                <p class="leading-snug" x-text="resultMessage"></p>
+            </div>
+
+            {{-- ───────── Viseur caméra (plein écran) ───────── --}}
+            <div x-show="cameraActive" x-transition.opacity class="fixed inset-0 z-50 flex flex-col bg-black" style="display: none;">
+                <video id="qrVideo" class="absolute inset-0 h-full w-full object-cover" playsinline muted></video>
+                <div class="relative flex flex-1 flex-col items-center justify-center px-8">
+                    <div class="relative aspect-square w-full max-w-64 rounded-3xl shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]">
+                        <span class="absolute -left-0.5 -top-0.5 h-10 w-10 rounded-tl-3xl border-l-4 border-t-4 border-white"></span>
+                        <span class="absolute -right-0.5 -top-0.5 h-10 w-10 rounded-tr-3xl border-r-4 border-t-4 border-white"></span>
+                        <span class="absolute -bottom-0.5 -left-0.5 h-10 w-10 rounded-bl-3xl border-b-4 border-l-4 border-white"></span>
+                        <span class="absolute -bottom-0.5 -right-0.5 h-10 w-10 rounded-br-3xl border-b-4 border-r-4 border-white"></span>
+                    </div>
+                    <p class="relative mt-6 text-center text-sm font-medium text-white">Placez le QR code de pointage dans le cadre</p>
+                </div>
+                <div class="relative flex justify-center pb-[max(2rem,env(safe-area-inset-bottom))]">
+                    <button type="button" @click="stopCamera()" class="h-12 rounded-full bg-white/15 px-8 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/25">
                         Annuler
                     </button>
                 </div>
             </div>
 
-            <div x-show="locating" class="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-3.5 text-xs font-semibold text-slate-600" style="display: none;">
-                <svg class="h-4 w-4 animate-spin text-[#0066FF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-                <span>Vérification de votre position GPS…</span>
-            </div>
-
-            <!-- Messages de retour -->
-            <div x-show="resultMessage" x-transition class="p-3.5 rounded-2xl text-xs font-semibold text-center"
-                 :class="resultType === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'"
-                 style="display: none;">
-                <span x-text="resultMessage"></span>
-            </div>
-
-            <!-- Modal de saisie manuelle si pas de caméra -->
-            <div x-show="manualModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" style="display: none;">
-                <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl" @click.outside="manualModalOpen = false">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-sm font-bold text-[#0B0F14]">Saisie manuelle</h4>
-                        <button type="button" @click="manualModalOpen = false" class="text-slate-400 hover:text-slate-600">✕</button>
-                    </div>
-                    <p class="text-xs text-slate-500">Entrez le jeton affiché sur la borne des locaux ou votre matricule employé :</p>
-                    <input 
-                        type="text" 
-                        x-model="manualCode" 
-                        placeholder="Ex: IVO-LOC-xxxx ou {{ $employee?->employee_code ?? 'EMP-0001' }}" 
-                        class="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:border-[#0066FF] outline-none"
-                    >
-                    <div class="flex items-center justify-end gap-2 pt-2">
-                        <button type="button" @click="manualModalOpen = false" class="px-3 py-1.5 text-xs text-slate-500">Annuler</button>
-                        <button 
-                            type="button" 
-                            @click="submitCheckIn(manualCode); manualModalOpen = false;" 
-                            :disabled="!manualCode || submitting"
-                            class="px-4 py-2 rounded-xl bg-[#0066FF] text-white text-xs font-bold disabled:opacity-50"
-                        >
-                            Valider le pointage
-                        </button>
+            {{-- ───────── Saisie manuelle ───────── --}}
+            <div x-show="manualModalOpen" x-cloak @keydown.escape.window="manualModalOpen = false"
+                 class="fixed inset-0 z-50 flex items-end justify-center bg-[#0B0F14]/50 backdrop-blur-sm sm:items-center sm:p-4"
+                 role="dialog" aria-modal="true" aria-labelledby="manualTitle" style="display: none;">
+                <div @click.outside="manualModalOpen = false" class="w-full rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl sm:max-w-sm sm:rounded-2xl">
+                    <div class="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 sm:hidden"></div>
+                    <h3 id="manualTitle" class="text-base font-semibold text-[#0B0F14]">Saisir le code</h3>
+                    <p class="mt-1 text-xs text-[#64748B]">Entrez le code affiché sous le QR de la borne ou de l'affiche, ou votre matricule.</p>
+                    <input type="text" x-model="manualCode" autocomplete="off" autocapitalize="characters"
+                           placeholder="Ex. IVO-LOC-… ou {{ $employee?->employee_code ?? 'EMP-0001' }}"
+                           class="mt-4 w-full rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-3 font-mono text-sm text-[#0B0F14] focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
+                    <div class="mt-4 flex gap-2">
+                        <button type="button" @click="manualModalOpen = false" class="h-11 flex-1 rounded-xl border border-[#E2E8F0] text-sm font-medium text-[#0B0F14] hover:bg-slate-50">Annuler</button>
+                        <button type="button" @click="submitCheckIn(manualCode); manualModalOpen = false;" :disabled="!manualCode || submitting"
+                                class="h-11 flex-1 rounded-xl bg-[#0066FF] text-sm font-semibold text-white hover:bg-[#0052cc] disabled:opacity-50">Valider</button>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 </x-layouts.app>

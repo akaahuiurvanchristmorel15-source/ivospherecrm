@@ -102,5 +102,5 @@ test('the attendance screen shows the expected start time of the day', function 
 
     $this->actingAs($this->user)->get(route('rh.attendance.scanner'))
         ->assertOk()
-        ->assertSeeInOrder(['Prise de poste aujourd\'hui', '08:30', 'Votre planning']);
+        ->assertSeeInOrder(['Prise de poste', '08:30', 'Selon votre planning']);
 });

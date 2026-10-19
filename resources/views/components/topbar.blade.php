@@ -53,10 +53,10 @@
     x-data="{ mobileMenu: false }"
     x-effect="document.body.classList.toggle('overflow-hidden', mobileMenu)"
     @keydown.escape.window="mobileMenu = false"
-    class="sticky top-0 z-30 flex items-center justify-between h-14 md:h-16 px-4 sm:px-6 md:px-8 bg-white/90 backdrop-blur-xl border-b border-slate-200/70"
+    class="sticky top-0 z-30 flex items-center justify-between gap-3 h-14 md:h-16 px-4 sm:px-6 lg:px-8 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 shadow-[0_1px_0_rgba(15,23,42,0.02)]"
 >
     {{-- ───────── Gauche : burger (mobile) · logo · navigation (desktop) ───────── --}}
-    <div class="flex items-center gap-3 md:gap-5 min-w-0 flex-1">
+    <div class="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
 
         {{-- Burger mobile --}}
         <button
@@ -73,18 +73,21 @@
         {{-- Logo --}}
         <a href="{{ $isTenantSpace ? route('space.home') : route('dashboard') }}" class="flex items-center shrink-0 group rounded-lg dark:bg-white dark:px-2 dark:py-1" title="Tableau de bord">
             <img src="{{ asset('images/logo-emblem.png') }}" alt="IVOSPHERE" width="40" height="36" class="sm:hidden h-9 w-auto transition-transform group-hover:scale-105">
-            <img src="{{ asset('images/logo-horizontal.png') }}" alt="IVOSPHERE" width="147" height="40" class="hidden sm:block h-9 lg:h-10 w-auto transition-transform group-hover:scale-[1.03]">
+            <img src="{{ asset('images/logo-horizontal.png') }}" alt="IVOSPHERE" width="147" height="40" class="hidden sm:block h-9 w-auto transition-transform group-hover:scale-[1.03]">
         </a>
+
+        <span class="hidden md:block h-6 w-px bg-slate-200" aria-hidden="true"></span>
 
         {{-- Menu pôles (desktop) --}}
         <div class="relative hidden md:block" x-data="{ menuOpen: false }">
             <button
                 type="button"
                 @click="menuOpen = !menuOpen"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors {{ request()->routeIs('menu.*') ? 'bg-slate-900 text-white' : ($currentModule ? 'bg-blue-50/70 text-[#0066FF] hover:bg-blue-50' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900') }}"
+                class="inline-flex h-9 items-center gap-2 pl-2.5 pr-3 rounded-full border text-xs font-medium transition-colors {{ request()->routeIs('menu.*') ? 'border-slate-900 bg-slate-900 text-white' : ($currentModule ? 'border-[#0066FF]/20 bg-blue-50/70 text-[#0066FF] hover:bg-blue-50' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900') }}"
                 :aria-expanded="menuOpen"
                 aria-label="Pôles et modules"
             >
+                <svg class="w-4 h-4 shrink-0 opacity-80" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
                 <span class="max-w-40 truncate">{{ $currentModule['label'] ?? 'Menu' }}</span>
                 <svg class="w-3 h-3 transition-transform duration-150" :class="menuOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
             </button>
@@ -121,7 +124,7 @@
         </div>
 
         {{-- Liens rapides (desktop large) --}}
-        <nav class="hidden xl:flex items-center gap-0.5 text-xs font-medium text-slate-500">
+        <nav class="hidden lg:flex items-center gap-0.5 rounded-full bg-slate-100 p-1 text-xs font-medium text-slate-500" aria-label="Accès rapides">
             @php
                 $links = [['dashboard', 'Dashboard', request()->routeIs('dashboard') && !request('domain')]];
                 if ($isAdmin) $links[] = ['command-center.index', 'Direction', request()->routeIs('command-center.*')];
@@ -130,40 +133,21 @@
                 $links = $isTenantSpace ? [] : $links;
             @endphp
             @foreach($links as [$r, $label, $active])
-                <a href="{{ route($r) }}" class="px-3 py-1.5 rounded-full whitespace-nowrap transition-colors {{ $active ? 'text-[#0066FF] bg-blue-50/70' : 'hover:text-slate-900 hover:bg-slate-100' }}">{{ $label }}</a>
+                <a href="{{ route($r) }}" @if($active) aria-current="page" @endif class="px-3.5 py-1.5 rounded-full whitespace-nowrap transition-colors {{ $active ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900' }}">{{ $label }}</a>
             @endforeach
         </nav>
 
-        {{-- Recherche (desktop) --}}
-        <button
-            type="button"
-            @click="$dispatch('open-spotlight')"
-            x-data="{ shortcut: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K' }"
-            class="group hidden md:flex items-center gap-3 w-full max-w-md h-11 pl-1.5 pr-2 rounded-full bg-white border border-slate-200 shadow-sm text-sm text-slate-400 transition-all hover:border-[#0066FF]/40 hover:shadow-md focus:outline-none focus-visible:border-[#0066FF] focus-visible:ring-4 focus-visible:ring-[#0066FF]/15"
-            aria-label="Ouvrir la recherche globale"
-        >
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0066FF]/10 text-[#0066FF] transition-colors group-hover:bg-[#0066FF] group-hover:text-white">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            </span>
-            <span class="flex-1 truncate text-left">Rechercher un client, une facture, un produit…</span>
-            <kbd class="hidden lg:inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-500" x-text="shortcut">Ctrl K</kbd>
-        </button>
     </div>
 
     {{-- ───────── Droite : actions ───────── --}}
-    <div class="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-2">
-
-        {{-- Recherche (mobile) --}}
-        <button type="button" @click="$dispatch('open-spotlight')" class="md:hidden flex h-9 w-9 items-center justify-center rounded-full bg-[#0066FF]/10 text-[#0066FF] active:bg-[#0066FF] active:text-white transition-colors" aria-label="Recherche">
-            <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        </button>
+    <div class="flex items-center gap-1 shrink-0 ml-2">
 
         {{-- Aide + Messages (desktop) --}}
         @unless($isTenantSpace)
-        <a href="{{ route('support.index') }}" class="hidden md:flex p-2 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Support & Aide">
+        <a href="{{ route('support.index') }}" class="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Support & Aide">
             <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         </a>
-        <a href="{{ route('messages.index') }}" class="hidden md:flex p-2 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Messagerie interne">
+        <a href="{{ route('messages.index') }}" class="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Messagerie interne">
             <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
         </a>
         @endunless
@@ -236,7 +220,7 @@
                 }
             }"
             @click="toggleTheme()"
-            class="p-2 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 transition-colors"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 transition-colors"
             :aria-label="isDark ? 'Passer en mode jour' : 'Passer en mode nuit'"
         >
             <svg x-show="!isDark" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
@@ -249,13 +233,13 @@
             <button
                 type="button"
                 @click="notifOpen = !notifOpen"
-                class="relative p-2 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 transition-colors"
+                class="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-100 transition-colors"
                 title="Notifications ({{ $unreadCount }} non lue{{ $unreadCount > 1 ? 's' : '' }})"
                 aria-label="Centre de notifications"
             >
                 <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                 @if($unreadCount > 0)
-                    <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#0066FF] ring-2 ring-white"></span>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
                 @endif
             </button>
 
@@ -321,7 +305,7 @@
             </div>
         </div>
 
-        <div class="h-4 w-px bg-slate-200 mx-1.5 hidden md:block"></div>
+        <div class="h-6 w-px bg-slate-200 mx-1.5 hidden md:block"></div>
         @endunless
 
         {{-- Profil --}}
@@ -329,12 +313,12 @@
             <button
                 type="button"
                 @click="open = !open"
-                class="flex items-center gap-2 p-0.5 md:pr-2 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
+                class="flex items-center gap-2.5 p-0.5 lg:pr-3.5 rounded-full lg:border lg:border-slate-200 lg:bg-white hover:bg-slate-100 lg:hover:border-slate-300 transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0066FF]/15"
                 aria-label="Menu profil"
             >
                 <x-user-avatar :user="auth()->user()" size="sm" />
-                <span class="hidden lg:block text-left leading-tight">
-                    <span class="block text-xs font-medium text-slate-900">{{ auth()->user()->name ?? 'Utilisateur' }}</span>
+                <span class="hidden lg:block max-w-40 text-left leading-tight">
+                    <span class="block truncate text-xs font-semibold text-slate-900">{{ auth()->user()->name ?? 'Utilisateur' }}</span>
                     <span class="block text-[10px] text-slate-400">{{ auth()->user()->primary_role ?? 'Collaborateur' }}</span>
                 </span>
             </button>
