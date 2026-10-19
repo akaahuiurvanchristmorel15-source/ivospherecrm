@@ -138,7 +138,8 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-5">
             {{-- Briefing du jour --}}
-            <div class="lg:col-span-3 lg:border-r border-b lg:border-b-0 border-[#E2E8F0]">
+            @php $canAskIvo = auth()->user()->hasPermission('ai.assistant'); @endphp
+            <div class="{{ $canAskIvo ? 'lg:col-span-3 lg:border-r border-b lg:border-b-0 border-[#E2E8F0]' : 'lg:col-span-5' }}">
                 <div class="flex items-center justify-between px-4 sm:px-6 pt-4 pb-2">
                     <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Briefing du jour</p>
                     <p class="text-[11px] text-[#94A3B8]">{{ ucfirst(now()->locale('fr')->translatedFormat('l j F')) }}</p>
@@ -169,6 +170,7 @@
             </div>
 
             {{-- Conversation --}}
+            @if($canAskIvo)
             <div class="lg:col-span-2 flex flex-col bg-[#F8FAFC] min-h-[320px]">
                 <div class="flex items-center justify-between px-4 sm:px-5 pt-4 pb-2">
                     <p class="text-[11px] font-medium uppercase tracking-wider text-[#64748B]">Demander à Ivo</p>
@@ -210,6 +212,7 @@
                     </div>
                 </form>
             </div>
+            @endif
         </div>
     </section>
 

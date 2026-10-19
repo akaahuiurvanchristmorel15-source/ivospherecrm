@@ -87,6 +87,14 @@ class RolePermissionSeeder extends Seeder
             ['slug' => 'cyber.services', 'name' => 'Gérer les postes et prestations de l\'espace Cyber', 'group' => 'domain_tech'],
             ['slug' => 'media.manage', 'name' => 'Gérer les shootings, locations et évènements', 'group' => 'domain_media'],
             ['slug' => 'insurance.manage', 'name' => 'Gérer les contrats et commissions assurance', 'group' => 'domain_assurance'],
+
+            // Assistant IA
+            ['slug' => 'ai.assistant', 'name' => "Utiliser l'assistant IA (accueil, Ivo, recherche dans le menu)", 'group' => 'ai'],
+            ['slug' => 'ai.sales', 'name' => "Interroger l'IA sur les ventes, clients et factures", 'group' => 'ai'],
+            ['slug' => 'ai.stock', 'name' => "Interroger l'IA sur les stocks", 'group' => 'ai'],
+            ['slug' => 'ai.finance', 'name' => "Interroger l'IA sur la trésorerie, les dépenses et le bénéfice", 'group' => 'ai'],
+            ['slug' => 'ai.projects', 'name' => "Interroger l'IA sur les projets", 'group' => 'ai'],
+            ['slug' => 'ai.studio', 'name' => "Générer des contenus avec l'IA Studio", 'group' => 'ai'],
         ];
 
         $permissionModels = [];
@@ -232,6 +240,21 @@ class RolePermissionSeeder extends Seeder
                 ],
             ],
         ];
+
+        // Assistant IA : droits accordés par défaut selon le métier de chaque rôle
+        $aiGrants = [
+            'ai.assistant' => array_keys($roles),
+            'ai.sales' => ['responsable', 'responsable_commercial', 'responsable_financiere', 'agent_commercial_terrain', 'agent_caissier_vendeur'],
+            'ai.stock' => ['responsable', 'responsable_commercial', 'agent_commercial_terrain', 'agent_caissier_vendeur', 'agent_technique'],
+            'ai.finance' => ['responsable', 'responsable_financiere'],
+            'ai.projects' => ['responsable', 'agent_technique', 'responsable_communication'],
+            'ai.studio' => ['responsable', 'responsable_commercial', 'responsable_communication'],
+        ];
+        foreach ($aiGrants as $permission => $roleSlugs) {
+            foreach (array_intersect($roleSlugs, array_keys($roles)) as $slug) {
+                $roles[$slug]['permissions'][] = $permission;
+            }
+        }
 
         // Ajout de produits et catalogue PDF : ouverts par défaut aux rôles qui consultent le stock
         foreach ($roles as $slug => $data) {

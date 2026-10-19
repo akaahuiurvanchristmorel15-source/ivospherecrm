@@ -13,3 +13,6 @@ Schedule::command('rh:auto-checkout')->dailyAt('20:00');
 
 // Génération automatique des évaluations mensuelles le 5 de chaque mois à 02:00
 Schedule::command('rh:generate-evaluations')->monthlyOn(5, '02:00');
+
+// Prévisions IA (ventes et ruptures de stock) recalculées chaque nuit à 03:00
+Schedule::command('ai:forecast')->dailyAt('03:00');

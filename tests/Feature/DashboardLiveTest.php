@@ -14,8 +14,8 @@ beforeEach(function () {
     $this->actingAs(User::where('email', 'admin@ivosphere.com')->first());
 });
 
-test('the home page renders the live dashboard that refreshes itself', function () {
-    $this->get(route('dashboard'))
+test('the indicators page renders the live dashboard that refreshes itself', function () {
+    $this->get(route('dashboard.indicators'))
         ->assertOk()
         ->assertSeeLivewire('dashboard-live')
         ->assertSee('wire:poll.10s.visible', false);

@@ -77,9 +77,11 @@
                     <a href="{{ route('command-center.index') }}" class="px-3 py-1.5 rounded-lg bg-[#F5F7FA] hover:bg-[#0066FF] hover:text-white text-xs text-[#0B0F14] border border-[#E2E8F0] transition-colors">
                         📊 Command Center Direction
                     </a>
+                    @if(auth()->user()?->hasAnyPermission(['ai.assistant', 'ai.studio']))
                     <a href="{{ route('ai.index') }}" class="px-3 py-1.5 rounded-lg bg-[#F5F7FA] hover:bg-[#0066FF] hover:text-white text-xs text-[#0B0F14] border border-[#E2E8F0] transition-colors">
                         🤖 IVOSPHERE AI
                     </a>
+                    @endif
                     <a href="{{ route('commercial.invoices.index') }}" class="px-3 py-1.5 rounded-lg bg-[#F5F7FA] hover:bg-[#0066FF] hover:text-white text-xs text-[#0B0F14] border border-[#E2E8F0] transition-colors">
                         📄 Factures Récentes
                     </a>

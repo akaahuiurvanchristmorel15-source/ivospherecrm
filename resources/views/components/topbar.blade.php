@@ -128,7 +128,7 @@
             @php
                 $links = [['dashboard', 'Dashboard', request()->routeIs('dashboard') && !request('domain')]];
                 if ($isAdmin) $links[] = ['command-center.index', 'Direction', request()->routeIs('command-center.*')];
-                $links[] = ['ai.index', 'IA Studio', request()->routeIs('ai.*')];
+                if (auth()->user()?->hasAnyPermission(['ai.assistant', 'ai.studio'])) $links[] = ['ai.index', 'IA Studio', request()->routeIs('ai.*')];
                 $links[] = ['analytics.index', 'Analytics', request()->routeIs('analytics.*')];
                 $links = $isTenantSpace ? [] : $links;
             @endphp
