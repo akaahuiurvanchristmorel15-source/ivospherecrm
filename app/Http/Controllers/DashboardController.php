@@ -27,6 +27,7 @@ class DashboardController extends Controller
                 now()->hour < 18 => 'Bon après-midi',
                 default => 'Bonsoir',
             },
+            'canUseAssistant' => $user->hasPermission('ai.assistant'),
             'suggestions' => $assistant->suggestionsFor($user),
             'modules' => $navigator->pagesFor($user)
                 ->groupBy('module')

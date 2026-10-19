@@ -58,6 +58,11 @@
                 'desc' => 'Courtage d\'assurances, contrats prévoyance, santé et commissions courtiers.',
                 'badge' => 'ASSURANCE',
             ],
+            'ai' => [
+                'title' => 'Assistant IA',
+                'desc' => 'Accès à l\'assistant, aux réponses chiffrées par domaine et à la génération de contenus.',
+                'badge' => 'IA',
+            ],
         ];
 
         $initialRole = request('role') ? $roles->firstWhere('id', request('role')) : $roles->first();

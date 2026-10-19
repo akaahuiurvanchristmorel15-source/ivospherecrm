@@ -14,6 +14,7 @@
 <x-layouts.app title="Assistant IVOSPHERE">
     <div x-data="aiWorkspace({
             queryUrl: '{{ route('ai.query') }}',
+            initialTab: '{{ auth()->user()->hasPermission('ai.assistant') ? 'assistant' : 'studio' }}',
             generateUrl: '{{ route('ai.generate') }}',
             examples: {{ Js::from($defaultSuggestions) }},
          })"
@@ -31,6 +32,11 @@
                 </div>
             </div>
 
+            @php
+                $canAsk = auth()->user()->hasPermission('ai.assistant');
+                $canGenerate = auth()->user()->hasPermission('ai.studio');
+            @endphp
+            @if($canAsk && $canGenerate)
             <div class="inline-flex rounded-xl bg-[#F1F5F9] p-1 text-sm" role="tablist">
                 <button type="button" @click="tab = 'assistant'" :aria-selected="tab === 'assistant'"
                         :class="tab === 'assistant' ? 'bg-white text-[#0B0F14] shadow-sm' : 'text-[#64748B] hover:text-[#0B0F14]'"
@@ -39,9 +45,11 @@
                         :class="tab === 'studio' ? 'bg-white text-[#0B0F14] shadow-sm' : 'text-[#64748B] hover:text-[#0B0F14]'"
                         class="rounded-lg px-4 py-1.5 font-medium transition">Rédaction</button>
             </div>
+            @endif
         </header>
 
         {{-- ═══════════════ QUESTIONS ═══════════════ --}}
+        @if($canAsk)
         <section x-show="tab === 'assistant'" class="flex min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
 
             {{-- Conversation --}}
@@ -180,8 +188,10 @@
                 </div>
             </form>
         </section>
+        @endif
 
         {{-- ═══════════════ RÉDACTION ═══════════════ --}}
+        @if($canGenerate)
         <section x-show="tab === 'studio'" x-cloak class="grid grid-cols-1 gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
             <form @submit.prevent="generate()" class="space-y-4 rounded-2xl border border-[#E2E8F0] bg-white p-5">
                 <fieldset>
@@ -245,6 +255,7 @@
                 </template>
             </div>
         </section>
+        @endif
     </div>
 
     <script>
@@ -256,7 +267,7 @@
             };
 
             return {
-                tab: 'assistant',
+                tab: config.initialTab ?? 'assistant',
                 examples: config.examples,
                 messages: [],
                 input: '',

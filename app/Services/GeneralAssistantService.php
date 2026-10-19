@@ -12,25 +12,26 @@ use Illuminate\Support\Str;
 class GeneralAssistantService
 {
     /**
-     * Page dont l'accès conditionne chaque type de réponse chiffrée.
+     * Droits requis pour chaque type de réponse chiffrée : la permission IA du domaine
+     * et l'accès au module concerné.
      *
-     * @var array<string, string>
+     * @var array<string, array{permission: string, route: string}>
      */
-    private const INTENT_ROUTES = [
-        'revenue' => 'commercial.index',
-        'top_products' => 'commercial.index',
-        'top_customers' => 'commercial.index',
-        'receivables' => 'commercial.index',
-        'inactive_customers' => 'commercial.index',
-        'customer_lookup' => 'commercial.index',
-        'average_basket' => 'commercial.index',
-        'overview' => 'commercial.index',
-        'stock_low' => 'stock.index',
-        'stock_lookup' => 'stock.index',
-        'cash' => 'finance.index',
-        'expenses' => 'finance.index',
-        'profit' => 'finance.index',
-        'projects' => 'tech.index',
+    private const INTENT_ACCESS = [
+        'revenue' => ['permission' => 'ai.sales', 'route' => 'commercial.index'],
+        'top_products' => ['permission' => 'ai.sales', 'route' => 'commercial.index'],
+        'top_customers' => ['permission' => 'ai.sales', 'route' => 'commercial.index'],
+        'receivables' => ['permission' => 'ai.sales', 'route' => 'commercial.index'],
+        'inactive_customers' => ['permission' => 'ai.sales', 'route' => 'commercial.index'],
+        'customer_lookup' => ['permission' => 'ai.sales', 'route' => 'commercial.index'],
+        'average_basket' => ['permission' => 'ai.sales', 'route' => 'commercial.index'],
+        'overview' => ['permission' => 'ai.finance', 'route' => 'finance.index'],
+        'stock_low' => ['permission' => 'ai.stock', 'route' => 'stock.index'],
+        'stock_lookup' => ['permission' => 'ai.stock', 'route' => 'stock.index'],
+        'cash' => ['permission' => 'ai.finance', 'route' => 'finance.index'],
+        'expenses' => ['permission' => 'ai.finance', 'route' => 'finance.index'],
+        'profit' => ['permission' => 'ai.finance', 'route' => 'finance.index'],
+        'projects' => ['permission' => 'ai.projects', 'route' => 'tech.index'],
     ];
 
     public function __construct(
@@ -69,11 +70,11 @@ class GeneralAssistantService
             };
         }
 
-        $requiredRoute = self::INTENT_ROUTES[$result['intent']] ?? null;
-        if ($requiredRoute !== null && ! $this->navigator->canAccess($user, $requiredRoute)) {
+        $access = self::INTENT_ACCESS[$result['intent']] ?? null;
+        if ($access !== null && ! $this->canAsk($user, $access['permission'], $access['route'])) {
             return [
                 'intent' => 'forbidden',
-                'answer' => "Cette information relève d'un module auquel votre rôle n'a pas accès. Rapprochez-vous de votre responsable si vous en avez besoin.",
+                'answer' => "Votre rôle ne vous permet pas d'interroger l'assistant sur ce sujet. Rapprochez-vous d'un administrateur si vous en avez besoin.",
                 'metrics' => [],
                 'table' => null,
                 'links' => [],
@@ -92,14 +93,14 @@ class GeneralAssistantService
     {
         $suggestions = [];
 
-        if ($this->navigator->canAccess($user, 'commercial.index')) {
+        if ($this->canAsk($user, 'ai.sales', 'commercial.index')) {
             $suggestions[] = "Quel est le chiffre d'affaires ce mois-ci ?";
             $suggestions[] = 'Quelles factures sont impayées ?';
         }
-        if ($this->navigator->canAccess($user, 'stock.index')) {
+        if ($this->canAsk($user, 'ai.stock', 'stock.index')) {
             $suggestions[] = 'Quels produits sont bientôt en rupture ?';
         }
-        if ($this->navigator->canAccess($user, 'finance.index')) {
+        if ($this->canAsk($user, 'ai.finance', 'finance.index')) {
             $suggestions[] = 'Quel est le bénéfice du mois dernier ?';
         }
 
@@ -107,6 +108,26 @@ class GeneralAssistantService
         $suggestions[] = 'Comment demander un congé ?';
 
         return array_slice($suggestions, 0, 5);
+    }
+
+    /**
+     * Sujets chiffrés autorisés à l'utilisateur, pour l'aide.
+     *
+     * @return list<string>
+     */
+    public function allowedTopicsFor(User $user): array
+    {
+        return array_keys(array_filter([
+            'ventes, clients et factures' => $this->canAsk($user, 'ai.sales', 'commercial.index'),
+            'stocks' => $this->canAsk($user, 'ai.stock', 'stock.index'),
+            'trésorerie, dépenses et bénéfice' => $this->canAsk($user, 'ai.finance', 'finance.index'),
+            'projets' => $this->canAsk($user, 'ai.projects', 'tech.index'),
+        ]));
+    }
+
+    private function canAsk(User $user, string $permission, string $route): bool
+    {
+        return $user->hasPermission($permission) && $this->navigator->canAccess($user, $route);
     }
 
     private function isSmallTalk(string $query): bool
@@ -128,10 +149,12 @@ class GeneralAssistantService
     private function introduction(User $user): array
     {
         $modules = $this->navigator->modulesFor($user);
+        $topics = $this->allowedTopicsFor($user);
 
         return [
             'intent' => 'introduction',
-            'answer' => "Je suis l'assistant IVOSPHERE. Je connais vos chiffres (ventes, clients, stock, trésorerie…) et toutes les pages de l'application : demandez-moi un indicateur ou où faire une action."
+            'answer' => "Je suis l'assistant IVOSPHERE. Je connais toutes les pages de l'application auxquelles vous avez accès : demandez-moi où faire une action."
+                .($topics !== [] ? "\n\nJe peux aussi vous donner vos chiffres sur : **".implode('**, **', $topics).'**.' : '')
                 .($modules !== [] ? "\n\nVos modules : **".implode('**, **', $modules).'**.' : ''),
             'metrics' => [],
             'table' => null,

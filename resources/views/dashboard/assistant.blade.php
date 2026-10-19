@@ -38,6 +38,7 @@
                 </h1>
             </div>
 
+            @if($canUseAssistant)
             <div class="w-full max-w-2xl">
                 @include('dashboard._composer')
 
@@ -50,6 +51,21 @@
                     @endforeach
                 </div>
             </div>
+            @else
+            <div class="w-full max-w-2xl text-center">
+                <p class="text-sm text-[#64748B]">L'assistant IA n'est pas activé pour votre rôle. Accédez directement à vos modules :</p>
+                <div class="mt-5 flex flex-wrap justify-center gap-2">
+                    @foreach($modules as $moduleLabel => $pages)
+                        @continue($moduleLabel === 'Général')
+                        <a href="{{ $pages->first()['url'] }}" class="rounded-full border border-[#E2E8F0] bg-[#FFFFFF] px-3.5 py-1.5 text-xs text-[#475569] hover:border-slate-300 hover:text-[#0B0F14] transition">{{ $moduleLabel }}</a>
+                    @endforeach
+                </div>
+                <div class="mt-5 flex justify-center gap-6 text-xs text-[#64748B]">
+                    <a href="{{ route('my-day') }}" class="hover:text-[#0B0F14] transition">Ma journée</a>
+                    <a href="{{ route('dashboard.indicators') }}" class="hover:text-[#0B0F14] transition">Voir les indicateurs</a>
+                </div>
+            </div>
+            @endif
         </div>
 
         {{-- Conversation --}}

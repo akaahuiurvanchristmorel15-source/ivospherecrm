@@ -125,7 +125,9 @@
                         <a href="{{ route('finance.cash-registers.index') }}" class="flex w-full items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">Gérer les caisses</a>
                         <a href="{{ route('finance.assets.index') }}" class="flex w-full items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium text-[#0066FF]">🏢 Immobilisations & Actifs</a>
                         <a href="{{ route('finance.assets.rentals.index') }}" class="flex w-full items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">Locations de Matériel</a>
-                        <button type="button" @click="moreMenu = false; aiModal = true" class="flex w-full items-center px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">Assistant IA</button>
+                        @if(auth()->user()->hasPermission('ai.finance'))
+                            <button type="button" @click="moreMenu = false; aiModal = true" class="flex w-full items-center px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">Assistant IA</button>
+                        @endif
                         <div class="my-1 border-t border-slate-100"></div>
                         <a href="{{ route('finance.export') }}" class="flex w-full items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">Exporter en CSV</a>
                     </div>
@@ -773,6 +775,7 @@
                 </ul>
             </section>
 
+            @if(auth()->user()->hasPermission('ai.finance'))
             <section class="{{ $card }}">
                 <div class="border-b border-slate-100 px-5 py-4">
                     <h2 class="text-base font-semibold text-slate-900">Assistant financier</h2>
@@ -787,6 +790,7 @@
                     <button type="button" @click="aiModal = true" class="{{ $btnSec }} w-full">Poser une autre question</button>
                 </div>
             </section>
+            @endif
         </div>
 
         {{-- ═════════════ MODALES ═════════════ --}}

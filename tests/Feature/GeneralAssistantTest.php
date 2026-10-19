@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\DomainSeeder;
@@ -78,5 +79,35 @@ test('the assistant only shows pages and figures the user may access', function 
 
     $this->actingAs($agent)
         ->postJson(route('ai.query'), ['query' => 'Quel est le bénéfice du mois dernier ?'])
+        ->assertJsonPath('intent', 'forbidden');
+});
+
+test('a role without the assistant permission cannot use the ai', function () {
+    $role = Role::create(['slug' => 'stagiaire', 'name' => 'Stagiaire']);
+    $user = User::create(['name' => 'Yao Kouassi', 'email' => 'stagiaire@ivosphere.test', 'password' => bcrypt('password'), 'is_active' => true]);
+    $user->roles()->attach($role);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee("L'assistant IA n'est pas activé pour votre rôle", false)
+        ->assertDontSee("Comment puis-je vous aider aujourd'hui ?");
+
+    $this->actingAs($user)->postJson(route('ai.query'), ['query' => 'Où créer un devis ?'])->assertForbidden();
+    $this->actingAs($user)->get(route('ai.index'))->assertForbidden();
+});
+
+test('content generation needs the ai studio permission', function () {
+    $this->actingAs(technician())
+        ->postJson(route('ai.generate'), ['type' => 'post', 'topic' => 'Promo rentrée'])
+        ->assertForbidden();
+});
+
+test('figures follow the ai permissions granted to the role', function () {
+    $technician = technician();
+    $technician->roles->first()->permissions()->detach(Permission::where('slug', 'ai.stock')->value('id'));
+
+    $this->actingAs($technician->fresh())
+        ->postJson(route('ai.query'), ['query' => 'Quels produits sont en rupture de stock ?'])
         ->assertJsonPath('intent', 'forbidden');
 });

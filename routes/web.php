@@ -391,7 +391,7 @@ Route::middleware('auth')->group(function () {
         Route::post('supplier-invoices', [FinanceDashboardController::class, 'storeSupplierInvoice'])->name('supplier-invoices.store');
         Route::post('reconciliations', [FinanceDashboardController::class, 'storeReconciliation'])->name('reconciliations.store');
         Route::post('closings', [FinanceDashboardController::class, 'storeClosing'])->name('closings.store');
-        Route::post('ai-query', [FinanceDashboardController::class, 'aiQuery'])->name('ai-query');
+        Route::post('ai-query', [FinanceDashboardController::class, 'aiQuery'])->middleware('permission:ai.finance')->name('ai-query');
 
         Route::post('cash-registers/batch', [CashRegisterController::class, 'storeBatch'])->name('cash-registers.batch');
         Route::patch('cash-registers/{cashRegister}/toggle', [CashRegisterController::class, 'toggleStatus'])->name('cash-registers.toggle');
@@ -517,9 +517,9 @@ Route::middleware('auth')->group(function () {
 
     // IVOSPHERE AI — Assistant de Gestion & Studio Créatif
     Route::prefix('ai')->name('ai.')->group(function () {
-        Route::get('/', [AiAssistantController::class, 'index'])->name('index');
-        Route::post('/query', [AiAssistantController::class, 'query'])->name('query');
-        Route::post('/generate', [AiAssistantController::class, 'generate'])->name('generate');
+        Route::get('/', [AiAssistantController::class, 'index'])->middleware('permission:ai.assistant,ai.studio')->name('index');
+        Route::post('/query', [AiAssistantController::class, 'query'])->middleware('permission:ai.assistant')->name('query');
+        Route::post('/generate', [AiAssistantController::class, 'generate'])->middleware('permission:ai.studio')->name('generate');
     });
 
     // Business Intelligence & Prévisions (Analytics)
