@@ -135,7 +135,10 @@ class AppNavigator
 
     public function isNavigationQuestion(string $query): bool
     {
-        return (bool) array_intersect(explode(' ', $this->normalize($query)), self::NAVIGATION_WORDS);
+        // « Où en sont les prospects ? » demande un état, pas une page
+        $text = (string) preg_replace('/\bou en (est|sont|etes|sommes)\b/', '', $this->normalize($query));
+
+        return (bool) array_intersect(explode(' ', $text), self::NAVIGATION_WORDS);
     }
 
     /**
