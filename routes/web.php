@@ -28,6 +28,7 @@ use App\Http\Controllers\Commercial\CommercialAppointmentController;
 use App\Http\Controllers\Commercial\CustomerController;
 use App\Http\Controllers\Commercial\CyberController;
 use App\Http\Controllers\Commercial\CyberDepositDeskController;
+use App\Http\Controllers\Commercial\CyberPerformanceController;
 use App\Http\Controllers\Commercial\DeliveryController;
 use App\Http\Controllers\Commercial\InvoiceController;
 use App\Http\Controllers\Commercial\OrderController;
@@ -323,6 +324,7 @@ Route::middleware('auth')->group(function () {
 
         // Cyber : prestations (impression, photo minute…) avec facture automatique
         Route::get('cyber', [CyberController::class, 'index'])->name('cyber.index');
+        Route::get('cyber/performance', [CyberPerformanceController::class, 'index'])->middleware('permission:cyber.performance')->name('cyber.performance');
         Route::post('cyber/checkout', [CyberController::class, 'checkout'])->name('cyber.checkout');
         Route::post('cyber/invoices/{invoice}/cancel', [CyberController::class, 'cancelInvoice'])->name('cyber.invoices.cancel');
         Route::post('cyber/services', [CyberController::class, 'storeService'])->name('cyber.services.store');

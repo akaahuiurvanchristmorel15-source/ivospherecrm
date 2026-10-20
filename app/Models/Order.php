@@ -38,7 +38,7 @@ class Order extends Model
 
     protected $fillable = [
         'reference', 'quotation_id', 'customer_id', 'domain_id',
-        'user_id', 'date', 'delivery_date', 'status',
+        'user_id', 'performed_by_employee_id', 'date', 'delivery_date', 'status',
         'subtotal', 'tax_amount', 'discount', 'total',
         'notes', 'delivery_address',
         'validated_at', 'validated_by',
@@ -131,6 +131,14 @@ class Order extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * Agent qui a réalisé la prestation (cyber), distinct du caissier qui encaisse.
+     */
+    public function performer(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'performed_by_employee_id');
     }
 
     public function domain(): BelongsTo

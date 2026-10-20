@@ -42,6 +42,9 @@
                 @if($canManage)
                     <x-button type="button" variant="secondary" size="md" @click="catalogOpen = true">Tarifs</x-button>
                 @endif
+                @if($canSeePerformance)
+                    <x-button :href="route('commercial.cyber.performance')" variant="secondary" size="md">Performance</x-button>
+                @endif
                 <x-button :href="route('commercial.invoices.index')" variant="secondary" size="md">Factures</x-button>
             </x-slot:actions>
         </x-page-header>
@@ -241,6 +244,21 @@
                                 @endforeach
                             </select>
                         </div>
+
+                        {{-- Agent qui a réalisé la prestation (le caissier est l'utilisateur connecté) --}}
+                        @if($agents->isNotEmpty())
+                            <div class="p-4 sm:p-5">
+                                <label for="performed_by_employee_id" class="mb-1.5 block text-xs font-semibold text-slate-700 sm:text-sm">Réalisé par</label>
+                                <select id="performed_by_employee_id" name="performed_by_employee_id"
+                                        class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5 sm:h-11 sm:text-sm">
+                                    <option value="">— Par défaut : la personne connectée —</option>
+                                    @foreach($agents as $agent)
+                                        <option value="{{ $agent->id }}" @selected((int) old('performed_by_employee_id', $defaultAgentId) === $agent->id)>{{ $agent->full_name }}{{ $agent->position ? ' · '.$agent->position : '' }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-[11px] text-slate-400">Le caissier enregistré est {{ auth()->user()->name }}.</p>
+                            </div>
+                        @endif
 
                         {{-- Prestations --}}
                         <div class="p-4 sm:p-5">

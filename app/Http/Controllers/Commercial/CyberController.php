@@ -7,6 +7,7 @@ use App\Http\Requests\Commercial\CancelOrderRequest;
 use App\Models\Customer;
 use App\Models\CyberService;
 use App\Models\Domain;
+use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
@@ -41,7 +42,11 @@ class CyberController extends Controller
             ->latest('id')
             ->get(['id', 'order_id', 'reference', 'total', 'paid_amount', 'status', 'created_at']);
 
-        return view('commercial.cyber.index', compact('services', 'customers', 'canManage', 'todayInvoices'));
+        $agents = Employee::active()->orderBy('first_name')->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'position', 'user_id']);
+        $defaultAgentId = $agents->firstWhere('user_id', $request->user()->id)?->id;
+        $canSeePerformance = $request->user()->hasPermission('cyber.performance');
+
+        return view('commercial.cyber.index', compact('services', 'customers', 'canManage', 'todayInvoices', 'agents', 'defaultAgentId', 'canSeePerformance'));
     }
 
     /**
@@ -51,6 +56,7 @@ class CyberController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => ['nullable', 'exists:customers,id'],
+            'performed_by_employee_id' => ['nullable', Rule::exists('employees', 'id')->where('status', 'actif')],
             'payment_method' => ['required', 'in:especes,mobile_money,carte,credit'],
             'mobile_money_provider' => ['nullable', 'string', 'in:wave,orange_money'],
             'amount_paid' => ['required', 'numeric', 'min:0'],
@@ -110,6 +116,8 @@ class CyberController extends Controller
 
             $order = Order::create([
                 'reference' => 'CYB-'.strtoupper(Str::random(8)),
+                'performed_by_employee_id' => $validated['performed_by_employee_id']
+                    ?? Employee::active()->where('user_id', $request->user()->id)->value('id'),
                 'customer_id' => $customer->id,
                 'domain_id' => $domainId,
                 'user_id' => $request->user()->id,

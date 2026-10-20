@@ -218,6 +218,7 @@ return [
             ['route' => 'commercial.prospects.create', 'label' => 'Nouveau prospect', 'module' => 'Commercial & CRM', 'keywords' => 'creer ajouter nouveau prospect'],
             ['route' => 'commercial.appointments.create', 'label' => 'Nouveau rendez-vous', 'module' => 'Commercial & CRM', 'keywords' => 'creer planifier nouveau rendez vous rdv'],
             ['route' => 'commercial.suppliers.create', 'label' => 'Nouveau fournisseur', 'module' => 'Commercial & CRM', 'keywords' => 'creer ajouter nouveau fournisseur'],
+            ['route' => 'commercial.cyber.performance', 'label' => 'Performance des agents cyber', 'module' => 'Commercial & CRM', 'keywords' => 'performance agents cyber classement employes clients servis statut rang'],
             ['route' => 'commercial.cyber.qr', 'label' => 'QR code de dépôt cyber', 'module' => 'Commercial & CRM', 'keywords' => 'qr code depot documents impression cyber client'],
             ['route' => 'stock.products.index', 'label' => 'Catalogue produits', 'module' => 'Stocks', 'keywords' => 'catalogue produits articles references prix'],
             ['route' => 'stock.products.create', 'label' => 'Nouveau produit', 'module' => 'Stocks', 'keywords' => 'creer ajouter nouveau produit article'],
