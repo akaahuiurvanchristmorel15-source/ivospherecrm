@@ -23,7 +23,7 @@
     $activeServices = $services->where('is_active', true)->values();
     $usedCategories = collect($categories)->only($activeServices->pluck('category')->unique()->all());
 
-    $field = 'h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:h-11';
+    $field = 'h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5 sm:h-11';
 @endphp
 
 <x-layouts.app>
@@ -67,7 +67,7 @@
                         <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"/></svg>
                         <input type="text" x-ref="searchInput" x-model="search" autocomplete="off" enterkeyhint="search"
                                placeholder="Rechercher une prestation"
-                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder-slate-400 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
+                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder-slate-400 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5">
                         <button type="button" x-show="search" x-cloak @click="search = ''; $refs.searchInput.focus()"
                                 class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700" aria-label="Effacer la recherche">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -75,7 +75,7 @@
                     </div>
 
                     <button type="button" @click="openCustom()"
-                            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white transition-colors hover:bg-[#0066FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] sm:px-4"
+                            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-[#0B0F14] px-3 text-sm font-semibold text-white transition-colors hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] sm:px-4"
                             aria-label="Saisir une prestation libre">
                         <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                         <span class="hidden sm:inline">Saisie libre</span>
@@ -86,7 +86,7 @@
                             aria-label="Ouvrir le ticket">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         <span x-show="cartCount > 0" x-cloak
-                              class="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0066FF] px-1 text-[11px] font-bold text-white"
+                              class="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0B0F14] px-1 text-[11px] font-bold text-white"
                               x-text="cartCount"></span>
                     </button>
                 </div>
@@ -94,13 +94,13 @@
                 {{-- Catégories --}}
                 <div class="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:px-0">
                     <button type="button" @click="selectedCategory = ''"
-                            :class="selectedCategory === '' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                            :class="selectedCategory === '' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
                             class="h-8 shrink-0 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition">
                         Toutes <span class="ml-1 opacity-60" x-text="countFor('')"></span>
                     </button>
                     @foreach($usedCategories as $key => $categoryLabel)
                         <button type="button" @click="selectedCategory = '{{ $key }}'"
-                                :class="selectedCategory === '{{ $key }}' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                                :class="selectedCategory === '{{ $key }}' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
                                 class="h-8 shrink-0 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition">
                             {{ $categoryLabel }} <span class="ml-1 opacity-60" x-text="countFor('{{ $key }}')"></span>
                         </button>
@@ -113,13 +113,13 @@
                         @php [$iconPath, $iconBg, $iconColor] = $categoryVisuals[$service->category] ?? $categoryVisuals['autre']; @endphp
                         <button type="button" @click="addToCart({{ $service->id }})"
                                 x-show="isVisible({{ $service->id }})"
-                                class="group relative flex touch-manipulation flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition hover:border-[#0066FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] active:scale-[0.98]">
+                                class="group relative flex touch-manipulation flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition hover:border-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] active:scale-[0.98]">
 
                             <div class="relative flex aspect-[4/3] items-center justify-center {{ $iconBg }}">
                                 <svg class="h-10 w-10 {{ $iconColor }} transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}"/></svg>
 
                                 <div x-show="qtyOf({{ $service->id }}) > 0" x-cloak
-                                     class="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0066FF] px-1.5 text-[11px] font-bold text-white shadow-md">
+                                     class="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0B0F14] px-1.5 text-[11px] font-bold text-white shadow-md">
                                     <span x-text="qtyOf({{ $service->id }})"></span>
                                 </div>
                             </div>
@@ -139,7 +139,7 @@
 
                     {{-- Carte : prestation libre --}}
                     <button type="button" @click="openCustom()" x-show="!search && !selectedCategory"
-                            class="flex min-h-[180px] touch-manipulation flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-3 text-center text-slate-500 transition hover:border-[#0066FF] hover:text-[#0066FF] active:scale-[0.98]">
+                            class="flex min-h-[180px] touch-manipulation flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-3 text-center text-slate-500 transition hover:border-slate-400 hover:text-[#0066FF] active:scale-[0.98]">
                         <span class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                         </span>
@@ -193,7 +193,7 @@
 
             {{-- ===================== TICKET ===================== --}}
             <div x-show="cartOpen" x-cloak x-transition.opacity @click="cartOpen = false"
-                 class="fixed inset-0 z-40 bg-slate-900/60 md:hidden"></div>
+                 class="fixed inset-0 z-40 bg-[#0B0F14]/60 md:hidden"></div>
 
             <aside
                 :class="cartOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'"
@@ -210,7 +210,7 @@
                     <div class="flex items-center gap-2">
                         <h2 class="text-sm font-bold text-slate-900 sm:text-base">Ticket</h2>
                         <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-bold transition-colors"
-                              :class="cartCount > 0 ? 'bg-[#0066FF] text-white' : 'bg-slate-100 text-slate-500'"
+                              :class="cartCount > 0 ? 'bg-[#0B0F14] text-white' : 'bg-slate-100 text-slate-500'"
                               x-text="cartCount"></span>
                     </div>
                     <div class="flex items-center gap-1">
@@ -234,7 +234,7 @@
                                 <a href="{{ route('commercial.customers.create') }}" target="_blank" class="text-xs font-medium text-[#0066FF] hover:underline sm:text-sm">Nouveau client</a>
                             </div>
                             <select id="customer_id" name="customer_id"
-                                    class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:h-11 sm:text-sm">
+                                    class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5 sm:h-11 sm:text-sm">
                                 <option value="">Client comptoir (par défaut)</option>
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>{{ $customer->name }} ({{ $customer->code }})</option>
@@ -303,7 +303,7 @@
                                 @foreach($paymentMethods as $value => [$methodLabel, $icon])
                                     <label class="relative cursor-pointer select-none">
                                         <input type="radio" name="payment_method" value="{{ $value }}" x-model="paymentMethod" class="peer sr-only">
-                                        <span class="flex h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1 text-center text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 peer-checked:border-[#0066FF] peer-checked:bg-[#0066FF]/5 peer-checked:text-[#0066FF] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0066FF] sm:text-xs">
+                                        <span class="flex h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1 text-center text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 peer-checked:border-[#0B0F14] dark:peer-checked:border-white peer-checked:bg-[#0B0F14]/5 peer-checked:text-[#0B0F14] dark:peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-[#0066FF] sm:text-xs">
                                             <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
                                             <span class="block w-full truncate">{{ $methodLabel }}</span>
                                         </span>
@@ -345,13 +345,13 @@
                                     </div>
                                     <div class="relative">
                                         <input id="amount_paid" type="number" inputmode="numeric" min="0" x-model.number="amountPaid"
-                                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-3 pr-16 text-base font-bold tabular-nums text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:h-12 sm:text-lg">
+                                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-3 pr-16 text-base font-bold tabular-nums text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5 sm:h-12 sm:text-lg">
                                         <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 sm:text-sm">FCFA</span>
                                     </div>
 
                                     <div class="flex flex-wrap gap-1.5">
                                         <button type="button" @click="amountPaid = total"
-                                                :class="amountPaid === total ? 'bg-[#0066FF] text-white border-[#0066FF]' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'"
+                                                :class="amountPaid === total ? 'bg-[#0B0F14] text-white border-[#0B0F14]' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'"
                                                 class="rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95">Exact</button>
                                         @foreach($cashPresets as $preset)
                                             <button type="button" @click="amountPaid = {{ $preset }}"
@@ -375,7 +375,7 @@
                             <input type="hidden" name="amount_paid" :value="paymentMethod === 'credit' ? 0 : (paymentMethod === 'especes' ? Math.min(amountPaid || 0, total) : total)">
 
                             <input type="text" name="notes" value="{{ old('notes') }}" placeholder="Note (facultatif)" aria-label="Note"
-                                   class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:text-sm">
+                                   class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5 sm:text-sm">
                         </div>
                     </div>
 
@@ -393,7 +393,7 @@
                         </dl>
 
                         <button type="submit" :disabled="cart.length === 0 || total <= 0 || submitting"
-                                class="h-11 w-full rounded-xl bg-[#0066FF] text-sm font-bold text-white transition hover:bg-[#0052CC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:h-12">
+                                class="h-11 w-full rounded-full bg-[#0B0F14] text-sm font-bold text-white transition hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:h-12">
                             <span x-text="submitting ? 'Enregistrement…' : 'Valider et générer la facture'"></span>
                         </button>
                     </div>
@@ -405,7 +405,7 @@
         <div x-show="!cartOpen" x-cloak
              class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
             <button type="button" @click="cartOpen = true"
-                    class="flex h-12 w-full items-center justify-between rounded-xl bg-[#0066FF] px-4 text-sm font-bold text-white transition hover:bg-[#0052CC] active:scale-[0.99]">
+                    class="flex h-12 w-full items-center justify-between rounded-full bg-[#0B0F14] px-4 text-sm font-bold text-white transition hover:bg-black active:scale-[0.99]">
                 <span class="flex items-center gap-2.5">
                     <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white/25 px-1.5 text-xs font-bold" x-text="cartCount"></span>
                     <span>Voir le ticket</span>
@@ -416,7 +416,7 @@
 
         {{-- ===================== SAISIE LIBRE ===================== --}}
         <div x-show="customOpen" x-cloak x-transition.opacity role="dialog" aria-modal="true" aria-labelledby="custom-title"
-             class="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 sm:items-center sm:p-4">
+             class="fixed inset-0 z-[60] flex items-end justify-center bg-[#0B0F14]/60 sm:items-center sm:p-4">
             <form @submit.prevent="addCustom()" @click.outside="customOpen = false"
                   class="w-full max-w-md space-y-4 rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6">
                 <div class="flex items-center justify-between">
@@ -452,14 +452,14 @@
                     <span class="font-bold tabular-nums text-slate-900" x-text="money((custom.quantity || 0) * (custom.unit_price || 0)) + ' FCFA'"></span>
                 </div>
 
-                <button type="submit" class="h-11 w-full rounded-xl bg-[#0066FF] text-sm font-bold text-white transition hover:bg-[#0052CC] sm:h-12">Ajouter au ticket</button>
+                <button type="submit" class="h-11 w-full rounded-full bg-[#0B0F14] text-sm font-bold text-white transition hover:bg-black sm:h-12">Ajouter au ticket</button>
             </form>
         </div>
 
         {{-- ===================== ANNULATION ===================== --}}
         @if($canManage)
             <div x-show="cancelTarget" x-cloak x-transition.opacity role="alertdialog" aria-modal="true" aria-labelledby="cancel-title"
-                 class="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 sm:items-center sm:p-4">
+                 class="fixed inset-0 z-[60] flex items-end justify-center bg-[#0B0F14]/60 sm:items-center sm:p-4">
                 <form method="POST" :action="cancelTarget?.url" @click.outside="cancelTarget = null"
                       class="w-full max-w-md space-y-4 rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6">
                     @csrf
@@ -477,7 +477,7 @@
                         <span class="mb-1.5 block text-xs font-semibold text-slate-700 sm:text-sm">Motif d'annulation</span>
                         <textarea name="cancellation_reason" x-ref="cancelReason" rows="3" required minlength="5" maxlength="500"
                                   placeholder="Ex : erreur de saisie, client remboursé…"
-                                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15"></textarea>
+                                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5"></textarea>
                     </label>
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" @click="cancelTarget = null" class="h-11 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">Retour</button>
@@ -490,7 +490,7 @@
         {{-- ===================== TARIFS (responsables) ===================== --}}
         @if($canManage)
             <div x-show="catalogOpen" x-cloak x-transition.opacity role="dialog" aria-modal="true" aria-labelledby="catalog-title"
-                 class="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 sm:items-center sm:p-4">
+                 class="fixed inset-0 z-[60] flex items-end justify-center bg-[#0B0F14]/60 sm:items-center sm:p-4">
                 <div @click.outside="catalogOpen = false" class="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-2xl">
                     <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
                         <div>
@@ -519,7 +519,7 @@
                                     <label class="mr-auto flex items-center gap-1.5 text-xs font-medium text-slate-600 sm:mr-0">
                                         <input type="checkbox" name="is_active" value="1" @checked($service->is_active) class="h-4 w-4 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]"> Actif
                                     </label>
-                                    <button type="submit" class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-[#0066FF]">Enregistrer</button>
+                                    <button type="submit" class="rounded-full bg-[#0B0F14] px-3 py-2 text-xs font-semibold text-white hover:bg-black">Enregistrer</button>
                                     <button type="submit" form="delete-service-{{ $service->id }}" class="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Supprimer {{ $service->name }}">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
@@ -556,7 +556,7 @@
                             <span class="mb-1 block text-xs font-semibold text-slate-700">Prix (F)</span>
                             <input type="number" name="price" min="0" required class="{{ $field }} font-bold tabular-nums">
                         </label>
-                        <button type="submit" class="col-span-2 h-10 rounded-xl bg-[#0066FF] px-4 text-sm font-bold text-white hover:bg-[#0052CC] sm:col-span-1 sm:h-11">Ajouter</button>
+                        <button type="submit" class="col-span-2 h-10 rounded-full bg-[#0B0F14] px-4 text-sm font-bold text-white hover:bg-black sm:col-span-1 sm:h-11">Ajouter</button>
                     </form>
                 </div>
             </div>

@@ -100,9 +100,16 @@ button[data-submitting]:has(> svg:only-child)::before {
 
 /* Focus Visible ring (WCAG 2.2 SC 2.4.7) */
 *:focus-visible {
-    outline: 2px solid #0066FF !important;
+    outline: 2px solid #0B0F14 !important;
     outline-offset: 2px !important;
 }
+:is(input, textarea, select):focus-visible {
+    outline-width: 1.5px !important;
+    outline-color: rgb(11 15 20 / 0.45) !important;
+    outline-offset: 1px !important;
+}
+.dark *:focus-visible { outline-color: #FFFFFF !important; }
+.dark :is(input, textarea, select):focus-visible { outline-color: rgb(255 255 255 / 0.45) !important; }
 
 /* Custom scrollbars */
 * {
