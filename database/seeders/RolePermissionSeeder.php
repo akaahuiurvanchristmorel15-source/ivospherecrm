@@ -88,6 +88,8 @@ class RolePermissionSeeder extends Seeder
             ['slug' => 'media.manage', 'name' => 'Gérer les shootings, locations et évènements', 'group' => 'domain_media'],
             ['slug' => 'insurance.manage', 'name' => 'Gérer les contrats et commissions assurance', 'group' => 'domain_assurance'],
 
+            ['slug' => 'cyber.performance', 'name' => 'Consulter la performance des agents cyber', 'group' => 'commercial'],
+
             // Assistant IA
             ['slug' => 'ai.assistant', 'name' => "Utiliser l'assistant IA (accueil, Ivo, recherche dans le menu)", 'group' => 'ai'],
             ['slug' => 'ai.sales', 'name' => "Interroger l'IA sur les ventes, clients et factures", 'group' => 'ai'],
@@ -241,7 +243,7 @@ class RolePermissionSeeder extends Seeder
             ],
         ];
 
-        // Assistant IA : droits accordés par défaut selon le métier de chaque rôle
+        // Assistant IA et performance cyber : droits accordés par défaut selon le métier de chaque rôle
         $aiGrants = [
             'ai.assistant' => array_keys($roles),
             'ai.sales' => ['responsable', 'responsable_commercial', 'responsable_financiere', 'agent_commercial_terrain', 'agent_caissier_vendeur'],
@@ -249,6 +251,7 @@ class RolePermissionSeeder extends Seeder
             'ai.finance' => ['responsable', 'responsable_financiere'],
             'ai.projects' => ['responsable', 'agent_technique', 'responsable_communication'],
             'ai.studio' => ['responsable', 'responsable_commercial', 'responsable_communication'],
+            'cyber.performance' => ['responsable', 'responsable_commercial'],
         ];
         foreach ($aiGrants as $permission => $roleSlugs) {
             foreach (array_intersect($roleSlugs, array_keys($roles)) as $slug) {

@@ -39,6 +39,7 @@ class GeneralAssistantService
         protected AiAssistantService $dataAssistant,
         protected AppNavigator $navigator,
         protected BusinessForecastService $forecasts,
+        protected AppKnowledgeService $knowledge,
     ) {}
 
     /**
@@ -70,6 +71,10 @@ class GeneralAssistantService
 
         if ($isNavigation && $pages !== []) {
             return $this->navigationAnswer($pages);
+        }
+
+        if ($knowledge = $this->knowledge->answer($query, $user)) {
+            return $knowledge;
         }
 
         $result = $this->dataAssistant->processQuery($query);
@@ -109,11 +114,17 @@ class GeneralAssistantService
         if ($this->canAsk($user, 'ai.finance', 'finance.index')) {
             $suggestions[] = 'Quel est le bénéfice du mois dernier ?';
         }
+        if ($this->navigator->canAccess($user, 'rh.attendance.index')) {
+            $suggestions[] = "Qui est présent aujourd'hui ?";
+        }
+        if ($this->navigator->canAccess($user, 'commercial.appointments.index')) {
+            $suggestions[] = 'Quels sont les rendez-vous de la semaine ?';
+        }
 
         $suggestions[] = 'Où créer un nouveau devis ?';
-        $suggestions[] = 'Comment demander un congé ?';
+        $suggestions[] = 'Quel est mon rôle ?';
 
-        return array_slice($suggestions, 0, 6);
+        return array_slice($suggestions, 0, 7);
     }
 
     /**
@@ -128,6 +139,10 @@ class GeneralAssistantService
             'stocks' => $this->canAsk($user, 'ai.stock', 'stock.index'),
             'trésorerie, dépenses et bénéfice' => $this->canAsk($user, 'ai.finance', 'finance.index'),
             'projets' => $this->canAsk($user, 'ai.projects', 'tech.index'),
+            'présences, congés et effectif' => $this->navigator->canAccess($user, 'rh.attendance.index'),
+            'rendez-vous, prospects et devis' => $this->navigator->canAccess($user, 'commercial.prospects.index'),
+            'cyber (dépôts, agents)' => $this->navigator->canAccess($user, 'commercial.cyber.index'),
+            "paramètres de l'entreprise" => true,
         ]));
     }
 
