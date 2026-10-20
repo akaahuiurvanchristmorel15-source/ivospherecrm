@@ -7,20 +7,20 @@
     'icon' => null,
 ])
 
-<div {{ $attributes->merge(['class' => 'bg-white border border-[#E2E8F0] rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-slate-300 transition-all']) }}>
+<div {{ $attributes->merge(['class' => 'bg-white border border-[#E2E8F0] rounded-[28px] p-5 sm:p-6 flex flex-col justify-between shadow-[0_20px_50px_-30px_rgba(11,15,20,0.18)] hover:border-slate-300 transition-all']) }}>
     <div class="flex items-center justify-between gap-2">
         <span class="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#64748B] font-medium">
             {{ $title }}
         </span>
         @if($icon)
-            <div class="w-8 h-8 rounded-xl bg-[#F5F7FA] border border-[#E2E8F0]/80 flex items-center justify-center text-[#64748B] shrink-0">
+            <div class="w-9 h-9 rounded-full bg-[#F5F7FA] border border-[#E2E8F0]/80 flex items-center justify-center text-[#64748B] shrink-0">
                 {{ $icon }}
             </div>
         @endif
     </div>
 
     <div class="mt-3 sm:mt-4">
-        <div class="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums text-[#0B0F14]">
+        <div class="text-[26px] sm:text-[34px] font-semibold tracking-tighter leading-none tabular-nums text-[#0B0F14]">
             {{ $value }}
         </div>
 

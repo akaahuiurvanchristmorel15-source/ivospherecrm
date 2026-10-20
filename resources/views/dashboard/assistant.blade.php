@@ -1,12 +1,4 @@
 <x-layouts.app title="Accueil — IVOSPHERE ERP">
-    {{-- Thème de la page (nuit par défaut, comme /offres) appliqué avant l'affichage --}}
-    <script>
-        (function () {
-            var theme = 'night';
-            try { theme = localStorage.getItem('ivo-offer-theme') || 'night'; } catch (e) {}
-            document.documentElement.setAttribute('data-offer-theme', theme);
-        })();
-    </script>
 
     <style>
         main:has(#home-assistant) { background: #F5F7FA; transition: background-color .3s; }
@@ -46,14 +38,6 @@
     >
         {{-- Halo discret --}}
         <div class="pointer-events-none absolute -top-48 left-1/2 -translate-x-1/2 w-[1000px] max-w-[200vw] h-[600px] rounded-full bg-[#0066FF]/[0.07] blur-3xl night:bg-white/[0.06]"></div>
-
-        {{-- Bascule jour / nuit --}}
-        <button type="button" @click="toggleTheme()"
-            class="absolute right-0 top-0 z-20 w-9 h-9 rounded-full border border-black/10 bg-white/60 backdrop-blur-xl flex items-center justify-center text-black/60 hover:text-black night:border-white/15 night:bg-white/5 night:text-white/70 night:hover:text-white transition"
-            :aria-label="night ? 'Passer en mode jour' : 'Passer en mode nuit'" :title="night ? 'Mode jour' : 'Mode nuit'">
-            <svg x-show="night" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
-            <svg x-show="! night" x-cloak class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
-        </button>
 
         {{-- ─────────── Accueil : titre géant + zone de saisie en verre ─────────── --}}
         <div x-show="! chat.length" class="relative flex-1 flex flex-col items-center pt-8 sm:pt-12">
@@ -109,7 +93,7 @@
             <template x-for="(entry, index) in chat" :key="index">
                 <div class="ivo-in">
                     <div x-show="entry.from === 'user'" class="flex justify-end">
-                        <div class="max-w-[85%] rounded-3xl rounded-br-lg bg-[#0B0F14] px-4 py-2.5 text-sm text-white night:bg-white night:text-black" x-text="entry.text"></div>
+                        <div class="max-w-[85%] rounded-3xl rounded-br-lg bg-[#0B0F14] px-4 py-2.5 text-sm text-white" x-text="entry.text"></div>
                     </div>
 
                     <div x-show="entry.from === 'agent'" class="flex items-start gap-3">
@@ -178,14 +162,6 @@
                     question: '',
                     thinking: false,
                     menuOpen: false,
-                    night: document.documentElement.getAttribute('data-offer-theme') === 'night',
-
-                    toggleTheme() {
-                        this.night = ! this.night;
-                        const theme = this.night ? 'night' : 'day';
-                        document.documentElement.setAttribute('data-offer-theme', theme);
-                        try { localStorage.setItem('ivo-offer-theme', theme); } catch (e) {}
-                    },
                     resize(element) {
                         element.style.height = 'auto';
                         element.style.height = Math.min(element.scrollHeight, 180) + 'px';

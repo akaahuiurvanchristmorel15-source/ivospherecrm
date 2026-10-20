@@ -6,7 +6,7 @@
 ])
 
 @php
-    $baseClasses = 'inline-flex items-center justify-center font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-1 rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none';
+    $baseClasses = 'inline-flex items-center justify-center font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-1 rounded-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none';
 
     $sizeClasses = [
         'sm' => 'h-8 px-3 text-xs gap-1.5',
@@ -15,8 +15,8 @@
     ][$size] ?? 'h-10 px-4 text-xs sm:text-sm gap-2';
 
     $variantClasses = [
-        'primary' => 'bg-[#0066FF] hover:bg-[#0052CC] text-white active:scale-[0.99]',
-        'secondary' => 'bg-white hover:bg-slate-50 text-[#0B0F14] border border-[#E2E8F0] active:scale-[0.99]',
+        'primary' => 'bg-[#0B0F14] hover:bg-black text-white shadow-[0_8px_20px_-10px_rgba(11,15,20,0.5)] active:scale-[0.98]',
+        'secondary' => 'bg-white hover:bg-slate-50 text-[#0B0F14] border border-[#E2E8F0] active:scale-[0.98]',
         'danger' => 'bg-rose-600 hover:bg-rose-700 text-white active:scale-[0.99]',
         'ghost' => 'bg-transparent hover:bg-slate-100 text-[#64748B] hover:text-[#0B0F14]',
     ][$variant] ?? 'bg-[#0066FF] hover:bg-[#0052CC] text-white';

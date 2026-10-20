@@ -109,7 +109,7 @@
             <div class="relative w-12 h-12 shrink-0" :class="thinking && 'is-thinking'" aria-hidden="true">
                 <div class="ivo-orb-glow absolute -inset-2 rounded-full blur-md"></div>
                 <div class="ivo-orb-ring absolute inset-0 rounded-full"></div>
-                <div class="absolute inset-[2px] rounded-full bg-[#FFFFFF]"></div>
+                <div class="absolute inset-[2px] rounded-full bg-white"></div>
                 <div class="ivo-orb-core absolute inset-[5px] rounded-full flex items-center justify-center">
                     <div x-show="talking || thinking" class="ivo-wave flex items-center gap-[2px] h-4">
                         <span class="w-[2px] h-full rounded-full bg-[#FFFFFF]"></span>
@@ -181,7 +181,7 @@
                     <div x-show="! chat.length && ! thinking" class="flex flex-wrap gap-1.5 pb-2">
                         @foreach($quickQuestions as $question)
                             <button type="button" @click="ask(@js($question))"
-                                class="{{ $loop->index >= 4 ? 'hidden sm:block' : '' }} rounded-lg border border-[#E2E8F0] bg-[#FFFFFF] px-2.5 py-1.5 text-left text-[11px] text-[#475569] hover:border-[#0066FF]/40 hover:text-[#0066FF] transition">
+                                class="{{ $loop->index >= 4 ? 'hidden sm:block' : '' }} rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 text-left text-[11px] text-[#475569] hover:border-[#0066FF]/40 hover:text-[#0066FF] transition">
                                 {{ $question }}
                             </button>
                         @endforeach
@@ -190,11 +190,11 @@
                     <template x-for="(entry, index) in chat" :key="index">
                         <div class="ivo-row" :class="entry.from === 'user' && 'flex justify-end'">
                             <div x-show="entry.from === 'user'" class="max-w-[85%] rounded-2xl rounded-br-md bg-[#0B0F14] px-3.5 py-2 text-[13px] text-[#FFFFFF]" x-text="entry.text"></div>
-                            <div x-show="entry.from === 'agent'" class="ivo-answer rounded-2xl rounded-bl-md border border-[#E2E8F0] bg-[#FFFFFF] px-3.5 py-2.5 text-[13px] leading-relaxed text-[#475569] overflow-x-auto" x-html="entry.html"></div>
+                            <div x-show="entry.from === 'agent'" class="ivo-answer rounded-2xl rounded-bl-md border border-[#E2E8F0] bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#475569] overflow-x-auto" x-html="entry.html"></div>
                         </div>
                     </template>
 
-                    <div x-show="thinking" class="flex items-center gap-1 rounded-2xl border border-[#E2E8F0] bg-[#FFFFFF] px-3.5 py-3 w-fit">
+                    <div x-show="thinking" class="flex items-center gap-1 rounded-2xl border border-[#E2E8F0] bg-white px-3.5 py-3 w-fit">
                         <span class="ivo-dot w-1.5 h-1.5 rounded-full bg-[#0066FF]"></span>
                         <span class="ivo-dot w-1.5 h-1.5 rounded-full bg-[#0066FF]"></span>
                         <span class="ivo-dot w-1.5 h-1.5 rounded-full bg-[#0066FF]"></span>
@@ -202,7 +202,7 @@
                 </div>
 
                 <form @submit.prevent="ask(question)" class="p-3 sm:p-4">
-                    <div class="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] pl-3.5 pr-1.5 py-1.5 focus-within:border-[#0066FF] focus-within:ring-2 focus-within:ring-[#0066FF]/10 transition">
+                    <div class="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white pl-3.5 pr-1.5 py-1.5 focus-within:border-[#0066FF] focus-within:ring-2 focus-within:ring-[#0066FF]/10 transition">
                         <input x-model="question" type="text" maxlength="500" placeholder="Ventes, clients, stock, factures…"
                             class="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-[#0B0F14] placeholder:text-[#94A3B8] focus:outline-none focus:ring-0">
                         <button type="submit" :disabled="thinking || ! question.trim()" aria-label="Envoyer"

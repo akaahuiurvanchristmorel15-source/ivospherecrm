@@ -33,7 +33,7 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
         @click="show = false" 
-        class="fixed inset-0 bg-[#0B0F14]/60 backdrop-blur-xs transition-opacity"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
     ></div>
 
     <!-- Modal Box -->
@@ -45,7 +45,7 @@
         x-transition:leave="ease-in duration-150"
         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-        class="bg-white rounded-[12px] border border-[#E2E8F0] overflow-hidden shadow-2xl transform transition-all sm:w-full {{ $maxWidthClass }} z-10"
+        class="bg-white rounded-[28px] border border-[#E2E8F0] overflow-hidden shadow-2xl transform transition-all sm:w-full {{ $maxWidthClass }} z-10"
     >
         @if($title)
             <div class="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">

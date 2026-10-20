@@ -215,8 +215,10 @@
                 isDark: document.documentElement.classList.contains('dark'),
                 toggleTheme() {
                     this.isDark = !this.isDark;
+                    const theme = this.isDark ? 'night' : 'day';
                     document.documentElement.classList.toggle('dark', this.isDark);
-                    try { localStorage.setItem('ivo-theme', this.isDark ? 'dark' : 'light'); } catch (e) {}
+                    document.documentElement.setAttribute('data-offer-theme', theme);
+                    try { localStorage.setItem('ivo-offer-theme', theme); localStorage.setItem('ivo-theme', this.isDark ? 'dark' : 'light'); } catch (e) {}
                 }
             }"
             @click="toggleTheme()"
