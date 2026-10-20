@@ -3,7 +3,7 @@
     'pagination' => null,
 ])
 
-<div class="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden">
+<div class="bg-white border border-[#E2E8F0] rounded-[28px] overflow-hidden shadow-[0_20px_50px_-30px_rgba(11,15,20,0.18)]">
     <div class="overflow-x-auto">
         <table class="w-full text-left text-xs sm:text-sm text-[#0B0F14]">
             @if(!empty($headers))

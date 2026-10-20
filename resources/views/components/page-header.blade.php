@@ -12,7 +12,7 @@
             </div>
         @endif
 
-        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-[#0B0F14]">
+        <h1 class="text-2xl sm:text-4xl font-bold tracking-tighter leading-tight text-[#0B0F14]">
             {{-- Échappé sans réencoder les entités déjà échappées par Blade (title="{{ … }}") --}}
             {!! htmlspecialchars((string) $title, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8', false) !!}
         </h1>

@@ -1,16 +1,9 @@
 <x-layouts.app title="Accueil — IVOSPHERE ERP">
-    {{-- Thème de la page (nuit par défaut, comme /offres) appliqué avant l'affichage --}}
-    <script>
-        (function () {
-            var theme = 'night';
-            try { theme = localStorage.getItem('ivo-offer-theme') || 'night'; } catch (e) {}
-            document.documentElement.setAttribute('data-offer-theme', theme);
-        })();
-    </script>
 
     <style>
         main:has(#home-assistant) { background: #F5F7FA; transition: background-color .3s; }
         [data-offer-theme=night] main:has(#home-assistant) { background: #000000; }
+        [data-offer-theme=night] body:has(#home-assistant) { background: #000000; }
         .ivo-orb-ring { background: conic-gradient(from 0deg, #0066FF, #22D3EE, #7C3AED, #0066FF); animation: ivo-spin 6s linear infinite; }
         .ivo-orb-core { background: radial-gradient(circle at 30% 25%, #FFFFFF 0%, #DCEBFF 22%, #3B82F6 58%, #1E3A8A 100%); animation: ivo-breathe 4s ease-in-out infinite; }
         .is-thinking .ivo-orb-ring { animation-duration: 1.2s; }
@@ -46,14 +39,6 @@
         {{-- Halo discret --}}
         <div class="pointer-events-none absolute -top-48 left-1/2 -translate-x-1/2 w-[1000px] max-w-[200vw] h-[600px] rounded-full bg-[#0066FF]/[0.07] blur-3xl night:bg-white/[0.06]"></div>
 
-        {{-- Bascule jour / nuit --}}
-        <button type="button" @click="toggleTheme()"
-            class="absolute right-0 top-0 z-20 w-9 h-9 rounded-full border border-black/10 bg-white/60 backdrop-blur-xl flex items-center justify-center text-black/60 hover:text-black night:border-white/15 night:bg-white/5 night:text-white/70 night:hover:text-white transition"
-            :aria-label="night ? 'Passer en mode jour' : 'Passer en mode nuit'" :title="night ? 'Mode jour' : 'Mode nuit'">
-            <svg x-show="night" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
-            <svg x-show="! night" x-cloak class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
-        </button>
-
         {{-- ─────────── Accueil : titre géant + zone de saisie en verre ─────────── --}}
         <div x-show="! chat.length" class="relative flex-1 flex flex-col items-center pt-8 sm:pt-12">
             <span class="ivo-in inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 px-3 py-1 text-[11px] font-medium text-black/60 backdrop-blur-xl night:border-white/15 night:bg-white/5 night:text-white/70">
@@ -87,39 +72,20 @@
                 </div>
             @else
                 <p class="ivo-in mt-6 max-w-md text-center text-sm text-black/50 night:text-white/50" style="--d:160ms">
-                    L'assistant IA n'est pas activé pour votre rôle. Accédez directement à vos modules ci-dessous.
+                    L'assistant IA n'est pas activé pour votre rôle. Accédez directement à vos modules :
                 </p>
-            @endif
-
-            {{-- ─────────── Vos modules ─────────── --}}
-            <section class="w-full pt-16 sm:pt-24 pb-6">
-                <div class="flex justify-center">
-                    <span class="px-3 py-1 rounded-full border border-black/10 bg-white/60 text-[11px] font-medium text-black/60 night:border-white/15 night:bg-white/5 night:text-white/70">Vos modules</span>
-                </div>
-                <h2 class="mt-5 text-center text-2xl sm:text-4xl font-semibold tracking-tight">Tout IVOSPHERE, à portée de question</h2>
-
-                <div class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="ivo-in mt-5 flex max-w-3xl flex-wrap justify-center gap-2" style="--d:220ms">
                     @foreach($modules as $moduleLabel => $pages)
                         @continue($moduleLabel === 'Général')
-                        <a href="{{ $pages->first()['url'] }}"
-                           @if($canUseAssistant) @click.prevent="ask(@js('Que contient le module '.$moduleLabel.' ?'))" @endif
-                           class="ivo-in group rounded-3xl border border-black/[0.08] bg-white/55 p-5 backdrop-blur-2xl hover:border-black/20 hover:bg-white/70 night:border-white/10 night:bg-white/[0.04] night:hover:border-white/20 night:hover:bg-white/[0.07] transition"
-                           style="--d:{{ 340 + $loop->index * 50 }}ms">
-                            <span class="text-4xl font-semibold tracking-tighter text-black/10 night:text-white/15">{{ str_pad((string) $pages->count(), 2, '0', STR_PAD_LEFT) }}</span>
-                            <p class="mt-5 text-sm font-semibold">{{ $moduleLabel }}</p>
-                            <p class="mt-1 flex items-center gap-1 text-xs text-black/45 night:text-white/45">
-                                {{ $pages->count() }} page(s)
-                                <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </p>
-                        </a>
+                        <a href="{{ $pages->first()['url'] }}" class="rounded-full border border-black/10 bg-white/55 px-3.5 py-1.5 text-xs text-black/60 backdrop-blur-xl hover:border-black/25 hover:text-black night:border-white/15 night:bg-white/[0.04] night:text-white/65 night:hover:border-white/30 night:hover:text-white transition">{{ $moduleLabel }}</a>
                     @endforeach
                 </div>
+            @endif
 
-                <div class="mt-8 flex justify-center gap-6 text-xs text-black/45 night:text-white/45">
-                    <a href="{{ route('my-day') }}" class="hover:text-black night:hover:text-white transition">Ma journée</a>
-                    <a href="{{ route('dashboard.indicators') }}" class="hover:text-black night:hover:text-white transition">Voir les indicateurs →</a>
-                </div>
-            </section>
+            <div class="ivo-in mt-10 pb-6 flex justify-center gap-6 text-xs text-black/45 night:text-white/45" style="--d:340ms">
+                <a href="{{ route('my-day') }}" class="hover:text-black night:hover:text-white transition">Ma journée</a>
+                <a href="{{ route('dashboard.indicators') }}" class="hover:text-black night:hover:text-white transition">Voir les indicateurs →</a>
+            </div>
         </div>
 
         {{-- ─────────── Conversation ─────────── --}}
@@ -127,7 +93,7 @@
             <template x-for="(entry, index) in chat" :key="index">
                 <div class="ivo-in">
                     <div x-show="entry.from === 'user'" class="flex justify-end">
-                        <div class="max-w-[85%] rounded-3xl rounded-br-lg bg-[#0B0F14] px-4 py-2.5 text-sm text-white night:bg-white night:text-black" x-text="entry.text"></div>
+                        <div class="max-w-[85%] rounded-3xl rounded-br-lg bg-[#0B0F14] px-4 py-2.5 text-sm text-white" x-text="entry.text"></div>
                     </div>
 
                     <div x-show="entry.from === 'agent'" class="flex items-start gap-3">
@@ -196,14 +162,6 @@
                     question: '',
                     thinking: false,
                     menuOpen: false,
-                    night: document.documentElement.getAttribute('data-offer-theme') === 'night',
-
-                    toggleTheme() {
-                        this.night = ! this.night;
-                        const theme = this.night ? 'night' : 'day';
-                        document.documentElement.setAttribute('data-offer-theme', theme);
-                        try { localStorage.setItem('ivo-offer-theme', theme); } catch (e) {}
-                    },
                     resize(element) {
                         element.style.height = 'auto';
                         element.style.height = Math.min(element.scrollHeight, 180) + 'px';
