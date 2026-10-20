@@ -1,6 +1,6 @@
 @props([])
 
-@if(!request()->routeIs('commercial.pos.*'))
+@if(! request()->routeIs('commercial.pos.*', 'commercial.cyber.*'))
 @php $isTenantSpace = auth()->check() && ! auth()->user()->belongsToMainTenant(); @endphp
 <div x-data="{ quickActionsOpen: false }" @open-quick-actions.window="quickActionsOpen = true" class="md:hidden">
     <!-- Backdrop pour la feuille d'actions mobile -->

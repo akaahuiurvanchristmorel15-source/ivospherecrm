@@ -578,7 +578,7 @@
                                @keydown.enter.prevent="onSearchEnter()"
                                autocomplete="off" enterkeyhint="search"
                                placeholder="Nom, référence ou code-barres"
-                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder-slate-400 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15">
+                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder-slate-400 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5">
                         <button type="button" x-show="search" x-cloak @click="search = ''; $refs.searchInput.focus()"
                                 class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700" aria-label="Effacer la recherche">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -586,7 +586,7 @@
                     </div>
 
                     <button type="button" @click="openScanner()"
-                            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white transition-colors hover:bg-[#0066FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] sm:px-4"
+                            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-[#0B0F14] px-3 text-sm font-semibold text-white transition-colors hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] sm:px-4"
                             aria-label="Scanner avec la caméra">
                         <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
                         <span class="hidden sm:inline">Scanner</span>
@@ -597,7 +597,7 @@
                             aria-label="Ouvrir le panier">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                         <span x-show="cartCount > 0" x-cloak
-                              class="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0066FF] px-1 text-[11px] font-bold text-white"
+                              class="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0B0F14] px-1 text-[11px] font-bold text-white"
                               x-text="cartCount"></span>
                     </button>
                 </div>
@@ -605,13 +605,13 @@
                 {{-- Domaines --}}
                 <div class="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:px-0">
                     <button type="button" @click="selectedDomain = ''"
-                            :class="selectedDomain === '' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                            :class="selectedDomain === '' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
                             class="h-8 shrink-0 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition">
                         Tous <span class="ml-1 opacity-60" x-text="countProductsForDomain('')"></span>
                     </button>
                     @foreach($domains as $dom)
                         <button type="button" @click="selectedDomain = '{{ $dom->id }}'"
-                                :class="selectedDomain == '{{ $dom->id }}' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                                :class="selectedDomain == '{{ $dom->id }}' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
                                 class="h-8 shrink-0 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition">
                             {{ $dom->name }} <span class="ml-1 opacity-60" x-text="countProductsForDomain('{{ $dom->id }}')"></span>
                         </button>
@@ -622,7 +622,7 @@
                 <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <template x-for="product in filteredProducts" :key="product.id">
                         <button type="button" @click="addToCart(product)" :disabled="stockOf(product) <= 0"
-                                class="group relative flex touch-manipulation flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition hover:border-[#0066FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-slate-200 disabled:active:scale-100">
+                                class="group relative flex touch-manipulation flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition hover:border-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-slate-200 disabled:active:scale-100">
 
                             <div class="relative aspect-[4/3] overflow-hidden bg-slate-50">
                                 <template x-if="product.image">
@@ -644,11 +644,11 @@
                                 </div>
 
                                 <div x-show="getItemCartQty(product.id) > 0" x-cloak
-                                     class="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0066FF] px-1.5 text-[11px] font-bold text-white shadow-md">
+                                     class="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0B0F14] px-1.5 text-[11px] font-bold text-white shadow-md">
                                     <span x-text="getItemCartQty(product.id)"></span>
                                 </div>
 
-                                <div x-show="stockOf(product) <= 0" x-cloak class="absolute inset-0 flex items-center justify-center bg-slate-900/40">
+                                <div x-show="stockOf(product) <= 0" x-cloak class="absolute inset-0 flex items-center justify-center bg-[#0B0F14]/40">
                                     <span class="rounded-md bg-rose-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Épuisé</span>
                                 </div>
                             </div>
@@ -680,7 +680,7 @@
 
             {{-- ===================== PANIER ===================== --}}
             <div x-show="cartOpen" x-cloak x-transition.opacity @click="cartOpen = false"
-                 class="fixed inset-0 z-40 bg-slate-900/60 md:hidden"></div>
+                 class="fixed inset-0 z-40 bg-[#0B0F14]/60 md:hidden"></div>
 
             <aside
                 :class="cartOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'"
@@ -697,7 +697,7 @@
                     <div class="flex items-center gap-2">
                         <h2 class="text-sm font-bold text-slate-900 sm:text-base">Panier</h2>
                         <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-bold transition-colors"
-                              :class="cartCount > 0 ? 'bg-[#0066FF] text-white' : 'bg-slate-100 text-slate-500'"
+                              :class="cartCount > 0 ? 'bg-[#0B0F14] text-white' : 'bg-slate-100 text-slate-500'"
                               x-text="cartCount"></span>
                     </div>
                     <div class="flex items-center gap-1">
@@ -721,7 +721,7 @@
                                 <a href="{{ route('commercial.customers.create') }}" target="_blank" class="text-xs font-medium text-[#0066FF] hover:underline sm:text-sm">Nouveau client</a>
                             </div>
                             <select id="customer_id" name="customer_id" x-model="customerId"
-                                    class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:h-11 sm:text-sm">
+                                    class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5 sm:h-11 sm:text-sm">
                                 <option value="">Client comptoir (par défaut)</option>
                                 @foreach($customers as $c)
                                     <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }} • {{ $c->loyalty_level ?? 'BRONZE' }})</option>
@@ -804,7 +804,7 @@
                                 @foreach($paymentMethods as $value => [$label, $icon])
                                     <label class="relative cursor-pointer select-none">
                                         <input type="radio" name="payment_method" value="{{ $value }}" x-model="paymentMethod" class="peer sr-only">
-                                        <span class="flex h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1 text-center text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 peer-checked:border-[#0066FF] peer-checked:bg-[#0066FF]/5 peer-checked:text-[#0066FF] sm:text-xs">
+                                        <span class="flex h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1 text-center text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 peer-checked:border-[#0B0F14] dark:peer-checked:border-white peer-checked:bg-[#0B0F14]/5 peer-checked:text-[#0B0F14] dark:peer-checked:text-white sm:text-xs">
                                             <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
                                             <span class="block w-full truncate">{{ $label }}</span>
                                         </span>
@@ -849,13 +849,13 @@
                                     </div>
                                     <div class="relative">
                                         <input id="amount_paid" type="number" inputmode="numeric" min="0" name="amount_paid" x-model.number="amountPaid"
-                                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-3 pr-16 text-base font-bold tabular-nums text-slate-900 transition focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/15 sm:h-12 sm:text-lg">
+                                               class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-3 pr-16 text-base font-bold tabular-nums text-slate-900 transition focus:border-slate-400 dark:focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-black/5 sm:h-12 sm:text-lg">
                                         <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 sm:text-sm">FCFA</span>
                                     </div>
 
                                     <div class="flex flex-wrap gap-1.5">
                                         <button type="button" @click="setExactAmount()"
-                                                :class="amountPaid === netTotal ? 'bg-[#0066FF] text-white border-[#0066FF]' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'"
+                                                :class="amountPaid === netTotal ? 'bg-[#0B0F14] text-white border-[#0B0F14]' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'"
                                                 class="rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95">Exact</button>
                                         @foreach($cashPresets as $preset)
                                             <button type="button" @click="setCashAmount({{ $preset }})"
@@ -908,7 +908,7 @@
                         </dl>
 
                         <button type="submit" :disabled="cart.length === 0 || hasStockErrors"
-                                class="h-11 w-full rounded-xl bg-[#0066FF] text-sm font-bold text-white transition hover:bg-[#0052CC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:h-12">
+                                class="h-11 w-full rounded-full bg-[#0B0F14] text-sm font-bold text-white transition hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:h-12">
                             <span x-text="hasStockErrors ? 'Corrigez le stock pour valider' : 'Valider l’encaissement'"></span>
                         </button>
                     </div>
@@ -920,7 +920,7 @@
         <div x-show="!cartOpen" x-cloak
              class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
             <button type="button" @click="cartOpen = true"
-                    class="flex h-12 w-full items-center justify-between rounded-xl bg-[#0066FF] px-4 text-sm font-bold text-white transition hover:bg-[#0052CC] active:scale-[0.99]">
+                    class="flex h-12 w-full items-center justify-between rounded-full bg-[#0B0F14] px-4 text-sm font-bold text-white transition hover:bg-black active:scale-[0.99]">
                 <span class="flex items-center gap-2.5">
                     <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white/25 px-1.5 text-xs font-bold" x-text="cartCount"></span>
                     <span>Voir le panier</span>

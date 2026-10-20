@@ -38,7 +38,7 @@
             <template x-for="deposit in visible" :key="deposit.id">
                 <li class="p-4" :class="newIds.includes(deposit.id) && 'bg-blue-50'">
                     <div class="flex flex-wrap items-start gap-3">
-                        <span class="rounded-xl bg-[#0B0F14] px-3 py-1.5 font-mono text-base font-extrabold tracking-[0.2em] text-white" x-text="deposit.code"></span>
+                        <span class="rounded-full bg-[#0B0F14] px-3 py-1.5 font-mono text-base font-extrabold tracking-[0.2em] text-white" x-text="deposit.code"></span>
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-semibold text-[#0B0F14]" x-text="deposit.customer_name"></p>
                             <p class="text-[11px] text-[#64748B]">
@@ -74,19 +74,19 @@
 
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                         <template x-if="printServices.length && deposit.status !== 'annule'">
-                            <div class="flex min-w-0 flex-1 items-center gap-2">
-                                <select x-model.number="deposit.service_id" class="h-9 min-w-0 flex-1 rounded-lg border border-[#E2E8F0] bg-white px-2 text-xs text-[#0B0F14]" aria-label="Prestation d'impression">
+                            <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:flex-1">
+                                <select x-model.number="deposit.service_id" class="h-9 min-w-0 flex-1 rounded-full border border-[#E2E8F0] bg-white px-3 text-xs text-[#0B0F14]" aria-label="Prestation d'impression">
                                     <template x-for="service in printServices" :key="service.id">
                                         <option :value="service.id" x-text="service.name + ' — ' + Math.round(service.price) + ' F'" :selected="service.id === deposit.service_id"></option>
                                     </template>
                                 </select>
                                 <button type="button" @click="addDeposit(deposit, deposit.service_id); cartOpen = true"
-                                        class="h-9 shrink-0 rounded-lg bg-[#0066FF] px-3 text-xs font-semibold text-white transition hover:bg-[#0052CC]">Ajouter au panier</button>
+                                        class="h-9 shrink-0 rounded-full bg-[#0B0F14] px-3 text-xs font-semibold text-white transition hover:bg-black">Ajouter au panier</button>
                             </div>
                         </template>
-                        <button type="button" x-show="deposit.status === 'recu'" @click="setStatus(deposit, 'imprime')" class="h-9 rounded-lg border border-[#E2E8F0] px-3 text-xs font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">Imprimé</button>
-                        <button type="button" x-show="deposit.status === 'recu' || deposit.status === 'imprime'" @click="setStatus(deposit, 'retire')" class="h-9 rounded-lg border border-emerald-200 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50">Remis</button>
-                        <button type="button" x-show="deposit.status === 'recu' || deposit.status === 'imprime'" @click="if (confirm('Annuler le dépôt ' + deposit.code + ' ?')) setStatus(deposit, 'annule')" class="h-9 rounded-lg px-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50">Annuler</button>
+                        <button type="button" x-show="deposit.status === 'recu'" @click="setStatus(deposit, 'imprime')" class="h-9 rounded-full border border-[#E2E8F0] px-3 text-xs font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">Imprimé</button>
+                        <button type="button" x-show="deposit.status === 'recu' || deposit.status === 'imprime'" @click="setStatus(deposit, 'retire')" class="h-9 rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50">Remis</button>
+                        <button type="button" x-show="deposit.status === 'recu' || deposit.status === 'imprime'" @click="if (confirm('Annuler le dépôt ' + deposit.code + ' ?')) setStatus(deposit, 'annule')" class="h-9 rounded-full px-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50">Annuler</button>
                     </div>
                 </li>
             </template>
