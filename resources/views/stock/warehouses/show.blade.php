@@ -11,7 +11,7 @@
                 ]" />
             </x-slot>
             <x-slot name="actions">
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                     <button 
                         type="button" 
                         @click="$dispatch('open-delete-warehouse', { 
@@ -107,104 +107,232 @@
             </dl>
         </div>
 
-        <!-- État du Stock -->
-        <div class="lg:col-span-8 rounded-xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden flex flex-col">
-            <div class="p-5 border-b border-[#E2E8F0] flex items-center justify-between">
+        <!-- État du Stock (et modification groupée des prix) -->
+        @php
+            $canEditPrices = auth()->user()->hasPermission('products.edit');
+            $stockRows = $stockLevels->filter(fn ($level) => $level->product)->sortBy(fn ($level) => $level->product->name)->values()->map(fn ($level) => [
+                'id' => $level->product->id,
+                'name' => $level->product->name,
+                'sku' => $level->product->sku,
+                'quantity' => (int) $level->stock_after,
+                'min_stock' => (int) ($level->product->min_stock ?? 10),
+                'purchase' => (float) $level->product->purchase_price,
+                'selling' => (float) $level->product->selling_price,
+            ]);
+        @endphp
+        <div class="min-w-0 lg:col-span-8 rounded-xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden flex flex-col"
+             x-data="warehousePrices(@js($stockRows))">
+            <div class="p-5 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 class="text-base font-semibold text-[#0B0F14]">État du Stock Disponible</h3>
-                    <p class="text-xs text-[#64748B]">Inventaire actuel des produits référencés sur cet entrepôt</p>
+                    <p class="text-xs text-[#64748B]" x-text="editing ? 'Cochez des produits puis modifiez leurs prix, un par un ou en lot.' : 'Inventaire actuel des produits référencés sur cet entrepôt'">Inventaire actuel des produits référencés sur cet entrepôt</p>
                 </div>
-                <span class="inline-flex items-center rounded-md bg-[#F5F7FA] px-2.5 py-1 text-xs font-medium text-[#0B0F14] border border-[#E2E8F0]">
-                    {{ count($stockLevels) }} référence(s)
-                </span>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center rounded-full bg-[#F5F7FA] px-2.5 py-1 text-xs font-medium text-[#0B0F14] border border-[#E2E8F0]">
+                        {{ count($stockRows) }} référence(s)
+                    </span>
+                    @if($canEditPrices && $stockRows->isNotEmpty())
+                        <button type="button" x-show="! editing" @click="editing = true"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0B0F14] px-4 text-xs font-semibold text-white hover:bg-black transition">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
+                            Modifier les prix
+                        </button>
+                    @endif
+                </div>
             </div>
+
+            @if($canEditPrices)
+                {{-- Outils de modification groupée --}}
+                <div x-show="editing" x-cloak class="border-b border-[#E2E8F0] bg-[#F5F7FA]/60 p-4 space-y-3">
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span class="font-semibold text-[#0B0F14]" x-text="selectedCount + ' produit(s) sélectionné(s)'"></span>
+                        <button type="button" @click="toggleAll(true)" class="rounded-full border border-[#E2E8F0] bg-white px-3 py-1 text-[#0B0F14] hover:bg-slate-50">Tout sélectionner</button>
+                        <button type="button" @click="toggleAll(false)" class="rounded-full border border-[#E2E8F0] bg-white px-3 py-1 text-[#0B0F14] hover:bg-slate-50">Aucun</button>
+                    </div>
+                    <div class="flex flex-wrap items-end gap-2">
+                        <label class="w-full text-xs sm:w-auto">
+                            <span class="mb-1 block font-medium text-[#64748B]">Appliquer à la sélection</span>
+                            <select x-model="bulk.mode" class="h-9 w-full max-w-full rounded-full border border-[#E2E8F0] bg-white px-3 text-xs text-[#0B0F14] sm:w-auto">
+                                <option value="selling_percent">Prix de vente : augmenter / baisser de %</option>
+                                <option value="purchase_percent">Prix d'achat : augmenter / baisser de %</option>
+                                <option value="margin">Prix de vente = prix d'achat + marge %</option>
+                                <option value="selling_fixed">Prix de vente : même montant</option>
+                                <option value="purchase_fixed">Prix d'achat : même montant</option>
+                            </select>
+                        </label>
+                        <label class="text-xs">
+                            <span class="mb-1 block font-medium text-[#64748B]" x-text="bulk.mode.endsWith('fixed') ? 'Montant (FCFA)' : 'Valeur (%)'"></span>
+                            <input type="number" step="any" x-model.number="bulk.value" placeholder="ex : 10"
+                                   class="h-9 w-28 rounded-full border border-[#E2E8F0] bg-white px-3 text-xs text-[#0B0F14]">
+                        </label>
+                        <button type="button" @click="applyBulk()" :disabled="! selectedCount || bulk.value === '' || bulk.value === null"
+                                class="h-9 rounded-full border border-[#0B0F14] px-4 text-xs font-semibold text-[#0B0F14] hover:bg-[#0B0F14] hover:text-white transition disabled:opacity-40">
+                            Appliquer
+                        </button>
+                        <label class="ml-auto inline-flex items-center gap-2 text-xs text-[#64748B]">
+                            <input type="checkbox" x-model="roundPrices" class="rounded border-slate-300">
+                            Arrondir à 5 F
+                        </label>
+                    </div>
+                </div>
+            @endif
 
             <!-- Desktop Table -->
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-[#F5F7FA] border-b border-[#E2E8F0]">
                         <tr>
+                            <th x-show="editing" x-cloak class="w-10 py-3 pl-4">
+                                <input type="checkbox" :checked="selectedCount === rows.length && rows.length > 0" @change="toggleAll($event.target.checked)" class="rounded border-slate-300" aria-label="Tout sélectionner">
+                            </th>
                             <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">Produit</th>
-                            <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">SKU</th>
                             <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B] text-right">Quantité</th>
+                            <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B] text-right">Prix d'achat</th>
+                            <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B] text-right">Prix de vente</th>
+                            <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B] text-right">Marge</th>
                             <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B] text-center">Niveau</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#E2E8F0]">
-                        @forelse($stockLevels as $level)
-                            @php 
-                                $product = $level->product;
-                                $minStock = $product->min_stock ?? 10;
-                                $isAlert = $level->stock_after <= $minStock;
-                            @endphp
-                            <tr class="hover:bg-[#F5F7FA]/60 transition-colors">
-                                <td class="py-3.5 px-4 text-sm font-semibold text-[#0B0F14]">
-                                    {{ $product->name ?? 'Produit #'.$level->product_id }}
+                        <template x-for="row in rows" :key="row.id">
+                            <tr class="transition-colors" :class="isChanged(row) ? 'bg-amber-50/60' : 'hover:bg-[#F5F7FA]/60'">
+                                <td x-show="editing" class="py-3 pl-4"><input type="checkbox" x-model="row.selected" class="rounded border-slate-300" :aria-label="'Sélectionner ' + row.name"></td>
+                                <td class="py-3 px-4">
+                                    <p class="text-sm font-semibold text-[#0B0F14]" x-text="row.name"></p>
+                                    <p class="text-xs font-mono text-[#64748B]" x-text="row.sku || '-'"></p>
                                 </td>
-                                <td class="py-3.5 px-4 text-xs font-mono text-[#64748B]">{{ $product->sku ?? '-' }}</td>
-                                <td class="py-3.5 px-4 text-sm font-bold text-[#0B0F14] text-right">
-                                    {{ number_format($level->stock_after, 0, ',', ' ') }}
+                                <td class="py-3 px-4 text-sm font-bold text-[#0B0F14] text-right" x-text="format(row.quantity)"></td>
+                                <td class="py-3 px-4 text-right">
+                                    <span x-show="! editing" class="text-sm text-[#0B0F14]" x-text="format(row.purchase) + ' F'"></span>
+                                    <input x-show="editing" type="number" min="0" step="any" x-model.number="row.purchase" class="h-9 w-28 rounded-full border border-[#E2E8F0] bg-white px-3 text-right text-sm text-[#0B0F14]" :aria-label="'Prix d\'achat de ' + row.name">
                                 </td>
-                                <td class="py-3.5 px-4 text-center">
-                                    @if($isAlert)
-                                        <span class="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200">
-                                            Alerte (&le; {{ $minStock }})
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                                            Normal
-                                        </span>
-                                    @endif
+                                <td class="py-3 px-4 text-right">
+                                    <span x-show="! editing" class="text-sm font-semibold text-[#0B0F14]" x-text="format(row.selling) + ' F'"></span>
+                                    <input x-show="editing" type="number" min="0" step="any" x-model.number="row.selling" class="h-9 w-28 rounded-full border border-[#E2E8F0] bg-white px-3 text-right text-sm font-semibold text-[#0B0F14]" :aria-label="'Prix de vente de ' + row.name">
+                                </td>
+                                <td class="py-3 px-4 text-right text-xs font-semibold" :class="margin(row) === null ? 'text-slate-400' : (margin(row) < 0 ? 'text-rose-600' : 'text-emerald-600')" x-text="margin(row) === null ? '—' : margin(row) + ' %'"></td>
+                                <td class="py-3 px-4 text-center">
+                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold border"
+                                          :class="row.quantity <= row.min_stock ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                          x-text="row.quantity <= row.min_stock ? 'Alerte (≤ ' + row.min_stock + ')' : 'Normal'"></span>
                                 </td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="py-10 text-center text-sm text-[#64748B]">
-                                    Aucun produit actuellement en stock dans cet entrepôt.
-                                </td>
-                            </tr>
-                        @endforelse
+                        </template>
+                        <tr x-show="rows.length === 0">
+                            <td colspan="7" class="py-10 text-center text-sm text-[#64748B]">Aucun produit actuellement en stock dans cet entrepôt.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Mobile Amplified Cards -->
+            <!-- Mobile Cards -->
             <div class="block md:hidden p-3 sm:p-4 space-y-3">
-                @forelse($stockLevels as $level)
-                    @php 
-                        $product = $level->product;
-                        $minStock = $product->min_stock ?? 10;
-                        $isAlert = $level->stock_after <= $minStock;
-                    @endphp
-                    <div class="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col gap-2.5">
+                <template x-for="row in rows" :key="'m' + row.id">
+                    <div class="rounded-xl p-4 border flex flex-col gap-2.5" :class="isChanged(row) ? 'border-amber-300 bg-amber-50/60' : 'bg-white border-[#E2E8F0]'">
                         <div class="flex items-start justify-between gap-2">
+                            <label class="flex min-w-0 items-start gap-2.5">
+                                <input x-show="editing" type="checkbox" x-model="row.selected" class="mt-0.5 rounded border-slate-300">
+                                <span class="min-w-0">
+                                    <span class="block font-bold text-sm text-[#0B0F14]" x-text="row.name"></span>
+                                    <span class="text-xs font-mono text-[#64748B] block mt-0.5" x-text="row.sku || '-'"></span>
+                                </span>
+                            </label>
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold border shrink-0"
+                                  :class="row.quantity <= row.min_stock ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                  x-text="row.quantity <= row.min_stock ? 'Alerte' : 'Normal'"></span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-xs bg-[#F5F7FA]/70 p-2.5 rounded-lg border border-[#E2E8F0]">
                             <div>
-                                <span class="font-bold text-sm text-[#0B0F14]">{{ $product->name ?? 'Produit #'.$level->product_id }}</span>
-                                <span class="text-xs font-mono text-[#64748B] block mt-0.5">{{ $product->sku ?? '-' }}</span>
+                                <span class="text-[#64748B] block text-[10px] uppercase font-medium">Quantité</span>
+                                <span class="font-bold text-sm text-[#0B0F14]" x-text="format(row.quantity)"></span>
                             </div>
-                            @if($isAlert)
-                                <span class="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200 shrink-0">
-                                    Alerte (&le; {{ $minStock }})
-                                </span>
-                            @else
-                                <span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200 shrink-0">
-                                    Normal
-                                </span>
-                            @endif
+                            <div>
+                                <span class="text-[#64748B] block text-[10px] uppercase font-medium">Achat</span>
+                                <span x-show="! editing" class="font-semibold text-sm text-[#0B0F14]" x-text="format(row.purchase)"></span>
+                                <input x-show="editing" type="number" min="0" step="any" x-model.number="row.purchase" class="mt-0.5 h-8 w-full rounded-lg border border-[#E2E8F0] bg-white px-2 text-sm text-[#0B0F14]">
+                            </div>
+                            <div>
+                                <span class="text-[#64748B] block text-[10px] uppercase font-medium">Vente</span>
+                                <span x-show="! editing" class="font-semibold text-sm text-[#0B0F14]" x-text="format(row.selling)"></span>
+                                <input x-show="editing" type="number" min="0" step="any" x-model.number="row.selling" class="mt-0.5 h-8 w-full rounded-lg border border-[#E2E8F0] bg-white px-2 text-sm font-semibold text-[#0B0F14]">
+                            </div>
                         </div>
-                        <div class="flex items-center justify-between text-xs bg-[#F5F7FA]/70 p-2.5 rounded-lg border border-[#E2E8F0]">
-                            <span class="text-[#64748B]">Quantité disponible</span>
-                            <span class="font-bold text-[#0B0F14] text-sm">{{ number_format($level->stock_after, 0, ',', ' ') }}</span>
-                        </div>
+                        <p class="text-[11px]" :class="margin(row) === null ? 'text-slate-400' : (margin(row) < 0 ? 'text-rose-600' : 'text-emerald-600')" x-text="margin(row) === null ? 'Marge : —' : 'Marge : ' + margin(row) + ' %'"></p>
                     </div>
-                @empty
-                    <div class="py-8 text-center text-sm text-[#64748B]">
-                        Aucun produit actuellement en stock dans cet entrepôt.
-                    </div>
-                @endforelse
+                </template>
+                <div x-show="rows.length === 0" class="py-8 text-center text-sm text-[#64748B]">Aucun produit actuellement en stock dans cet entrepôt.</div>
             </div>
+
+            @if($canEditPrices)
+                {{-- Barre d'enregistrement --}}
+                <form x-show="editing" x-cloak method="POST" action="{{ route('stock.warehouses.prices', $warehouse) }}" @submit="prepare($event)"
+                      class="sticky bottom-[5.5rem] z-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] bg-white/95 p-4 backdrop-blur md:bottom-0">
+                    @csrf
+                    <input type="hidden" name="prices_json" x-ref="pricesJson">
+                    <p class="text-xs text-[#64748B]"><span class="font-semibold text-[#0B0F14]" x-text="changedRows.length"></span> produit(s) modifié(s)</p>
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="cancel()" class="h-10 rounded-full border border-[#E2E8F0] px-4 text-sm font-medium text-[#0B0F14] hover:bg-slate-50">Annuler</button>
+                        <button type="submit" :disabled="changedRows.length === 0 || invalid" class="h-10 rounded-full bg-[#0B0F14] px-5 text-sm font-semibold text-white hover:bg-black transition disabled:opacity-40">
+                            Enregistrer les prix
+                        </button>
+                    </div>
+                </form>
+            @endif
         </div>
-        
+
+        @push('scripts')
+            <script>
+                function warehousePrices(products) {
+                    return {
+                        editing: false,
+                        roundPrices: true,
+                        bulk: { mode: 'selling_percent', value: '' },
+                        original: JSON.parse(JSON.stringify(products)),
+                        rows: products.map((product) => ({ ...product, selected: false })),
+
+                        get selectedCount() { return this.rows.filter((row) => row.selected).length; },
+                        get changedRows() { return this.rows.filter((row) => this.isChanged(row)); },
+                        get invalid() { return this.rows.some((row) => row.selling === '' || row.selling < 0 || row.purchase < 0); },
+
+                        isChanged(row) {
+                            const initial = this.original.find((item) => item.id === row.id);
+                            return Number(initial.purchase) !== Number(row.purchase) || Number(initial.selling) !== Number(row.selling);
+                        },
+                        margin(row) {
+                            const purchase = Number(row.purchase);
+                            return purchase > 0 ? Math.round((Number(row.selling) - purchase) / purchase * 1000) / 10 : null;
+                        },
+                        format(value) { return Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); },
+                        round(value) { return this.roundPrices ? Math.max(0, Math.round(value / 5) * 5) : Math.max(0, Math.round(value * 100) / 100); },
+                        toggleAll(state) { this.rows.forEach((row) => { row.selected = state; }); },
+                        applyBulk() {
+                            const value = Number(this.bulk.value);
+                            if (Number.isNaN(value)) { return; }
+
+                            this.rows.filter((row) => row.selected).forEach((row) => {
+                                switch (this.bulk.mode) {
+                                    case 'selling_percent': row.selling = this.round(row.selling * (1 + value / 100)); break;
+                                    case 'purchase_percent': row.purchase = this.round(row.purchase * (1 + value / 100)); break;
+                                    case 'margin': if (Number(row.purchase) > 0) { row.selling = this.round(row.purchase * (1 + value / 100)); } break;
+                                    case 'selling_fixed': row.selling = this.round(value); break;
+                                    case 'purchase_fixed': row.purchase = this.round(value); break;
+                                }
+                            });
+                        },
+                        cancel() {
+                            this.rows = this.original.map((product) => ({ ...product, selected: false }));
+                            this.editing = false;
+                        },
+                        prepare(event) {
+                            const changed = this.changedRows.map((row) => ({ id: row.id, purchase_price: row.purchase, selling_price: row.selling }));
+                            if (! changed.length) { event.preventDefault(); return; }
+                            this.$refs.pricesJson.value = JSON.stringify(changed);
+                        },
+                    };
+                }
+            </script>
+        @endpush
+
         <!-- Mouvements Récents pour cet entrepôt -->
         <div class="col-span-1 lg:col-span-12 rounded-xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden">
             <div class="p-5 border-b border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">

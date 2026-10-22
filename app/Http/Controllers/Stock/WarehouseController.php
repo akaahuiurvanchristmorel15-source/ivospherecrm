@@ -94,9 +94,23 @@ class WarehouseController extends Controller
             ->groupBy('product_id')
             ->pluck('id');
 
-        $stockLevels = StockMovement::with('product')
+        $movementLevels = StockMovement::with('product')
             ->whereIn('id', $latestIds)
-            ->get();
+            ->get()
+            ->keyBy('product_id');
+
+        // Quantité réelle de l'entrepôt quand elle existe, sinon le stock après le dernier mouvement
+        $warehouseStocks = $warehouse->warehouseStocks()->with('product')->get()->keyBy('product_id');
+
+        $stockLevels = $movementLevels->keys()->merge($warehouseStocks->keys())->unique()
+            ->map(fn ($productId) => (object) [
+                'product_id' => $productId,
+                'product' => $warehouseStocks->get($productId)?->product ?? $movementLevels->get($productId)?->product,
+                'stock_after' => $warehouseStocks->has($productId)
+                    ? (int) $warehouseStocks->get($productId)->physical_quantity
+                    : (int) $movementLevels->get($productId)->stock_after,
+            ])
+            ->values();
 
         $recentMovements = StockMovement::with(['product', 'user', 'destinationWarehouse'])
             ->where('warehouse_id', $warehouse->id)
@@ -105,6 +119,65 @@ class WarehouseController extends Controller
             ->get();
 
         return view('stock.warehouses.show', compact('warehouse', 'stockLevels', 'recentMovements'));
+    }
+
+    /**
+     * Modification groupée des prix d'achat et de vente des produits présents dans l'entrepôt.
+     * Les lignes arrivent en JSON (un seul champ) pour ne pas dépasser max_input_vars.
+     */
+    public function updatePrices(Request $request, Warehouse $warehouse): RedirectResponse
+    {
+        $request->merge(['prices' => array_values((array) json_decode((string) $request->input('prices_json'), true))]);
+
+        $validated = $request->validate([
+            'prices' => ['required', 'array', 'min:1'],
+            'prices.*.id' => ['required', 'integer'],
+            'prices.*.purchase_price' => ['nullable', 'numeric', 'min:0'],
+            'prices.*.selling_price' => ['required', 'numeric', 'min:0'],
+        ], [
+            'prices.required' => 'Aucun prix modifié.',
+            'prices.*.selling_price.required' => 'Le prix de vente est obligatoire.',
+        ]);
+
+        $warehouseProductIds = StockMovement::where('warehouse_id', $warehouse->id)->distinct()->pluck('product_id')
+            ->merge($warehouse->warehouseStocks()->pluck('product_id'))
+            ->unique();
+
+        $products = Product::whereIn('id', collect($validated['prices'])->pluck('id')->intersect($warehouseProductIds))->get()->keyBy('id');
+
+        $updated = DB::transaction(function () use ($validated, $products) {
+            $count = 0;
+
+            foreach ($validated['prices'] as $row) {
+                $product = $products->get($row['id']);
+                if (! $product) {
+                    continue;
+                }
+
+                $product->fill([
+                    'purchase_price' => $row['purchase_price'] ?? $product->purchase_price,
+                    'selling_price' => $row['selling_price'],
+                ]);
+
+                if ($product->isDirty(['purchase_price', 'selling_price'])) {
+                    $product->save();
+                    $count++;
+                }
+            }
+
+            return $count;
+        });
+
+        if ($updated > 0) {
+            ActivityLogger::log(
+                action: 'prix_entrepot',
+                description: "A modifié les prix de {$updated} produit(s) depuis l'entrepôt {$warehouse->name}",
+                subject: $warehouse
+            );
+        }
+
+        return redirect()->route('stock.warehouses.show', $warehouse)
+            ->with('success', $updated > 0 ? "Prix mis à jour pour {$updated} produit(s)." : 'Aucun prix modifié.');
     }
 
     /**
