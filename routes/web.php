@@ -494,6 +494,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permission:products.edit')->group(function () {
             Route::match(['get', 'post'], 'products/bulk-edit', [StockProductController::class, 'bulkEdit'])->name('products.bulk-edit');
             Route::post('products/bulk-update', [StockProductController::class, 'bulkUpdate'])->name('products.bulk-update');
+            Route::post('warehouses/{warehouse}/prices', [WarehouseController::class, 'updatePrices'])->name('warehouses.prices');
             Route::post('products/{product}/quick-image', [StockProductController::class, 'updateImage'])->name('products.quick-image');
             Route::resource('products', StockProductController::class)->only(['edit', 'update']);
         });

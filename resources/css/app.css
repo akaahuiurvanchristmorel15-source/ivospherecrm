@@ -98,6 +98,9 @@ button[data-submitting]:has(> svg:only-child)::before {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Éléments Alpine masqués jusqu'à l'initialisation */
+[x-cloak] { display: none !important; }
+
 /* Focus Visible ring (WCAG 2.2 SC 2.4.7) */
 *:focus-visible {
     outline: 2px solid #0B0F14 !important;
