@@ -29,6 +29,8 @@
             </x-slot:actions>
         </x-page-header>
 
+        @include('rh.evaluations._nav', ['active' => 'goals'])
+
         <!-- KPI Objectifs -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <x-stat-card 

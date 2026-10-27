@@ -319,6 +319,13 @@ test('the evaluation pages render the referential', function () {
         ->assertOk()->assertSee('Tableau de consolidation')->assertSee('Bien');
     $this->actingAs($this->admin)->get(route('rh.evaluations.print', $this->evaluation))->assertOk();
     $this->actingAs($this->admin)->get(route('rh.evaluations.ranking', ['year' => 2026, 'month' => 11]))->assertOk();
+    $this->actingAs($this->admin)->get(route('rh.evaluations.index', ['year' => 2026, 'month' => 11]))
+        ->assertOk()->assertSee('Déroulé du mois')->assertSee($this->member->full_name);
+    $this->actingAs($this->admin)->get(route('rh.evaluations.criteria.index'))
+        ->assertOk()->assertSee('Qui note');
+    $this->actingAs($this->admin)->get(route('rh.goals.index'))->assertOk();
+    $this->actingAs($this->admin)->get(route('rh.pips.index'))->assertOk();
+    $this->actingAs($this->admin)->get(route('rh.evaluations.history', $this->member))->assertOk();
     $this->actingAs($this->admin)->get(route('rh.evaluation-sheets.index', ['year' => 2026, 'month' => 11]))
         ->assertOk()->assertSee($this->member->full_name);
     $this->actingAs($this->admin)->get(route('rh.evaluation-sheets.edit', ['evaluation' => $this->evaluation, 'group' => 'direction']))

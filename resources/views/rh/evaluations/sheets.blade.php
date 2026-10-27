@@ -11,23 +11,17 @@
             description="Chaque évaluateur note seulement ce qu'il observe dans son domaine ; une note de 1, 2 ou 5 se justifie par une observation datée."
         />
 
-        <x-card>
-            <form method="GET" class="flex flex-wrap items-end gap-3 text-xs">
-                <div>
-                    <label class="block font-semibold text-[#0B0F14] mb-1">Mois</label>
-                    <select name="month" class="px-3 py-2 rounded-xl border border-[#E2E8F0]">
-                        @foreach($monthNames as $monthNumber => $monthLabel)
-                            <option value="{{ $monthNumber }}" @selected($monthNumber === $month)>{{ $monthLabel }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold text-[#0B0F14] mb-1">Année</label>
-                    <input type="number" name="year" value="{{ $year }}" class="w-24 px-3 py-2 rounded-xl border border-[#E2E8F0]">
-                </div>
-                <x-button variant="secondary" type="submit" size="md">Afficher</x-button>
-            </form>
-        </x-card>
+        @include('rh.evaluations._nav', ['active' => 'sheets'])
+
+        <form method="GET" class="flex flex-wrap items-center gap-2 text-xs">
+            <select name="month" aria-label="Mois" onchange="this.form.submit()" class="h-9 rounded-full border border-[#E2E8F0] bg-white px-3.5 font-medium text-[#0B0F14] focus:border-[#0066FF] focus:outline-none">
+                @foreach($monthNames as $monthNumber => $monthLabel)
+                    <option value="{{ $monthNumber }}" @selected($monthNumber === $month)>{{ $monthLabel }}</option>
+                @endforeach
+            </select>
+            <input type="number" name="year" value="{{ $year }}" aria-label="Année" onchange="this.form.submit()" class="h-9 w-24 rounded-full border border-[#E2E8F0] bg-white px-3.5 font-medium text-[#0B0F14] focus:border-[#0066FF] focus:outline-none">
+            <span class="text-[11px] text-[#64748B]">Fiches à remettre l'avant-dernier jour ouvrable, rendues le dernier.</span>
+        </form>
 
         <x-card title="Membres à évaluer" subtitle="Les fiches sont confidentielles ; celles des pairs ne sont jamais nominatives dans la consolidation">
             <div class="divide-y divide-[#F1F5F9]">

@@ -29,6 +29,8 @@
             </x-slot:actions>
         </x-page-header>
 
+        @include('rh.evaluations._nav', ['active' => 'pips'])
+
         <!-- KPI PIP -->
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <x-stat-card 

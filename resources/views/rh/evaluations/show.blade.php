@@ -55,62 +55,45 @@
             </x-slot:actions>
         </x-page-header>
 
-        <!-- Bannière d'Avertissement si Dossier Verrouillé -->
-        @if($evaluation->is_locked)
-            <div class="p-4 rounded-2xl bg-slate-900 text-white flex items-center justify-between shadow-sm">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-white uppercase tracking-wider">Évaluation Formellement Verrouillée</div>
-                        <div class="text-[11px] text-slate-300">
-                            Verrouillée le {{ $evaluation->locked_at?->format('d/m/Y à H:i') }} par {{ $evaluation->lockedByUser?->name ?? 'Direction RH' }}. Ce dossier est en lecture seule protégée.
-                        </div>
-                    </div>
-                </div>
-                <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold">
-                    Certifié Conforme
-                </span>
-            </div>
-        @endif
-
-        <!-- Stepper Workflow de Validation (Point 11) -->
-        <div class="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs">
-            <div class="flex items-center justify-between text-xs mb-2">
-                <span class="font-bold text-[#0B0F14] uppercase tracking-wider text-[11px]">Workflow d'approbation</span>
-                <span class="text-[11px] font-semibold text-[#64748B]">
-                    Statut actuel : <strong class="text-[#0066FF]">{{ ucfirst(str_replace('_', ' ', $evaluation->workflow_step ?? 'brouillon')) }}</strong>
-                </span>
-            </div>
-            @php
-                $steps = [
-                    'brouillon' => '1. Brouillon',
-                    'en_evaluation' => '2. En évaluation',
-                    'validation_manager' => '3. Validation Manager',
-                    'valide_rh' => '4. Validé RH',
-                    'verrouille' => '5. Verrouillé 🔒',
-                ];
-                $stepKeys = array_keys($steps);
-                $currentIndex = array_search($evaluation->workflow_step ?? 'brouillon', $stepKeys);
-            @endphp
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                @foreach($steps as $k => $label)
-                    @php
-                        $idx = array_search($k, $stepKeys);
-                        $isActive = ($idx <= $currentIndex);
-                    @endphp
-                    <div class="p-2.5 rounded-xl border text-center transition {{ $isActive ? 'bg-blue-50/70 border-blue-200 text-[#0066FF]' : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#94A3B8]' }}">
-                        <span class="text-[11px] font-bold block">{{ $label }}</span>
-                        <span class="text-[9px] mt-0.5 block {{ $isActive ? 'text-blue-600' : 'text-slate-400' }}">
-                            {{ $isActive ? 'Validé' : 'En attente' }}
-                        </span>
-                    </div>
+        <!-- État du dossier : étape, clôture, mois d'essai, alertes -->
+        @php
+            $steps = [
+                'en_evaluation' => 'Fiches en cours',
+                'validation_manager' => 'Consolidation',
+                'valide_rh' => 'Entretien validé',
+                'verrouille' => 'Clôturée',
+            ];
+            $stepKeys = array_keys($steps);
+            $currentIndex = array_search($evaluation->workflow_step ?? 'en_evaluation', $stepKeys);
+            $currentIndex = $currentIndex === false ? -1 : $currentIndex;
+        @endphp
+        <div class="space-y-2">
+            <ol class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                @foreach($steps as $key => $label)
+                    <li class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium {{ $loop->index <= $currentIndex ? 'bg-blue-50 text-[#0066FF]' : 'bg-[#F8FAFC] text-[#94A3B8] border border-[#E2E8F0]' }}">
+                        {{ $loop->iteration }}. {{ $label }}
+                    </li>
                 @endforeach
-            </div>
+            </ol>
+
+            @if($evaluation->is_locked)
+                <p class="rounded-xl bg-slate-900 px-4 py-2.5 text-xs text-slate-200">
+                    <strong class="text-white">Note clôturée</strong> le {{ $evaluation->locked_at?->format('d/m/Y à H:i') }} par {{ $evaluation->lockedByUser?->name ?? 'la Direction' }} — lecture seule.
+                </p>
+            @endif
+            @if($evaluation->is_trial)
+                <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+                    <strong>Mois d'essai :</strong> la note est donnée et expliquée, sans conséquence (pas de classement ni de récompense).
+                </p>
+            @endif
+            @if($evaluation->requiresFormalInterview())
+                <p class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-900">
+                    <strong>Deux mois de suite sous 10/20 :</strong> entretien formel et mesures prévues par le règlement intérieur, selon la procédure.
+                </p>
+            @endif
         </div>
 
-        <!-- CARTE CENTRALE : Synthèse Collaborateur & Note /30 -->
+        <!-- CARTE CENTRALE : membre, note du mois et blocs -->
         <div class="rounded-3xl bg-white border border-[#E2E8F0] p-6 sm:p-8 shadow-xs space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-[#E2E8F0] gap-4">
                 <div class="flex items-center gap-4">
@@ -172,18 +155,6 @@
                 </div>
             @endif
         </div>
-
-        @if($evaluation->is_trial)
-            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                <strong>Mois d'essai :</strong> la note est donnée et expliquée, sans conséquence (pas de classement ni de récompense).
-            </div>
-        @endif
-
-        @if($evaluation->requiresFormalInterview())
-            <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900">
-                <strong>Deux mois de suite sous 10/20 :</strong> entretien formel et mesures prévues par le règlement intérieur, selon la procédure.
-            </div>
-        @endif
 
         <!-- TABLEAU DE CONSOLIDATION DES ÉVALUATEURS -->
         <x-card title="Tableau de consolidation (17 critères notés de 1 à 5)" subtitle="Note d'un critère = moyenne pondérée des évaluateurs qui l'ont noté (Direction 40 %, RH 20 %, responsables 25 %, pairs 15 %) ; l'auto-évaluation ne compte pas">
@@ -248,13 +219,13 @@
             </div>
         </x-card>
 
-        <!-- FORMULAIRE D'ÉVALUATION DES CRITÈRES ET APPRÉCIATIONS QUALITATIVES -->
+        <!-- ENTRETIEN INDIVIDUEL -->
         <form action="{{ route('rh.evaluations.update', $evaluation) }}" method="POST" class="space-y-6">
             @csrf
             @method('PUT')
 
             <!-- SECTION ANALYSE QUALITATIVE RH (Points 4 & 7) -->
-            <x-card title="Évaluation Qualitative & Recommandations RH" subtitle="Points forts, axes d'amélioration et plan de développement">
+            <x-card title="Entretien individuel" subtitle="Du 3 au 5 du mois suivant : note expliquée, un point fort, un point à progresser, plan de progrès">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-emerald-700 mb-1.5 flex items-center gap-1.5">
@@ -319,10 +290,10 @@
                         <div>
                             <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Étape du Workflow</label>
                             <select name="workflow_step" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                                <option value="brouillon" @selected($evaluation->workflow_step === 'brouillon')>1. Brouillon</option>
-                                <option value="en_evaluation" @selected($evaluation->workflow_step === 'en_evaluation')>2. En évaluation RH</option>
-                                <option value="validation_manager" @selected($evaluation->workflow_step === 'validation_manager')>3. Validation Manager</option>
-                                <option value="valide_rh" @selected($evaluation->workflow_step === 'valide_rh')>4. Validé par la Direction RH</option>
+                                <option value="brouillon" @selected($evaluation->workflow_step === 'brouillon')>Brouillon</option>
+                                <option value="en_evaluation" @selected($evaluation->workflow_step === 'en_evaluation')>1. Fiches en cours</option>
+                                <option value="validation_manager" @selected($evaluation->workflow_step === 'validation_manager')>2. Consolidation</option>
+                                <option value="valide_rh" @selected($evaluation->workflow_step === 'valide_rh')>3. Entretien validé</option>
                             </select>
                         </div>
                     </div>
@@ -337,8 +308,50 @@
             </x-card>
         </form>
 
+        <!-- SECTION PLAN D'AMÉLIORATION DE LA PERFORMANCE (Point 10 - PIP) -->
+        @if(($evaluation->isScored() && $evaluation->final_score_20 < 10) || $evaluation->employee->improvementPlans->isNotEmpty())
+            <div class="p-5 rounded-2xl border border-rose-200 bg-rose-50/40 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+                            ⚠️
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-rose-900 uppercase tracking-wider">Plan d'Amélioration de la Performance (PIP)</h4>
+                            <p class="text-[11px] text-rose-700">Moins de 10/20 : plan de progrès de 30 jours, avec un référent et une formation</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="document.getElementById('modal-add-pip').classList.remove('hidden')" 
+                            class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs">
+                        + Ouvrir un PIP
+                    </button>
+                </div>
+
+                @forelse($evaluation->employee->improvementPlans as $pip)
+                    <div class="p-4 rounded-xl bg-white border border-rose-200 space-y-2 text-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-[#0B0F14] text-sm">{{ $pip->title }}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                {{ ucfirst(str_replace('_', ' ', $pip->status)) }} ({{ $pip->progress_pct }}%)
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#64748B] pt-1">
+                            <div><strong class="text-[#0B0F14]">Difficulté identifiée :</strong> {{ $pip->problem_identified }}</div>
+                            <div><strong class="text-[#0B0F14]">Objectif visé :</strong> {{ $pip->target_objective }}</div>
+                        </div>
+                        <div class="pt-2 border-t border-[#F1F5F9] text-[11px] text-[#94A3B8] flex items-center justify-between">
+                            <span>Superviseur : {{ $pip->supervisor?->name ?? 'Direction RH' }}</span>
+                            <span>Période : {{ $pip->start_date?->format('d/m/Y') }} au {{ $pip->end_date?->format('d/m/Y') }}</span>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-xs text-rose-800">Aucun PIP actif. Vous pouvez ouvrir un plan d'action personnalisé ci-dessus.</p>
+                @endforelse
+            </div>
+        @endif
+
         <!-- SECTION OBJECTIFS INDIVIDUELS DU MOIS (Point 9) -->
-        <x-card title="Objectifs Individuels Assignés" subtitle="Suivi des 1 à 3 objectifs ciblés du collaborateur">
+        <x-card title="Objectifs du mois suivant" subtitle="1 à 3 objectifs ciblés fixés à l'entretien">
             <x-slot:actions>
                 <button type="button" onclick="document.getElementById('modal-add-goal').classList.remove('hidden')" 
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 text-[#0066FF] hover:bg-blue-100 text-xs font-bold transition">
@@ -391,50 +404,8 @@
             </div>
         </x-card>
 
-        <!-- SECTION PLAN D'AMÉLIORATION DE LA PERFORMANCE (Point 10 - PIP) -->
-        @if(($evaluation->isScored() && $evaluation->final_score_20 < 10) || $evaluation->employee->improvementPlans->isNotEmpty())
-            <div class="p-5 rounded-2xl border border-rose-200 bg-rose-50/40 space-y-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
-                            ⚠️
-                        </div>
-                        <div>
-                            <h4 class="text-xs font-bold text-rose-900 uppercase tracking-wider">Plan d'Amélioration de la Performance (PIP)</h4>
-                            <p class="text-[11px] text-rose-700">Moins de 10/20 : plan de progrès de 30 jours, avec un référent et une formation</p>
-                        </div>
-                    </div>
-                    <button type="button" onclick="document.getElementById('modal-add-pip').classList.remove('hidden')" 
-                            class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs">
-                        + Ouvrir un PIP
-                    </button>
-                </div>
-
-                @forelse($evaluation->employee->improvementPlans as $pip)
-                    <div class="p-4 rounded-xl bg-white border border-rose-200 space-y-2 text-xs">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-[#0B0F14] text-sm">{{ $pip->title }}</span>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                {{ ucfirst(str_replace('_', ' ', $pip->status)) }} ({{ $pip->progress_pct }}%)
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#64748B] pt-1">
-                            <div><strong class="text-[#0B0F14]">Difficulté identifiée :</strong> {{ $pip->problem_identified }}</div>
-                            <div><strong class="text-[#0B0F14]">Objectif visé :</strong> {{ $pip->target_objective }}</div>
-                        </div>
-                        <div class="pt-2 border-t border-[#F1F5F9] text-[11px] text-[#94A3B8] flex items-center justify-between">
-                            <span>Superviseur : {{ $pip->supervisor?->name ?? 'Direction RH' }}</span>
-                            <span>Période : {{ $pip->start_date?->format('d/m/Y') }} au {{ $pip->end_date?->format('d/m/Y') }}</span>
-                        </div>
-                    </div>
-                @empty
-                    <p class="text-xs text-rose-800">Aucun PIP actif. Vous pouvez ouvrir un plan d'action personnalisé ci-dessus.</p>
-                @endforelse
-            </div>
-        @endif
-
         <!-- SECTION SIGNATURE ÉLECTRONIQUE INTERNE (Point 11 & 16) -->
-        <x-card title="Émargement & Signatures Électroniques" subtitle="Validation formelle interne du Manager et du Collaborateur">
+        <x-card title="Signatures" subtitle="Note signée par le membre et la Gérante à l'issue de l'entretien">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <!-- Signature Manager -->
                 <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/50 space-y-3">

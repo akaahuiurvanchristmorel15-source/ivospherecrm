@@ -33,6 +33,7 @@ class EvaluationController extends Controller
         $tab = $request->input('tab', 'all');
 
         $query = MonthlyEvaluation::with(['employee', 'evaluator'])
+            ->withCount('sheets')
             ->where('year', $year)
             ->where('month', $month);
 
@@ -62,6 +63,15 @@ class EvaluationController extends Controller
         // Statistiques consolidées du tableau de bord (Moyenne générale, par service, progression, alertes)
         $stats = $this->evaluationService->getCompanyDashboardStats($year, $month);
 
+        // Avancement du déroulé du mois : fiches remises, notes consolidées, notes clôturées, contestations à traiter
+        $monthEvaluations = MonthlyEvaluation::where('year', $year)->where('month', $month);
+        $flow = [
+            'sheets' => EvaluationSheet::whereIn('monthly_evaluation_id', (clone $monthEvaluations)->select('id'))->count(),
+            'scored' => (clone $monthEvaluations)->whereNotNull('appreciation')->count(),
+            'locked' => (clone $monthEvaluations)->where('is_locked', true)->count(),
+            'pendingContestations' => (clone $monthEvaluations)->whereNotNull('contested_at')->whereNull('contestation_answered_at')->count(),
+        ];
+
         $monthNames = [
             1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
             5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
@@ -76,7 +86,8 @@ class EvaluationController extends Controller
             'monthNames',
             'departments',
             'settings',
-            'stats'
+            'stats',
+            'flow'
         ));
     }
 

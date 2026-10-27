@@ -11,8 +11,8 @@
 
     <div class="space-y-6">
         <x-page-header 
-            title="Palmarès & Classement Interne" 
-            :description="'Tableau d\'honneur des collaborateurs et performances d\'excellence pour ' . $monthNames[$month] . ' ' . $year"
+            title="Classement & récompenses" 
+            :description="'Membre du mois, récompense du trimestre et classement de ' . $monthNames[$month] . ' ' . $year"
         >
             <x-slot:breadcrumbs>
                 <x-breadcrumb :items="[
@@ -32,147 +32,30 @@
             </x-slot:actions>
         </x-page-header>
 
-        <!-- Filtres Période & Service -->
-        <x-card>
-            <form method="GET" action="{{ route('rh.evaluations.ranking') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
-                <div class="sm:col-span-4">
-                    <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Mois</label>
-                    <select name="month" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                        @foreach($monthNames as $mNum => $mLabel)
-                            <option value="{{ $mNum }}" @selected($month == $mNum)>{{ $mLabel }}</option>
-                        @endforeach
-                    </select>
-                </div>
+        @include('rh.evaluations._nav', ['active' => 'ranking'])
 
-                <div class="sm:col-span-3">
-                    <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Année</label>
-                    <select name="year" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                        @for($y = now()->year - 2; $y <= now()->year + 1; $y++)
-                            <option value="{{ $y }}" @selected($year == $y)>{{ $y }}</option>
-                        @endfor
-                    </select>
-                </div>
+        <form method="GET" action="{{ route('rh.evaluations.ranking') }}" class="flex flex-wrap items-center gap-2 text-xs">
+            <select name="month" aria-label="Mois" onchange="this.form.submit()" class="h-9 rounded-full border border-[#E2E8F0] bg-white px-3.5 text-xs font-medium text-[#0B0F14] focus:border-[#0066FF] focus:outline-none">
+                @foreach($monthNames as $mNum => $mLabel)
+                    <option value="{{ $mNum }}" @selected($month == $mNum)>{{ $mLabel }}</option>
+                @endforeach
+            </select>
+            <select name="year" aria-label="Année" onchange="this.form.submit()" class="h-9 rounded-full border border-[#E2E8F0] bg-white px-3.5 text-xs font-medium text-[#0B0F14] focus:border-[#0066FF] focus:outline-none">
+                @for($y = now()->year - 2; $y <= now()->year + 1; $y++)
+                    <option value="{{ $y }}" @selected($year == $y)>{{ $y }}</option>
+                @endfor
+            </select>
+            <select name="department" aria-label="Service" onchange="this.form.submit()" class="h-9 rounded-full border border-[#E2E8F0] bg-white px-3.5 text-xs font-medium text-[#0B0F14] focus:border-[#0066FF] focus:outline-none">
+                <option value="">Tous les services</option>
+                @foreach($departments as $dept)
+                    <option value="{{ $dept }}" @selected($department == $dept)>{{ $dept }}</option>
+                @endforeach
+            </select>
+            <noscript><button type="submit" class="rounded-full bg-[#0B0F14] px-3.5 py-2 font-semibold text-white">Filtrer</button></noscript>
+        </form>
 
-                <div class="sm:col-span-3">
-                    <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Département</label>
-                    <select name="department" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                        <option value="">Tous les départements</option>
-                        @foreach($departments as $dept)
-                            <option value="{{ $dept }}" @selected($department == $dept)>{{ $dept }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="sm:col-span-2 flex items-end">
-                    <button type="submit" class="w-full py-2 px-4 bg-[#0B0F14] hover:bg-[#1E293B] text-white rounded-xl text-xs font-bold transition">
-                        Filtrer
-                    </button>
-                </div>
-            </form>
-        </x-card>
-
-        <!-- TOP 3 PODIUM VISUEL -->
-        @if(!empty($ranking['topOverall']) && $ranking['topOverall']->count() >= 3)
-            @php
-                $first = $ranking['topOverall'][0];
-                $second = $ranking['topOverall'][1];
-                $third = $ranking['topOverall'][2];
-            @endphp
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-                <!-- 2ème Place -->
-                <div class="rounded-3xl border border-slate-200 bg-white p-5 text-center flex flex-col justify-between order-2 sm:order-1 shadow-xs">
-                    <div>
-                        <div class="w-12 h-12 mx-auto rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-lg mb-2">
-                            🥈 2
-                        </div>
-                        <h4 class="font-extrabold text-[#0B0F14] text-sm">{{ $second->employee->full_name }}</h4>
-                        <p class="text-[11px] text-[#64748B]">{{ $second->employee->department ?? 'Général' }} • {{ $second->employee->position ?? 'Collaborateur' }}</p>
-                    </div>
-                    <div class="pt-4 flex flex-col items-center">
-                        <span class="inline-flex px-3 py-1 rounded-xl bg-blue-50 text-[#0066FF] font-mono font-black text-base border border-blue-200">
-                            {{ number_format($second->final_score_20, 2) }} / 20
-                        </span>
-                        @if($second->appreciation)
-                            <span class="mt-1 inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold border {{ $second->appreciation_badge_class }}">
-                                {{ $second->appreciation }}
-                            </span>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- 1ère Place (Vainqueur) -->
-                <div class="rounded-3xl border-2 border-amber-300 bg-gradient-to-b from-amber-50/50 to-white p-6 text-center flex flex-col justify-between order-1 sm:order-2 shadow-md sm:-translate-y-2">
-                    <div>
-                        <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center font-black text-xl mb-2 shadow-sm">
-                            👑 1
-                        </div>
-                        <span class="text-[10px] font-mono uppercase font-black tracking-widest text-amber-600 block mb-0.5">Major de Promo RH</span>
-                        <h3 class="font-black text-[#0B0F14] text-base">{{ $first->employee->full_name }}</h3>
-                        <p class="text-xs text-[#64748B]">{{ $first->employee->department ?? 'Général' }} • {{ $first->employee->position ?? 'Collaborateur' }}</p>
-                    </div>
-                    <div class="pt-4 flex flex-col items-center">
-                        <span class="inline-flex px-4 py-1.5 rounded-2xl bg-emerald-600 text-white font-mono font-black text-lg shadow-sm">
-                            {{ number_format($first->final_score_20, 2) }} / 20
-                        </span>
-                        @if($first->appreciation)
-                            <span class="mt-1 inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                {{ $first->appreciation }}
-                            </span>
-                        @endif
-                        @if($first->score_progress > 0)
-                            <div class="text-[10px] text-emerald-600 font-bold mt-1">↗ +{{ number_format($first->score_progress, 1) }} pts</div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- 3ème Place -->
-                <div class="rounded-3xl border border-slate-200 bg-white p-5 text-center flex flex-col justify-between order-3 sm:order-3 shadow-xs">
-                    <div>
-                        <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center font-bold text-amber-800 text-lg mb-2">
-                            🥉 3
-                        </div>
-                        <h4 class="font-extrabold text-[#0B0F14] text-sm">{{ $third->employee->full_name }}</h4>
-                        <p class="text-[11px] text-[#64748B]">{{ $third->employee->department ?? 'Général' }} • {{ $third->employee->position ?? 'Collaborateur' }}</p>
-                    </div>
-                    <div class="pt-4 flex flex-col items-center">
-                        <span class="inline-flex px-3 py-1 rounded-xl bg-blue-50 text-[#0066FF] font-mono font-black text-base border border-blue-200">
-                            {{ number_format($third->final_score_20, 2) }} / 20
-                        </span>
-                        @if($third->appreciation)
-                            <span class="mt-1 inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold border {{ $third->appreciation_badge_class }}">
-                                {{ $third->appreciation }}
-                            </span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        <!-- 3 PALMARÈS THÉMATIQUES (Progression, Ponctualité, Tâches) -->
+        <!-- RÉCOMPENSES DU RÉFÉRENTIEL : membre du mois, trimestre, progressions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Top Progression -->
-            <div class="rounded-2xl border border-emerald-200 bg-white p-5 shadow-xs">
-                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-emerald-100">
-                    <span class="text-emerald-600 font-bold">🚀</span>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-900">Plus Fortes Progressions</h3>
-                </div>
-                <div class="space-y-2.5">
-                    @forelse($ranking['topProgression'] ?? [] as $idx => $ev)
-                        <div class="flex items-center justify-between text-xs p-2 rounded-xl bg-emerald-50/50 border border-emerald-100">
-                            <div class="flex items-center gap-2 truncate">
-                                <span class="font-mono font-bold text-emerald-700 text-[11px]">#{{ $idx + 1 }}</span>
-                                <span class="font-bold text-[#0B0F14] truncate">{{ $ev->employee->full_name }}</span>
-                            </div>
-                            <span class="font-mono font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0">
-                                +{{ number_format($ev->score_progress, 1) }} pts
-                            </span>
-                        </div>
-                    @empty
-                        <p class="text-[11px] text-[#64748B] py-3 text-center">Aucune progression enregistrée ce mois.</p>
-                    @endforelse
-                </div>
-            </div>
-
             <!-- Membre du mois -->
             <div class="rounded-2xl border border-amber-200 bg-white p-5 shadow-xs">
                 <div class="flex items-center gap-2 mb-3 pb-2 border-b border-amber-100">
@@ -215,10 +98,33 @@
                     @endforelse
                 </div>
             </div>
+
+            <!-- Top Progression -->
+            <div class="rounded-2xl border border-emerald-200 bg-white p-5 shadow-xs">
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-emerald-100">
+                    <span class="text-emerald-600 font-bold">🚀</span>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-900">Plus Fortes Progressions</h3>
+                </div>
+                <div class="space-y-2.5">
+                    @forelse($ranking['topProgression'] ?? [] as $idx => $ev)
+                        <div class="flex items-center justify-between text-xs p-2 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                            <div class="flex items-center gap-2 truncate">
+                                <span class="font-mono font-bold text-emerald-700 text-[11px]">#{{ $idx + 1 }}</span>
+                                <span class="font-bold text-[#0B0F14] truncate">{{ $ev->employee->full_name }}</span>
+                            </div>
+                            <span class="font-mono font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0">
+                                +{{ number_format($ev->score_progress, 1) }} pts
+                            </span>
+                        </div>
+                    @empty
+                        <p class="text-[11px] text-[#64748B] py-3 text-center">Aucune progression enregistrée ce mois.</p>
+                    @endforelse
+                </div>
+            </div>
         </div>
 
-        <!-- CLASSEMENT TOP 10 COMPLET -->
-        <x-card title="Top 10 Global de l'Entreprise" subtitle="Classement du mois par note sur 20 (les notes détaillées restent confidentielles)" :noPadding="true">
+        <!-- CLASSEMENT DU MOIS -->
+        <x-card title="Classement du mois" subtitle="Top 10 par note sur 20 — les notes détaillées restent confidentielles ; seul le membre du mois est annoncé en réunion" :noPadding="true">
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] uppercase tracking-wider text-[11px] font-semibold">
