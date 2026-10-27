@@ -90,14 +90,13 @@
                     </div>
                     <div class="pt-4 flex flex-col items-center">
                         <span class="inline-flex px-3 py-1 rounded-xl bg-blue-50 text-[#0066FF] font-mono font-black text-base border border-blue-200">
-                            {{ number_format($second->final_score_20 ?? ($second->final_score_30 / 1.5), 2) }} / 20
+                            {{ number_format($second->final_score_20, 2) }} / 20
                         </span>
                         @if($second->appreciation)
                             <span class="mt-1 inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold border {{ $second->appreciation_badge_class }}">
                                 {{ $second->appreciation }}
                             </span>
                         @endif
-                        <span class="text-[10px] text-slate-400 font-mono mt-0.5">{{ number_format($second->final_score_30, 1) }} / 30</span>
                     </div>
                 </div>
 
@@ -113,14 +112,13 @@
                     </div>
                     <div class="pt-4 flex flex-col items-center">
                         <span class="inline-flex px-4 py-1.5 rounded-2xl bg-emerald-600 text-white font-mono font-black text-lg shadow-sm">
-                            {{ number_format($first->final_score_20 ?? ($first->final_score_30 / 1.5), 2) }} / 20
+                            {{ number_format($first->final_score_20, 2) }} / 20
                         </span>
                         @if($first->appreciation)
                             <span class="mt-1 inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                                 {{ $first->appreciation }}
                             </span>
                         @endif
-                        <span class="text-[10px] text-slate-400 font-mono mt-0.5">{{ number_format($first->final_score_30, 1) }} / 30</span>
                         @if($first->score_progress > 0)
                             <div class="text-[10px] text-emerald-600 font-bold mt-1">↗ +{{ number_format($first->score_progress, 1) }} pts</div>
                         @endif
@@ -138,14 +136,13 @@
                     </div>
                     <div class="pt-4 flex flex-col items-center">
                         <span class="inline-flex px-3 py-1 rounded-xl bg-blue-50 text-[#0066FF] font-mono font-black text-base border border-blue-200">
-                            {{ number_format($third->final_score_20 ?? ($third->final_score_30 / 1.5), 2) }} / 20
+                            {{ number_format($third->final_score_20, 2) }} / 20
                         </span>
                         @if($third->appreciation)
                             <span class="mt-1 inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold border {{ $third->appreciation_badge_class }}">
                                 {{ $third->appreciation }}
                             </span>
                         @endif
-                        <span class="text-[10px] text-slate-400 font-mono mt-0.5">{{ number_format($third->final_score_30, 1) }} / 30</span>
                     </div>
                 </div>
             </div>
@@ -176,55 +173,52 @@
                 </div>
             </div>
 
-            <!-- Top Ponctualité -->
+            <!-- Membre du mois -->
+            <div class="rounded-2xl border border-amber-200 bg-white p-5 shadow-xs">
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-amber-100">
+                    <span class="text-amber-600 font-bold">🏅</span>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-900">Membre du mois</h3>
+                </div>
+                @if($ranking['memberOfTheMonth'])
+                    <div class="text-xs p-3 rounded-xl bg-amber-50/50 border border-amber-100 space-y-1">
+                        <div class="font-bold text-sm text-[#0B0F14]">{{ $ranking['memberOfTheMonth']->employee->full_name }}</div>
+                        <div class="font-mono font-bold text-amber-700">{{ number_format($ranking['memberOfTheMonth']->final_score_20, 2, ',', ' ') }} / 20</div>
+                        <div class="text-[10px] text-[#64748B]">Félicitations en réunion, affichage dans les magasins, encouragement.</div>
+                    </div>
+                @else
+                    <p class="text-[11px] text-[#64748B] py-3 text-center">
+                        {{ \App\Models\MonthlyEvaluation::isTrialMonth($year, $month) ? "Mois d'essai : pas de membre du mois." : "Aucun membre n'atteint 14/20 ce mois." }}
+                    </p>
+                @endif
+            </div>
+
+            <!-- Récompense du trimestre -->
             <div class="rounded-2xl border border-blue-200 bg-white p-5 shadow-xs">
                 <div class="flex items-center gap-2 mb-3 pb-2 border-b border-blue-100">
-                    <span class="text-[#0066FF] font-bold">⏱️</span>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-blue-900">Major de Ponctualité</h3>
+                    <span class="text-[#0066FF] font-bold">🏆</span>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-blue-900">Récompense du trimestre</h3>
                 </div>
+                <p class="text-[10px] text-[#64748B] mb-2">{{ $ranking['quarter']['label'] }} — 3 meilleures moyennes d'au moins 12/20</p>
                 <div class="space-y-2.5">
-                    @forelse($ranking['topPunctuality'] ?? [] as $idx => $ev)
+                    @forelse($ranking['quarter']['rewarded'] as $idx => $row)
                         <div class="flex items-center justify-between text-xs p-2 rounded-xl bg-blue-50/50 border border-blue-100">
                             <div class="flex items-center gap-2 truncate">
                                 <span class="font-mono font-bold text-[#0066FF] text-[11px]">#{{ $idx + 1 }}</span>
-                                <span class="font-bold text-[#0B0F14] truncate">{{ $ev->employee->full_name }}</span>
+                                <span class="font-bold text-[#0B0F14] truncate">{{ $row['employee']->full_name }}</span>
                             </div>
                             <span class="font-mono font-bold text-[#0066FF] bg-white px-2 py-0.5 rounded-lg border border-blue-200 shrink-0">
-                                {{ number_format($ev->punctuality_points, 2) }} pts
+                                {{ number_format($row['average'], 2, ',', ' ') }} / 20 ({{ $row['months'] }} mois)
                             </span>
                         </div>
                     @empty
-                        <p class="text-[11px] text-[#64748B] py-3 text-center">Aucune donnée de ponctualité.</p>
-                    @endforelse
-                </div>
-            </div>
-
-            <!-- Top Tâches Validées -->
-            <div class="rounded-2xl border border-purple-200 bg-white p-5 shadow-xs">
-                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-purple-100">
-                    <span class="text-purple-600 font-bold">📋</span>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-purple-900">Major des Tâches Validées</h3>
-                </div>
-                <div class="space-y-2.5">
-                    @forelse($ranking['topTasks'] ?? [] as $idx => $ev)
-                        <div class="flex items-center justify-between text-xs p-2 rounded-xl bg-purple-50/50 border border-purple-100">
-                            <div class="flex items-center gap-2 truncate">
-                                <span class="font-mono font-bold text-purple-700 text-[11px]">#{{ $idx + 1 }}</span>
-                                <span class="font-bold text-[#0B0F14] truncate">{{ $ev->employee->full_name }}</span>
-                            </div>
-                            <span class="font-mono font-bold text-purple-700 bg-white px-2 py-0.5 rounded-lg border border-purple-200 shrink-0">
-                                {{ number_format($ev->tasks_points, 2) }} pts
-                            </span>
-                        </div>
-                    @empty
-                        <p class="text-[11px] text-[#64748B] py-3 text-center">Aucune tâche validée ce mois.</p>
+                        <p class="text-[11px] text-[#64748B] py-3 text-center">Aucune moyenne d'au moins 12/20 sur le trimestre.</p>
                     @endforelse
                 </div>
             </div>
         </div>
 
         <!-- CLASSEMENT TOP 10 COMPLET -->
-        <x-card title="Top 10 Global de l'Entreprise" subtitle="Classement d'excellence par moyenne générale sur 20" :noPadding="true">
+        <x-card title="Top 10 Global de l'Entreprise" subtitle="Classement du mois par note sur 20 (les notes détaillées restent confidentielles)" :noPadding="true">
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] uppercase tracking-wider text-[11px] font-semibold">
@@ -232,8 +226,9 @@
                             <th class="py-3 px-4 text-center">Rang</th>
                             <th class="py-3 px-4">Collaborateur</th>
                             <th class="py-3 px-3 text-center">Service</th>
-                            <th class="py-3 px-3 text-center">Ponctualité</th>
-                            <th class="py-3 px-3 text-center">Tâches</th>
+                            @foreach(array_keys(\App\Models\EvaluationCriterion::BLOCKS) as $block)
+                                <th class="py-3 px-3 text-center">Bloc {{ $block }}</th>
+                            @endforeach
                             <th class="py-3 px-3 text-center">Progression</th>
                             <th class="py-3 px-4 text-center">Moyenne / 20</th>
                             <th class="py-3 px-3 text-center">Appréciation</th>
@@ -262,13 +257,12 @@
                                     </span>
                                 </td>
 
-                                <td class="py-3 px-3 text-center font-mono font-bold text-slate-700">
-                                    {{ number_format($eval->punctuality_points, 2) }}
-                                </td>
-
-                                <td class="py-3 px-3 text-center font-mono font-bold text-slate-700">
-                                    {{ number_format($eval->tasks_points, 2) }}
-                                </td>
+                                @foreach(array_keys(\App\Models\EvaluationCriterion::BLOCKS) as $block)
+                                    @php $blockScore = $eval->{'block_'.strtolower($block).'_score'}; @endphp
+                                    <td class="py-3 px-3 text-center font-mono font-bold text-slate-700">
+                                        {{ $blockScore !== null ? number_format($blockScore, 2, ',', ' ') : 'n.c.' }}
+                                    </td>
+                                @endforeach
 
                                 <td class="py-3 px-3 text-center">
                                     @if($eval->score_progress > 0)
@@ -282,9 +276,8 @@
 
                                 <td class="py-3 px-4 text-center">
                                     <span class="inline-flex px-3 py-1 rounded-xl text-xs font-black bg-slate-900 text-white font-mono">
-                                        {{ number_format($eval->final_score_20 ?? ($eval->final_score_30 / 1.5), 2) }} / 20
+                                        {{ number_format($eval->final_score_20, 2) }} / 20
                                     </span>
-                                    <div class="text-[10px] text-slate-400 font-mono mt-0.5">({{ number_format($eval->final_score_30, 1) }} / 30)</div>
                                 </td>
 
                                 <td class="py-3 px-3 text-center">
@@ -305,7 +298,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="py-10 text-center text-xs text-[#64748B]">
+                                <td colspan="11" class="py-10 text-center text-xs text-[#64748B]">
                                     Aucune évaluation disponible pour établir le classement de cette période.
                                 </td>
                             </tr>

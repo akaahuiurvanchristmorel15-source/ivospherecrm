@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,10 +12,17 @@ class MonthlyEvaluation extends Model
 {
     use HasFactory;
 
+    public const TRIAL_YEAR = 2026;
+
+    public const TRIAL_MONTH = 10;
+
+    public const CONTESTATION_DELAY_HOURS = 48;
+
     protected $fillable = [
         'employee_id',
         'year',
         'month',
+        'is_trial',
         'evaluation_date',
         'total_working_days',
         'max_possible_points',
@@ -24,6 +32,10 @@ class MonthlyEvaluation extends Model
         'raw_score',
         'final_score_30',
         'final_score_20',
+        'block_a_score',
+        'block_b_score',
+        'block_c_score',
+        'block_d_score',
         'appreciation',
         'score_progress',
         'status',
@@ -41,6 +53,11 @@ class MonthlyEvaluation extends Model
         'manager_signed_at',
         'employee_signature',
         'employee_signed_at',
+        'contestation',
+        'contested_at',
+        'contestation_response',
+        'contestation_answered_at',
+        'contestation_answered_by',
     ];
 
     protected function casts(): array
@@ -48,6 +65,7 @@ class MonthlyEvaluation extends Model
         return [
             'year' => 'integer',
             'month' => 'integer',
+            'is_trial' => 'boolean',
             'evaluation_date' => 'date',
             'total_working_days' => 'integer',
             'max_possible_points' => 'decimal:2',
@@ -57,11 +75,17 @@ class MonthlyEvaluation extends Model
             'raw_score' => 'decimal:2',
             'final_score_30' => 'decimal:2',
             'final_score_20' => 'decimal:2',
+            'block_a_score' => 'decimal:2',
+            'block_b_score' => 'decimal:2',
+            'block_c_score' => 'decimal:2',
+            'block_d_score' => 'decimal:2',
             'score_progress' => 'decimal:2',
             'is_locked' => 'boolean',
             'locked_at' => 'datetime',
             'manager_signed_at' => 'datetime',
             'employee_signed_at' => 'datetime',
+            'contested_at' => 'datetime',
+            'contestation_answered_at' => 'datetime',
         ];
     }
 
@@ -80,6 +104,11 @@ class MonthlyEvaluation extends Model
         return $this->belongsTo(User::class, 'locked_by');
     }
 
+    public function contestationAnsweredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'contestation_answered_by');
+    }
+
     public function dailyScores(): HasMany
     {
         return $this->hasMany(DailyEvaluationScore::class)->orderBy('date');
@@ -88,6 +117,11 @@ class MonthlyEvaluation extends Model
     public function criteriaScores(): HasMany
     {
         return $this->hasMany(MonthlyEvaluationCriterionScore::class);
+    }
+
+    public function sheets(): HasMany
+    {
+        return $this->hasMany(EvaluationSheet::class);
     }
 
     public function goals(): HasMany
@@ -101,103 +135,95 @@ class MonthlyEvaluation extends Model
     }
 
     /**
-     * Recalcule automatiquement le score global et la note normalisée sur 30 points.
+     * Octobre 2026 est le mois d'essai du référentiel : la note est donnée et expliquée, sans conséquence.
      */
+    public static function isTrialMonth(int $year, int $month): bool
+    {
+        return $year === self::TRIAL_YEAR && $month === self::TRIAL_MONTH;
+    }
+
     /**
-     * Recalcule automatiquement le score global (Moyenne des 10 critères / 20)
-     * et synchronise l'appréciation automatique ainsi que le score normalisé sur 30 points.
+     * Recalcule la note du mois selon le référentiel d'évaluation des membres :
+     * 1. note de chaque critère = moyenne pondérée des catégories d'évaluateurs qui l'ont noté
+     *    (Direction 40, RH 20, responsables de fonction 25, pairs 15), les poids étant ramenés à 100 % ;
+     * 2. note de chaque bloc = moyenne des critères notés du bloc, sur 5 ;
+     * 3. note du mois sur 20 = 4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D).
      */
     public function recalculateScores(): self
     {
-        $settings = HrSetting::current();
+        $criteria = EvaluationCriterion::referential()->get();
+        $sheets = $this->sheets()->with('scores')->get();
+        $assignedTasks = (int) $this->dailyScores()->sum('tasks_assigned_count');
+        $validatedTasks = (int) $this->dailyScores()->sum('tasks_validated_count');
 
-        // 1. Calcul via les 10 matières / critères s'ils existent
-        $criteriaScores = $this->criteriaScores()->with('criterion')->get();
-        if ($criteriaScores->isNotEmpty()) {
-            $totalScoreOn20 = 0.00;
-            $count = 0;
+        $criterionScoresByBlock = [];
 
-            foreach ($criteriaScores as $item) {
-                $scoreOn20 = min(20.00, max(0.00, (float) $item->score));
-                $weight = (float) ($item->criterion->weight_percentage ?? 10.00);
-                $weighted = ($scoreOn20 / 20.00) * $weight;
+        foreach ($criteria as $criterion) {
+            $scoresByCategory = [];
 
-                $item->update([
-                    'score' => $scoreOn20,
-                    'max_score' => 20.00,
-                    'weighted_score' => round($weighted, 2),
-                ]);
-
-                // Synchronisation des points spécifiques pour rétrocompatibilité
-                if ($item->criterion?->code === 'punctuality') {
-                    $this->punctuality_points = $scoreOn20;
-                } elseif (in_array($item->criterion?->code, ['tasks', 'tasks_volume'])) {
-                    $this->tasks_points = $scoreOn20;
-                } elseif ($item->criterion?->code === 'teamwork') {
-                    $this->teamwork_points = $scoreOn20;
+            foreach ($sheets as $sheet) {
+                if ($sheet->category === EvaluationSheet::GROUP_SELF || ! $criterion->isRatableBy($sheet->evaluator_group)) {
+                    continue;
                 }
 
-                $totalScoreOn20 += $scoreOn20;
-                $count++;
+                $score = $sheet->scores->firstWhere('evaluation_criterion_id', $criterion->id)?->score;
+
+                if ($score !== null) {
+                    $scoresByCategory[$sheet->category][] = $score;
+                }
             }
 
-            // Formule officielle spécifiée : Moyenne mensuelle = Somme des 10 notes / 10 (sur 20)
-            $averageScore20 = $count > 0 ? round($totalScoreOn20 / $count, 2) : 0.00;
-            $averageScore20 = min(20.00, max(0.00, $averageScore20));
+            $justification = null;
 
-            $this->final_score_20 = $averageScore20;
-            $this->final_score_30 = round($averageScore20 * 1.5, 2); // 20 pts -> 30 pts
-            $this->raw_score = $totalScoreOn20;
-            $this->max_possible_points = $count * 20.00;
-            $this->appreciation = self::computeAppreciation($averageScore20);
-        } else {
-            // 2. Mode standard journalier (rétrocompatibilité si aucun critère)
-            $punctuality = (float) $this->dailyScores()->sum('punctuality_score');
-            $tasks = (float) $this->dailyScores()->sum('tasks_score');
-            $teamwork = (float) $this->dailyScores()->sum('teamwork_score');
-            $rawScore = $punctuality + $tasks + $teamwork;
-
-            $workingDays = (int) $this->total_working_days;
-            if ($workingDays <= 0) {
-                $workingDays = $this->dailyScores()->where('is_working_day', true)->count();
-                $this->total_working_days = $workingDays;
+            // A1 est calculé à partir des bilans quotidiens, sauf si la Direction l'a noté elle-même
+            if ($criterion->isAutomatic() && $scoresByCategory === [] && $assignedTasks > 0) {
+                $meritPercentage = (int) round($validatedTasks / $assignedTasks * 100);
+                $scoresByCategory['direction'][] = self::meritToScore($meritPercentage);
+                $justification = "Mérite moyen du mois : {$meritPercentage} % ({$validatedTasks} tâches validées sur {$assignedTasks}).";
             }
 
-            $dailyMax = $settings->dailyTheoreticalMax(); // Par défaut 0.66
-            $maxPossible = round($workingDays * $dailyMax, 2);
+            $criterionScore = self::weightedCriterionScore($scoresByCategory);
 
-            $finalScore30 = 0.00;
-            if ($maxPossible > 0) {
-                $normalizedMax = (float) $settings->max_evaluation_score; // 30.00
-                $finalScore30 = round(($rawScore / $maxPossible) * $normalizedMax, 2);
-                $finalScore30 = min($normalizedMax, max(0.00, $finalScore30));
+            if ($criterionScore === null) {
+                $this->criteriaScores()->where('evaluation_criterion_id', $criterion->id)->delete();
+
+                continue;
             }
 
-            $this->punctuality_points = $punctuality;
-            $this->tasks_points = $tasks;
-            $this->teamwork_points = $teamwork;
-            $this->raw_score = $rawScore;
-            $this->max_possible_points = $maxPossible;
-            $this->final_score_30 = $finalScore30;
-            $this->final_score_20 = round($finalScore30 / 1.5, 2);
-            $this->appreciation = self::computeAppreciation((float) $this->final_score_20);
+            $this->criteriaScores()->updateOrCreate(
+                ['evaluation_criterion_id' => $criterion->id],
+                [
+                    'score' => $criterionScore,
+                    'max_score' => 5,
+                    'weighted_score' => round($criterionScore * (float) $criterion->weight_percentage / 5, 2),
+                    'justification' => $justification,
+                ]
+            );
+
+            $criterionScoresByBlock[$criterion->block][] = $criterionScore;
         }
 
-        // 3. Calcul de la progression par rapport au mois précédent
-        $prevMonth = $this->month == 1 ? 12 : $this->month - 1;
-        $prevYear = $this->month == 1 ? $this->year - 1 : $this->year;
-
-        $previousEval = self::where('employee_id', $this->employee_id)
-            ->where('year', $prevYear)
-            ->where('month', $prevMonth)
-            ->first();
-
-        if ($previousEval) {
-            $prevScore = (float) ($previousEval->final_score_20 ?: ($previousEval->final_score_30 / 1.5));
-            $this->score_progress = round(((float) $this->final_score_20) - $prevScore, 2);
-        } else {
-            $this->score_progress = 0.00;
+        $blockScores = [];
+        foreach (array_keys(EvaluationCriterion::BLOCKS) as $block) {
+            $blockScores[$block] = isset($criterionScoresByBlock[$block])
+                ? round(array_sum($criterionScoresByBlock[$block]) / count($criterionScoresByBlock[$block]), 2)
+                : null;
         }
+
+        $monthScore = self::monthScoreFromBlocks($blockScores);
+
+        $this->block_a_score = $blockScores['A'];
+        $this->block_b_score = $blockScores['B'];
+        $this->block_c_score = $blockScores['C'];
+        $this->block_d_score = $blockScores['D'];
+        $this->final_score_20 = $monthScore ?? 0;
+        $this->final_score_30 = round(($monthScore ?? 0) * 1.5, 2);
+        $this->appreciation = $monthScore === null ? null : self::computeAppreciation($monthScore);
+
+        $previousEvaluation = $this->previousEvaluation();
+        $this->score_progress = $previousEvaluation && $monthScore !== null && $previousEvaluation->isScored()
+            ? round($monthScore - (float) $previousEvaluation->final_score_20, 2)
+            : 0;
 
         $this->save();
 
@@ -205,37 +231,109 @@ class MonthlyEvaluation extends Model
     }
 
     /**
-     * Calcule l'appréciation officielle automatique selon le barème sur 20 :
-     * 18 à 20 : Excellent
-     * 16 à 17,99 : Très bien
-     * 14 à 15,99 : Bien
-     * 12 à 13,99 : Assez bien
-     * 10 à 11,99 : Passable
-     * 8 à 9,99 : Insuffisant
-     * 0 à 7,99 : Très insuffisant
+     * Moyenne pondérée des catégories d'évaluateurs ; si une catégorie n'a pas noté, les poids des autres sont ramenés à 100 %.
+     *
+     * @param  array<string, list<int|float>>  $scoresByCategory
+     */
+    public static function weightedCriterionScore(array $scoresByCategory): ?float
+    {
+        $weightedSum = 0.0;
+        $totalWeight = 0;
+
+        foreach ($scoresByCategory as $category => $scores) {
+            $weight = EvaluationSheet::CATEGORIES[$category]['weight'] ?? 0;
+
+            if ($weight === 0 || $scores === []) {
+                continue;
+            }
+
+            $weightedSum += $weight * array_sum($scores) / count($scores);
+            $totalWeight += $weight;
+        }
+
+        return $totalWeight > 0 ? round($weightedSum / $totalWeight, 2) : null;
+    }
+
+    /**
+     * Note du mois sur 20 à partir des notes de bloc (sur 5). Un bloc sans aucune note n'est pas compté.
+     *
+     * @param  array<string, float|null>  $blockScores
+     */
+    public static function monthScoreFromBlocks(array $blockScores): ?float
+    {
+        $weightedSum = 0.0;
+        $totalWeight = 0.0;
+
+        foreach (EvaluationCriterion::BLOCKS as $block => $definition) {
+            if (($blockScores[$block] ?? null) === null) {
+                continue;
+            }
+
+            $weightedSum += $definition['weight'] * $blockScores[$block];
+            $totalWeight += $definition['weight'];
+        }
+
+        return $totalWeight > 0 ? round(4 * $weightedSum / $totalWeight, 2) : null;
+    }
+
+    /**
+     * Conversion du mérite moyen du mois (A1) en note : ≥ 85 % = 5, 70–84 % = 4, 55–69 % = 3, 40–54 % = 2, moins de 40 % = 1.
+     */
+    public static function meritToScore(float $meritPercentage): int
+    {
+        return match (true) {
+            $meritPercentage >= 85 => 5,
+            $meritPercentage >= 70 => 4,
+            $meritPercentage >= 55 => 3,
+            $meritPercentage >= 40 => 2,
+            default => 1,
+        };
+    }
+
+    /**
+     * Appréciation du référentiel selon la note sur 20.
      */
     public static function computeAppreciation(float $score20): string
     {
         return match (true) {
-            $score20 >= 18.00 => 'Excellent',
-            $score20 >= 16.00 => 'Très bien',
-            $score20 >= 14.00 => 'Bien',
-            $score20 >= 12.00 => 'Assez bien',
+            $score20 >= 16.00 => 'Excellent',
+            $score20 >= 14.00 => 'Très bien',
+            $score20 >= 12.00 => 'Bien',
             $score20 >= 10.00 => 'Passable',
-            $score20 >= 8.00 => 'Insuffisant',
-            default => 'Très insuffisant',
+            default => 'Insuffisant',
         };
+    }
+
+    /**
+     * Ce qui suit la note du mois, selon le référentiel.
+     */
+    public static function followUpFor(float $score20): string
+    {
+        return match (true) {
+            $score20 >= 16.00 => 'Félicitations écrites ; candidat au titre de membre du mois et aux récompenses du trimestre',
+            $score20 >= 14.00 => 'Félicitations ; candidat aux récompenses du trimestre',
+            $score20 >= 12.00 => 'Encouragements ; un point fort et un point à progresser fixés',
+            $score20 >= 10.00 => 'Plan de progrès sur 2 points précis',
+            default => 'Plan de progrès de 30 jours, avec un référent et une formation',
+        };
+    }
+
+    /**
+     * Indique si au moins un critère a été noté (sinon la note du mois n'existe pas encore).
+     */
+    public function isScored(): bool
+    {
+        return ! empty($this->attributes['appreciation']);
     }
 
     public function getAppreciationAttribute(): string
     {
-        if (! empty($this->attributes['appreciation'])) {
-            return $this->attributes['appreciation'];
-        }
+        return $this->attributes['appreciation'] ?? 'Non évalué';
+    }
 
-        $score = (float) ($this->final_score_20 ?: ($this->final_score_30 / 1.5));
-
-        return self::computeAppreciation($score);
+    public function getFollowUpAttribute(): ?string
+    {
+        return $this->isScored() ? self::followUpFor((float) $this->final_score_20) : null;
     }
 
     public function getAppreciationBadgeClassAttribute(): string
@@ -244,21 +342,53 @@ class MonthlyEvaluation extends Model
             'Excellent' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
             'Très bien' => 'bg-blue-100 text-blue-800 border-blue-300',
             'Bien' => 'bg-sky-100 text-sky-800 border-sky-300',
-            'Assez bien' => 'bg-amber-100 text-amber-800 border-amber-300',
-            'Passable' => 'bg-orange-100 text-orange-800 border-orange-300',
+            'Passable' => 'bg-amber-100 text-amber-800 border-amber-300',
             'Insuffisant' => 'bg-rose-100 text-rose-800 border-rose-300',
-            default => 'bg-red-200 text-red-900 border-red-400',
+            default => 'bg-slate-100 text-slate-600 border-slate-300',
         };
     }
 
-    public function getTotalScore200Attribute(): float
+    public function previousEvaluation(): ?self
     {
-        $sum = (float) $this->criteriaScores()->sum('score');
-        if ($sum > 0) {
-            return round($sum, 2);
+        $previousMonth = $this->month === 1 ? 12 : $this->month - 1;
+        $previousYear = $this->month === 1 ? $this->year - 1 : $this->year;
+
+        return self::where('employee_id', $this->employee_id)
+            ->where('year', $previousYear)
+            ->where('month', $previousMonth)
+            ->first();
+    }
+
+    /**
+     * Deux mois de suite sous 10 (hors mois d'essai) : entretien formel et mesures prévues par le règlement intérieur.
+     */
+    public function requiresFormalInterview(): bool
+    {
+        if ($this->is_trial || ! $this->isScored() || (float) $this->final_score_20 >= 10) {
+            return false;
         }
 
-        return round(((float) $this->final_score_20) * 10, 2);
+        $previousEvaluation = $this->previousEvaluation();
+
+        return $previousEvaluation !== null
+            && ! $previousEvaluation->is_trial
+            && $previousEvaluation->isScored()
+            && (float) $previousEvaluation->final_score_20 < 10;
+    }
+
+    /**
+     * Fin du délai de contestation : 48 heures après la clôture de la note.
+     */
+    public function contestationDeadline(): ?Carbon
+    {
+        return $this->locked_at?->copy()->addHours(self::CONTESTATION_DELAY_HOURS);
+    }
+
+    public function canBeContested(): bool
+    {
+        return $this->is_locked
+            && $this->contested_at === null
+            && $this->contestationDeadline()?->isFuture() === true;
     }
 
     /**

@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Employee;
+use App\Models\EvaluationCriterion;
+use App\Models\EvaluationSheet;
 use App\Models\MonthlyEvaluation;
 use App\Models\User;
 use App\Services\EvaluationService;
@@ -195,86 +197,45 @@ test('rh manager can manage criteria, individual goals, PIP and rankings', funct
         ->assertSee('Palmarès & Classement Interne', false);
 });
 
-test('monthly evaluation calculates exact 10-criteria average out of 20 and sets appreciation', function () {
-    $rh = User::where('email', 'rh@ivosphere.com')->first();
-    $employee = Employee::first();
+test('monthly evaluation consolidates the direction sheet of the 17 criteria into a score out of 20', function () {
+    $admin = User::where('email', 'admin@ivosphere.com')->first();
+    $employee = Employee::factory()->create();
 
     $evaluation = MonthlyEvaluation::create([
         'employee_id' => $employee->id,
         'year' => now()->year,
         'month' => now()->month,
         'evaluation_date' => now()->format('Y-m-d'),
-        'total_working_days' => 22,
         'status' => 'en_cours',
         'workflow_step' => 'en_evaluation',
     ]);
 
-    // Initialize 10 standard criteria
-    $service = app(EvaluationService::class);
-    $service->syncCriteriaForEvaluation($evaluation);
+    $scores = EvaluationCriterion::referential()->get()
+        ->mapWithKeys(fn (EvaluationCriterion $criterion) => [$criterion->id => ['score' => 4]])
+        ->all();
 
-    $evaluation->load('criteriaScores.criterion');
-    expect($evaluation->criteriaScores)->toHaveCount(10);
-
-    // Apply the user's exact example:
-    // Ponctualité: 18, Assiduité: 20, Travail réalisé: 16, Qualité: 17, Équipe: 15,
-    // Communication: 16, Discipline: 19, Délais: 17, Objectifs: 15, Compétences: 14.
-    // Total = 167 / 200, Moyenne = 16.70 / 20, Appréciation = "Très bien"
-    $scoresByCode = [
-        'punctuality' => ['score' => 18, 'justification' => '22 jours programmés — 21 arrivées à l\'heure — 1 retard.'],
-        'attendance' => ['score' => 20, 'justification' => '22 jours travaillés sur 22 jours ouvrés prévus (100% de présence effective).'],
-        'tasks' => ['score' => 16, 'justification' => '16 fiches journalières de tâches finalisées et validées avec succès sur 20 prévues.'],
-        'quality' => ['score' => 17, 'justification' => 'Rigueur et excellente conformité aux standards de livraison.'],
-        'teamwork' => ['score' => 15, 'justification' => 'Bon esprit collaboratif et participation constructive.'],
-        'communication' => ['score' => 16, 'justification' => 'Remontée fluide des informations et échanges clairs.'],
-        'discipline' => ['score' => 19, 'justification' => 'Respect exemplaire du règlement intérieur et des consignes.'],
-        'deadline_respect' => ['score' => 17, 'justification' => '17 livrables complétés avant ou à la date d\'échéance.'],
-        'objectives' => ['score' => 15, 'justification' => '3 objectifs atteints sur 4 assignés.'],
-        'skills_acquired' => ['score' => 14, 'justification' => 'Maîtrise progressive des nouveaux outils et méthodes.'],
-    ];
-
-    foreach ($evaluation->criteriaScores as $criterionScore) {
-        $code = $criterionScore->criterion->code;
-        if (isset($scoresByCode[$code])) {
-            $criterionScore->update([
-                'score' => $scoresByCode[$code]['score'],
-                'justification' => $scoresByCode[$code]['justification'],
-            ]);
-        }
-    }
-
-    $evaluation->recalculateScores();
+    app(EvaluationService::class)->saveSheet($evaluation, $admin, EvaluationSheet::GROUP_DIRECTION, $scores);
     $evaluation->refresh();
 
-    // Verify 167/200, 16.70/20, and 'Très bien'
-    expect((float) $evaluation->total_score_200)->toBe(167.0);
-    expect((float) $evaluation->final_score_20)->toBe(16.70);
-    expect($evaluation->appreciation)->toBe('Très bien');
+    expect($evaluation->criteriaScores)->toHaveCount(17);
+    expect((float) $evaluation->final_score_20)->toBe(16.0);
+    expect($evaluation->appreciation)->toBe('Excellent');
 
-    // View evaluation show page and verify score and justifications are displayed
-    $response = $this->actingAs($rh)->get(route('rh.evaluations.show', $evaluation));
+    $response = $this->actingAs($admin)->get(route('rh.evaluations.show', $evaluation));
     $response->assertStatus(200);
-    $response->assertSee('16,70');
-    $response->assertSee('167 / 200');
-    $response->assertSee('Très bien');
-    $response->assertSee('22 jours programmés — 21 arrivées à l\'heure — 1 retard.');
+    $response->assertSee('16,00');
+    $response->assertSee('Excellent');
 });
 
-test('appreciation scale strictly matches all 7 defined brackets', function () {
+test('appreciation scale strictly matches the 5 brackets of the referential', function () {
     expect(MonthlyEvaluation::computeAppreciation(19.5))->toBe('Excellent');
-    expect(MonthlyEvaluation::computeAppreciation(18.0))->toBe('Excellent');
-    expect(MonthlyEvaluation::computeAppreciation(17.99))->toBe('Très bien');
-    expect(MonthlyEvaluation::computeAppreciation(16.70))->toBe('Très bien');
-    expect(MonthlyEvaluation::computeAppreciation(16.0))->toBe('Très bien');
-    expect(MonthlyEvaluation::computeAppreciation(15.99))->toBe('Bien');
-    expect(MonthlyEvaluation::computeAppreciation(14.0))->toBe('Bien');
-    expect(MonthlyEvaluation::computeAppreciation(13.99))->toBe('Assez bien');
-    expect(MonthlyEvaluation::computeAppreciation(12.0))->toBe('Assez bien');
+    expect(MonthlyEvaluation::computeAppreciation(16.0))->toBe('Excellent');
+    expect(MonthlyEvaluation::computeAppreciation(15.99))->toBe('Très bien');
+    expect(MonthlyEvaluation::computeAppreciation(14.0))->toBe('Très bien');
+    expect(MonthlyEvaluation::computeAppreciation(13.99))->toBe('Bien');
+    expect(MonthlyEvaluation::computeAppreciation(12.0))->toBe('Bien');
     expect(MonthlyEvaluation::computeAppreciation(11.99))->toBe('Passable');
     expect(MonthlyEvaluation::computeAppreciation(10.0))->toBe('Passable');
     expect(MonthlyEvaluation::computeAppreciation(9.99))->toBe('Insuffisant');
-    expect(MonthlyEvaluation::computeAppreciation(8.0))->toBe('Insuffisant');
-    expect(MonthlyEvaluation::computeAppreciation(7.99))->toBe('Très insuffisant');
-    expect(MonthlyEvaluation::computeAppreciation(3.5))->toBe('Très insuffisant');
-    expect(MonthlyEvaluation::computeAppreciation(0.0))->toBe('Très insuffisant');
+    expect(MonthlyEvaluation::computeAppreciation(0.0))->toBe('Insuffisant');
 });

@@ -10,17 +10,9 @@
         $validatedCount = collect($tasks)->filter(fn ($t) => is_array($t) && ($t['validation_status'] ?? '') === 'valide')->count();
         $pct = $totalCount > 0 ? round(($validatedCount / $totalCount) * 100) : 0;
 
-        $finalScore = $currentEvaluation ? (float) $currentEvaluation->final_score_30 : 0;
-        $workingDays = max(1, (int) ($currentEvaluation?->total_working_days ?? 22));
-        $maxPunct = round($workingDays * (float) $settings->weight_punctuality, 2);
-        $maxTasks = round($workingDays * (float) $settings->weight_tasks, 2);
-        $maxTeam = round($workingDays * (float) $settings->weight_teamwork, 2);
-        $gaugePunct = $maxPunct > 0 ? round(((float) ($currentEvaluation?->punctuality_points ?? 0) / $maxPunct) * 10, 1) : 0;
-        $gaugeTasks = $maxTasks > 0 ? round(((float) ($currentEvaluation?->tasks_points ?? 0) / $maxTasks) * 10, 1) : 0;
-        $gaugeTeam = $maxTeam > 0 ? round(((float) ($currentEvaluation?->teamwork_points ?? 0) / $maxTeam) * 10, 1) : 0;
-
-        $scoreLabel = $finalScore >= 24 ? 'Performance remarquable' : ($finalScore >= 18 ? 'Objectifs atteints' : 'En progression');
-        $scoreTone = $finalScore >= 24 ? 'text-emerald-600' : ($finalScore >= 18 ? 'text-[#0066FF]' : 'text-amber-600');
+        $finalScore = $currentEvaluation ? (float) $currentEvaluation->final_score_20 : 0;
+        $scoreLabel = $currentEvaluation?->isScored() ? $currentEvaluation->appreciation : 'Pas encore noté';
+        $scoreTone = $finalScore >= 14 ? 'text-emerald-600' : ($finalScore >= 10 ? 'text-[#0066FF]' : 'text-amber-600');
     @endphp
 
     <div x-data="{ leaveModalOpen: false }" class="max-w-5xl mx-auto space-y-5 sm:space-y-6">
@@ -83,7 +75,7 @@
             </div>
             <div class="p-3.5 sm:p-5">
                 <p class="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#64748B]">Note</p>
-                <p class="mt-1 text-lg sm:text-2xl font-semibold tabular-nums text-[#0B0F14]">{{ number_format($finalScore, 1, ',', ' ') }}<span class="text-sm text-slate-400 font-normal">/30</span></p>
+                <p class="mt-1 text-lg sm:text-2xl font-semibold tabular-nums text-[#0B0F14]">{{ number_format($finalScore, 1, ',', ' ') }}<span class="text-sm text-slate-400 font-normal">/20</span></p>
             </div>
         </section>
 
@@ -313,31 +305,31 @@
 
                     <div class="mt-5 flex items-baseline gap-1.5">
                         <span class="text-5xl font-semibold tracking-tight tabular-nums text-[#0B0F14]">{{ number_format($finalScore, 2, ',', ' ') }}</span>
-                        <span class="text-base text-slate-400">/ 30</span>
+                        <span class="text-base text-slate-400">/ 20</span>
                     </div>
                     <p class="mt-1 text-xs {{ $scoreTone }}">{{ $scoreLabel }}</p>
 
                     <div class="mt-6 space-y-4">
-                        @foreach([
-                            ['label' => 'Ponctualité', 'weight' => $settings->weight_punctuality, 'value' => $gaugePunct, 'bar' => 'bg-[#0066FF]'],
-                            ['label' => 'Tâches validées', 'weight' => $settings->weight_tasks, 'value' => $gaugeTasks, 'bar' => 'bg-emerald-500'],
-                            ['label' => 'Travail en équipe', 'weight' => $settings->weight_teamwork, 'value' => $gaugeTeam, 'bar' => 'bg-purple-500'],
-                        ] as $criterion)
+                        @foreach(\App\Models\EvaluationCriterion::BLOCKS as $block => $blockDefinition)
+                            @php $blockScore = $currentEvaluation?->{'block_'.strtolower($block).'_score'}; @endphp
                             <div>
                                 <div class="flex items-baseline justify-between text-xs">
-                                    <span class="text-[#0B0F14]">{{ $criterion['label'] }} <span class="text-[10px] text-slate-400">{{ $criterion['weight'] }} pt/j</span></span>
-                                    <span class="tabular-nums text-[#64748B]">{{ $criterion['value'] }}/10</span>
+                                    <span class="text-[#0B0F14]">{{ $blockDefinition['label'] }} <span class="text-[10px] text-slate-400">{{ $blockDefinition['weight'] * 100 }} %</span></span>
+                                    <span class="tabular-nums text-[#64748B]">{{ $blockScore !== null ? number_format($blockScore, 2, ',', ' ').'/5' : 'n.c.' }}</span>
                                 </div>
                                 <div class="mt-1.5 h-1 rounded-full bg-slate-100 overflow-hidden">
-                                    <div class="h-full rounded-full {{ $criterion['bar'] }} transition-all duration-500" style="width: {{ $criterion['value'] * 10 }}%"></div>
+                                    <div class="h-full rounded-full bg-[#0066FF] transition-all duration-500" style="width: {{ ($blockScore ?? 0) * 20 }}%"></div>
                                 </div>
                             </div>
                         @endforeach
                     </div>
 
                     <p class="mt-6 pt-4 border-t border-slate-100 text-[10px] leading-relaxed text-slate-400">
-                        (Points obtenus / plafond {{ round($workingDays * 0.66, 2) }}) × 30 · arrêté le 5 de chaque mois
+                        Note du mois = 4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D) · entretien du 3 au 5 du mois suivant
+                        @if($currentEvaluation?->is_trial) · mois d'essai, sans conséquence @endif
                     </p>
+
+                    <a href="{{ route('rh.evaluation-sheets.index') }}" class="mt-4 inline-flex text-xs font-semibold text-[#0066FF] hover:underline">Mes fiches d'évaluation (auto-évaluation, collègues) →</a>
                 </section>
 
                 {{-- Historique --}}
@@ -351,8 +343,22 @@
                                         <p class="text-sm text-[#0B0F14] capitalize">{{ $pe->month_name }} {{ $pe->year }}</p>
                                         <p class="text-[11px] text-[#64748B]">{{ $pe->total_working_days }} jours · {{ $pe->status }}</p>
                                     </div>
-                                    <span class="text-sm font-semibold tabular-nums text-[#0B0F14]">{{ number_format((float) $pe->final_score_30, 2, ',', ' ') }}<span class="text-xs font-normal text-slate-400">/30</span></span>
+                                    <span class="text-sm font-semibold tabular-nums text-[#0B0F14]">{{ number_format((float) $pe->final_score_20, 2, ',', ' ') }}<span class="text-xs font-normal text-slate-400">/20</span></span>
                                 </li>
+                                @if($pe->contested_at)
+                                    <li class="pb-3 text-[11px] text-[#64748B]">
+                                        Contestation envoyée le {{ $pe->contested_at->format('d/m/Y') }}{{ $pe->contestation_answered_at ? ' · Réponse : '.$pe->contestation_response : ' · en attente de réponse' }}
+                                    </li>
+                                @elseif($pe->canBeContested() && $pe->employee_id === $employee->id && $employee->user_id === auth()->id())
+                                    <li class="pb-3">
+                                        <form action="{{ route('rh.portal.contest-evaluation', $pe) }}" method="POST" class="space-y-2">
+                                            @csrf
+                                            <textarea name="contestation" rows="2" required placeholder="Contester cette note par écrit (avant le {{ $pe->contestationDeadline()->format('d/m à H:i') }})"
+                                                      class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] text-xs focus:outline-none focus:border-[#0066FF]"></textarea>
+                                            <button type="submit" class="px-3 py-1.5 rounded-xl bg-[#0B0F14] text-white text-xs font-semibold">Envoyer la contestation</button>
+                                        </form>
+                                    </li>
+                                @endif
                             @endforeach
                         </ul>
                     </section>

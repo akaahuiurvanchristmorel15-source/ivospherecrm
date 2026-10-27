@@ -326,7 +326,10 @@
                     {{ number_format($evaluation->final_score_20, 2, ',', ' ') }} <span>/ 20 pts</span>
                 </div>
                 <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">
-                    Total : <strong>{{ number_format($evaluation->total_score_200, 1) }} / 200 pts</strong>
+                    4 × (0,40 × A + 0,25 × B + 0,25 × C + 0,10 × D)
+                    @if($evaluation->is_trial)
+                        • <strong>Mois d'essai : note sans conséquence</strong>
+                    @endif
                 </div>
             </div>
             <div style="text-align: right; font-size: 11px;">
@@ -334,7 +337,7 @@
                     {{ $evaluation->appreciation }}
                 </div>
                 <div style="color: #94a3b8; font-size: 10px; margin-top: 2px;">
-                    Taux d'accomplissement : {{ round(((float)$evaluation->final_score_20 / 20) * 100) }} %
+                    {{ $evaluation->follow_up ?? 'Aucune note pour le moment' }}
                     @if($evaluation->score_progress > 0)
                         • Progression : +{{ number_format($evaluation->score_progress, 2) }} pts
                     @elseif($evaluation->score_progress < 0)
@@ -345,56 +348,53 @@
         </div>
 
         <!-- Tableau des Critères d'Évaluation -->
-        <div class="section-title">1. Barème Détaillé des 10 Matières (Chaque matière sur 20)</div>
+        <div class="section-title">1. Tableau de consolidation des 17 critères (notes de 1 à 5)</div>
         <table class="table">
             <thead>
                 <tr>
-                    <th style="width: 25px; text-align: center;">#</th>
-                    <th>Matière évaluée</th>
-                    <th style="text-align: center; width: 85px;">Mode</th>
-                    <th style="text-align: center; width: 75px;">Note /20</th>
-                    <th>Détail & Justificatif factuel</th>
-                    <th>Observations RH</th>
+                    <th style="width: 30px; text-align: center;">Code</th>
+                    <th>Critère</th>
+                    @foreach(\App\Models\EvaluationSheet::CATEGORIES as $category)
+                        <th style="text-align: center; width: 60px;">{{ $category['label'] }} ({{ $category['weight'] }} %)</th>
+                    @endforeach
+                    <th style="text-align: center; width: 45px;">Auto</th>
+                    <th style="text-align: center; width: 55px;">Note</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($evaluation->criteriaScores as $idx => $critScore)
-                    @php $c = $critScore->criterion; @endphp
-                    <tr>
-                        <td style="text-align: center; font-family: monospace; font-weight: 700; color: #64748b;">
-                            {{ $idx + 1 }}
-                        </td>
-                        <td>
-                            <strong>{{ $c->name ?? 'Matière' }}</strong>
-                        </td>
-                        <td style="text-align: center; font-size: 10px;">
-                            {{ $c?->isAutomatic() ? 'Automatique' : 'Évaluation RH' }}
-                        </td>
-                        <td style="text-align: center; font-family: monospace; font-weight: 800; font-size: 12px; color: #0066FF;">
-                            {{ number_format($critScore->score, 2) }} / 20
-                        </td>
-                        <td style="font-size: 10px; color: #0f172a;">
-                            {{ $critScore->justification ?? '—' }}
-                        </td>
-                        <td style="font-size: 10px; color: #475569;">
-                            {{ $critScore->comments ?? 'Conforme aux attentes' }}
+                @foreach($consolidation as $block => $rows)
+                    @php $blockDefinition = \App\Models\EvaluationCriterion::BLOCKS[$block]; @endphp
+                    <tr style="background: #f8fafc; font-weight: bold;">
+                        <td colspan="2" style="font-size: 10px; text-transform: uppercase;">Bloc {{ $block }} — {{ $blockDefinition['label'] }} ({{ $blockDefinition['weight'] * 100 }} %)</td>
+                        <td colspan="{{ count(\App\Models\EvaluationSheet::CATEGORIES) + 1 }}"></td>
+                        <td style="text-align: center; font-family: monospace; color: #0066FF;">
+                            {{ $evaluation->{'block_'.strtolower($block).'_score'} !== null ? number_format($evaluation->{'block_'.strtolower($block).'_score'}, 2, ',', ' ') : 'n.c.' }}
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: #94a3b8;">Aucune matière enregistrée.</td>
-                    </tr>
-                @endforelse
+                    @foreach($rows as $row)
+                        <tr>
+                            <td style="text-align: center; font-family: monospace; font-weight: 700; color: #64748b;">{{ $row['criterion']->code }}</td>
+                            <td>
+                                <strong>{{ $row['criterion']->name }}</strong>
+                                @if($row['justification'])
+                                    <div style="font-size: 9px; color: #475569;">{{ $row['justification'] }}</div>
+                                @endif
+                            </td>
+                            @foreach($row['categories'] as $categoryScore)
+                                <td style="text-align: center; font-family: monospace;">{{ $categoryScore !== null ? number_format($categoryScore, 2, ',', ' ') : '—' }}</td>
+                            @endforeach
+                            <td style="text-align: center; font-family: monospace; color: #94a3b8;">{{ $row['self'] ?? '—' }}</td>
+                            <td style="text-align: center; font-family: monospace; font-weight: 800; color: #0066FF;">{{ $row['score'] !== null ? number_format($row['score'], 2, ',', ' ') : 'n.c.' }}</td>
+                        </tr>
+                    @endforeach
+                @endforeach
             </tbody>
             <tfoot>
                 <tr style="background: #f8fafc; font-weight: bold;">
-                    <td colspan="3" style="text-align: right; text-transform: uppercase; font-size: 10px;">Total (Somme des 10 notes) :</td>
-                    <td style="text-align: center; font-family: monospace; font-size: 12px; color: #0b0f14;">
-                        {{ number_format($evaluation->total_score_200, 2) }} / 200
+                    <td colspan="{{ count(\App\Models\EvaluationSheet::CATEGORIES) + 3 }}" style="text-align: right; font-size: 10px; color: #0066FF;">
+                        Note du mois : <strong>{{ number_format($evaluation->final_score_20, 2, ',', ' ') }} / 20</strong> — Appréciation : <strong>{{ $evaluation->appreciation }}</strong>
                     </td>
-                    <td colspan="2" style="font-size: 10px; color: #0066FF;">
-                        Moyenne mensuelle : <strong>{{ number_format($evaluation->final_score_20, 2) }} / 20</strong> — Mention : <strong>{{ $evaluation->appreciation }}</strong>
-                    </td>
+                    <td></td>
                 </tr>
             </tfoot>
         </table>

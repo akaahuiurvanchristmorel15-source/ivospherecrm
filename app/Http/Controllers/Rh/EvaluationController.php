@@ -5,13 +5,15 @@ namespace App\Http\Controllers\Rh;
 use App\Http\Controllers\Controller;
 use App\Models\DailyEvaluationScore;
 use App\Models\Employee;
+use App\Models\EvaluationCriterion;
+use App\Models\EvaluationSheet;
 use App\Models\HrSetting;
 use App\Models\MonthlyEvaluation;
-use App\Models\MonthlyEvaluationCriterionScore;
 use App\Services\ActivityLogger;
 use App\Services\EvaluationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class EvaluationController extends Controller
@@ -47,14 +49,14 @@ class EvaluationController extends Controller
         if ($tab === 'progressing') {
             $query->where('score_progress', '>', 0);
         } elseif ($tab === 'follow_up') {
-            $query->where(function ($q) {
-                $q->where('final_score_30', '<', 18)->orWhere('score_progress', '<=', -2.00);
+            $query->whereNotNull('appreciation')->where(function ($q) {
+                $q->where('final_score_20', '<', 10)->orWhere('score_progress', '<=', -1.50);
             });
         } elseif ($tab === 'locked') {
             $query->where('is_locked', true);
         }
 
-        $evaluations = $query->orderBy('final_score_30', 'desc')->paginate(20)->withQueryString();
+        $evaluations = $query->orderBy('final_score_20', 'desc')->paginate(20)->withQueryString();
         $departments = Employee::select('department')->whereNotNull('department')->distinct()->pluck('department');
 
         // Statistiques consolidées du tableau de bord (Moyenne générale, par service, progression, alertes)
@@ -79,7 +81,7 @@ class EvaluationController extends Controller
     }
 
     /**
-     * Fiche d'évaluation détaillée d'un collaborateur (Point 7).
+     * Fiche d'évaluation d'un membre : tableau de consolidation des évaluateurs, notes de bloc et note du mois.
      */
     public function show(MonthlyEvaluation $evaluation): View
     {
@@ -88,64 +90,66 @@ class EvaluationController extends Controller
             'employee.improvementPlans',
             'evaluator',
             'lockedByUser',
-            'dailyScores',
-            'criteriaScores.criterion',
-            'goals',
-            'improvementPlans',
+            'contestationAnsweredBy',
+            'criteriaScores',
+            'sheets.scores',
+            'sheets.evaluator',
         ]);
 
-        $settings = HrSetting::current();
         $employee = $evaluation->employee;
+        $consolidation = $this->consolidationTable($evaluation);
 
-        // Si les scores détaillés par critère n'ont pas encore été synchronisés ou incomplets, synchroniser
-        if ($evaluation->criteriaScores->count() < 10) {
-            $workingDays = (int) $evaluation->total_working_days ?: 22;
-            $presentCount = $evaluation->dailyScores->where('punctuality_score', '>', 0)->count();
-            $lateCount = $evaluation->dailyScores->filter(fn ($s) => str_contains(strtolower($s->punctuality_notes ?? ''), 'retard'))->count();
-            $totalAssigned = (int) $evaluation->dailyScores->sum('tasks_assigned_count');
-            $totalValidated = (int) $evaluation->dailyScores->sum('tasks_validated_count');
+        return view('rh.evaluations.show', compact('evaluation', 'employee', 'consolidation'));
+    }
 
-            $this->evaluationService->syncCriteriaForEvaluation(
-                $evaluation,
-                $workingDays,
-                $presentCount,
-                $lateCount,
-                $totalAssigned,
-                $totalValidated
-            );
-            $evaluation->recalculateScores();
-            $evaluation->load('criteriaScores.criterion');
-        }
+    /**
+     * Tableau de consolidation : pour chaque critère, la moyenne de chaque catégorie d'évaluateurs,
+     * l'auto-évaluation (pour l'entretien) et la note retenue. Les fiches des pairs restent anonymes.
+     *
+     * @return Collection<string, Collection<int, array{criterion: EvaluationCriterion, categories: array<string, float|null>, self: int|null, score: float|null, justification: string|null, observations: list<array{group: string, score: int|null, text: string}>}>>
+     */
+    private function consolidationTable(MonthlyEvaluation $evaluation): Collection
+    {
+        $criteriaScores = $evaluation->criteriaScores->keyBy('evaluation_criterion_id');
 
-        // Taux de performance clés pour le récapitulatif
-        $workingDays = max(1, (int) $evaluation->total_working_days);
-        $presentDays = $evaluation->dailyScores->where('punctuality_score', '>', 0)->count();
-        $attendanceRate = round(($presentDays / $workingDays) * 100);
+        return EvaluationCriterion::referential()->get()
+            ->map(function (EvaluationCriterion $criterion) use ($evaluation, $criteriaScores) {
+                $categories = array_fill_keys(array_keys(EvaluationSheet::CATEGORIES), []);
+                $self = null;
+                $observations = [];
 
-        $punctualityRate = $presentDays > 0
-            ? round((($presentDays - $evaluation->dailyScores->filter(fn ($s) => str_contains(strtolower($s->punctuality_notes ?? ''), 'retard'))->count()) / $presentDays) * 100)
-            : 100;
+                foreach ($evaluation->sheets as $sheet) {
+                    $entry = $sheet->scores->firstWhere('evaluation_criterion_id', $criterion->id);
 
-        $assignedTasks = (int) $evaluation->dailyScores->sum('tasks_assigned_count');
-        $validatedTasks = (int) $evaluation->dailyScores->sum('tasks_validated_count');
-        $tasksRate = $assignedTasks > 0 ? round(($validatedTasks / $assignedTasks) * 100) : 100;
+                    if (! $entry || ! $criterion->isRatableBy($sheet->evaluator_group)) {
+                        continue;
+                    }
 
-        // Historique récent des 6 derniers mois pour la courbe de progression
-        $evaluationHistory = MonthlyEvaluation::where('employee_id', $employee->id)
-            ->orderBy('year', 'asc')
-            ->orderBy('month', 'asc')
-            ->take(6)
-            ->get();
+                    if ($sheet->evaluator_group === EvaluationSheet::GROUP_SELF) {
+                        $self = $entry->score;
 
-        return view('rh.evaluations.show', compact(
-            'evaluation',
-            'employee',
-            'settings',
-            'attendanceRate',
-            'punctualityRate',
-            'tasksRate',
-            'evaluationHistory'
-        ));
+                        continue;
+                    }
+
+                    if ($entry->score !== null) {
+                        $categories[$sheet->category][] = $entry->score;
+                    }
+
+                    if (filled($entry->observation)) {
+                        $observations[] = ['group' => $sheet->group_label, 'score' => $entry->score, 'text' => $entry->observation];
+                    }
+                }
+
+                return [
+                    'criterion' => $criterion,
+                    'categories' => array_map(fn (array $scores) => $scores === [] ? null : round(array_sum($scores) / count($scores), 2), $categories),
+                    'self' => $self,
+                    'score' => isset($criteriaScores[$criterion->id]) ? (float) $criteriaScores[$criterion->id]->score : null,
+                    'justification' => $criteriaScores[$criterion->id]->justification ?? null,
+                    'observations' => $observations,
+                ];
+            })
+            ->groupBy(fn (array $row) => $row['criterion']->block);
     }
 
     /**
@@ -166,27 +170,7 @@ class EvaluationController extends Controller
             'future_goals' => ['nullable', 'string', 'max:2000'],
             'status' => ['required', 'in:en_cours,valide,cloture'],
             'workflow_step' => ['nullable', 'in:brouillon,en_evaluation,validation_manager,valide_rh,verrouille'],
-            'criteria' => ['nullable', 'array'],
-            'criteria.*.score' => ['nullable', 'numeric', 'min:0', 'max:20'],
-            'criteria.*.comments' => ['nullable', 'string', 'max:500'],
         ]);
-
-        // Mise à jour des scores des critères manuels (/20)
-        if (! empty($validated['criteria'])) {
-            foreach ($validated['criteria'] as $criterionId => $data) {
-                $scoreItem = MonthlyEvaluationCriterionScore::firstOrNew([
-                    'monthly_evaluation_id' => $evaluation->id,
-                    'evaluation_criterion_id' => $criterionId,
-                ]);
-
-                if (isset($data['score'])) {
-                    $scoreItem->score = min(20.00, max(0.00, (float) $data['score']));
-                    $scoreItem->max_score = 20.00;
-                    $scoreItem->comments = $data['comments'] ?? $scoreItem->comments;
-                    $scoreItem->save();
-                }
-            }
-        }
 
         $evaluation->update([
             'manager_comment' => $validated['manager_comment'] ?? $evaluation->manager_comment,
@@ -284,6 +268,33 @@ class EvaluationController extends Controller
     }
 
     /**
+     * Réponse écrite de la Gérante à la contestation d'un membre.
+     */
+    public function answerContestation(Request $request, MonthlyEvaluation $evaluation): RedirectResponse
+    {
+        abort_unless(auth()->user()->hasRole('administrateur'), 403, 'Seule la Gérante répond aux contestations.');
+        abort_if($evaluation->contested_at === null, 404);
+
+        $validated = $request->validate([
+            'contestation_response' => ['required', 'string', 'min:10', 'max:3000'],
+        ]);
+
+        $evaluation->update([
+            'contestation_response' => $validated['contestation_response'],
+            'contestation_answered_at' => now(),
+            'contestation_answered_by' => auth()->id(),
+        ]);
+
+        ActivityLogger::log(
+            'reponse_contestation_evaluation',
+            "Réponse à la contestation de {$evaluation->employee->full_name} ({$evaluation->month_name} {$evaluation->year})",
+            $evaluation
+        );
+
+        return back()->with('success', 'Réponse à la contestation enregistrée.');
+    }
+
+    /**
      * Rapport PDF officiel imprimable / téléchargeable au format A4 (Point 12).
      */
     public function print(MonthlyEvaluation $evaluation): View
@@ -292,12 +303,13 @@ class EvaluationController extends Controller
             'employee.goals',
             'employee.improvementPlans',
             'evaluator',
-            'criteriaScores.criterion',
-            'dailyScores',
+            'criteriaScores',
+            'sheets.scores',
         ]);
 
         $settings = HrSetting::current();
         $employee = $evaluation->employee;
+        $consolidation = $this->consolidationTable($evaluation);
 
         // Historique des 6 derniers mois pour le graphique imprimable
         $history = MonthlyEvaluation::where('employee_id', $employee->id)
@@ -307,7 +319,7 @@ class EvaluationController extends Controller
             ->take(6)
             ->get();
 
-        return view('rh.evaluations.print', compact('evaluation', 'employee', 'settings', 'history'));
+        return view('rh.evaluations.print', compact('evaluation', 'employee', 'settings', 'history', 'consolidation'));
     }
 
     /**

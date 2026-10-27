@@ -72,6 +72,7 @@ use App\Http\Controllers\Rh\EmployeeObservationController;
 use App\Http\Controllers\Rh\EmployeePortalController;
 use App\Http\Controllers\Rh\EvaluationController;
 use App\Http\Controllers\Rh\EvaluationCriterionController;
+use App\Http\Controllers\Rh\EvaluationSheetController;
 use App\Http\Controllers\Rh\HrSettingController;
 use App\Http\Controllers\Rh\LeaveRequestController;
 use App\Http\Controllers\Rh\PerformanceImprovementPlanController;
@@ -272,6 +273,7 @@ Route::middleware('auth')->group(function () {
         Route::post('evaluations/{evaluation}/lock', [EvaluationController::class, 'lock'])->name('evaluations.lock');
         Route::post('evaluations/{evaluation}/unlock', [EvaluationController::class, 'unlock'])->name('evaluations.unlock');
         Route::post('evaluations/{evaluation}/sign', [EvaluationController::class, 'sign'])->name('evaluations.sign');
+        Route::post('evaluations/{evaluation}/contestation', [EvaluationController::class, 'answerContestation'])->name('evaluations.answer-contestation');
         Route::get('evaluations/{evaluation}', [EvaluationController::class, 'show'])->name('evaluations.show');
         Route::put('evaluations/{evaluation}', [EvaluationController::class, 'update'])->name('evaluations.update');
 
@@ -314,6 +316,12 @@ Route::middleware('auth')->group(function () {
     Route::post('mon-espace/tasks/{dailyTask}/submit', [EmployeePortalController::class, 'submitTask'])->name('rh.portal.submit-task');
     Route::get('mon-espace/badge/{employee}', [EmployeePortalController::class, 'badge'])->name('rh.portal.badge');
     Route::post('mon-espace/leaves', [EmployeePortalController::class, 'requestLeave'])->name('rh.portal.request-leave');
+
+    // Fiches d'évaluation des membres (Direction, RH, responsables, pairs, auto-évaluation) et contestation sous 48 h
+    Route::get('fiches-evaluation', [EvaluationSheetController::class, 'index'])->name('rh.evaluation-sheets.index');
+    Route::get('fiches-evaluation/{evaluation}', [EvaluationSheetController::class, 'edit'])->name('rh.evaluation-sheets.edit');
+    Route::put('fiches-evaluation/{evaluation}', [EvaluationSheetController::class, 'update'])->name('rh.evaluation-sheets.update');
+    Route::post('mon-espace/evaluations/{evaluation}/contest', [EvaluationSheetController::class, 'contest'])->name('rh.portal.contest-evaluation');
 
     Route::prefix('commercial')->name('commercial.')->middleware('role:administrateur,responsable,responsable_commercial,agent_commercial_terrain,agent_caissier_vendeur,agent_cyber')->group(function () {
         Route::get('/', [App\Http\Controllers\Commercial\DashboardController::class, 'index'])->name('index');

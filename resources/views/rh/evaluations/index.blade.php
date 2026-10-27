@@ -33,6 +33,7 @@
     ];
 
     $tools = [
+        ['rh.evaluation-sheets.index', ['year' => $year, 'month' => $month], 'Fiches', 'text-[#0066FF]', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'],
         ['rh.evaluations.criteria.index', [], 'Critères', 'text-slate-500', 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4'],
         ['rh.goals.index', [], 'Objectifs', 'text-emerald-600', 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
         ['rh.pips.index', [], 'Plans PIP', 'text-amber-600', 'M13 10V3L4 14h7v7l9-11h-7z'],
@@ -118,7 +119,7 @@
                     <div class="min-w-0 space-y-2">
                         <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Moyenne entreprise</p>
                         <p class="text-lg font-semibold leading-snug">{{ $companyAverage >= 14 ? 'Niveau satisfaisant' : 'Vigilance requise' }}</p>
-                        <p class="text-xs text-slate-400">Soit <strong class="font-semibold text-white">{{ number_format($companyAverage * 1.5, 1, ',', ' ') }} / 30</strong> · objectif 15 / 20</p>
+                        <p class="text-xs text-slate-400">Note du mois = 4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D) · membre du mois dès 14 / 20</p>
                     </div>
                 </div>
 

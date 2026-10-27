@@ -136,7 +136,7 @@
                         <span class="text-sm font-semibold text-slate-400">/ 20</span>
                     </div>
                     <div class="text-[11px] font-mono text-slate-300 mt-1">
-                        Total : <strong class="text-white">{{ (float)$evaluation->total_score_200 == (int)$evaluation->total_score_200 ? number_format($evaluation->total_score_200, 0) : number_format($evaluation->total_score_200, 1) }}</strong> / 200 pts
+                        4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D)
                     </div>
                     <div class="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-mono">
                         @if($evaluation->score_progress > 0)
@@ -154,136 +154,104 @@
                 </div>
             </div>
 
-            <!-- 4 Indicateurs Clés de Performance (Gauges KPI) -->
+            <!-- Notes des 4 blocs du référentiel (sur 5) -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
-                    <span class="text-[11px] text-[#64748B] font-semibold block">Taux de Présence</span>
-                    <span class="text-lg font-black text-[#0B0F14] font-mono mt-0.5 block">{{ $attendanceRate }} %</span>
-                    <span class="text-[10px] text-[#64748B]">{{ $evaluation->total_working_days }} j prévus au planning</span>
-                </div>
-
-                <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
-                    <span class="text-[11px] text-[#64748B] font-semibold block">Ponctualité</span>
-                    <span class="text-lg font-black text-[#0B0F14] font-mono mt-0.5 block">{{ $punctualityRate }} %</span>
-                    <span class="text-[10px] text-[#64748B]">Arrivées à l'heure</span>
-                </div>
-
-                <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
-                    <span class="text-[11px] text-[#64748B] font-semibold block">Tâches Réalisées</span>
-                    <span class="text-lg font-black text-[#0B0F14] font-mono mt-0.5 block">{{ $tasksRate }} %</span>
-                    <span class="text-[10px] text-[#64748B]">Validées par le manager</span>
-                </div>
-
-                <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
-                    <span class="text-[11px] text-[#64748B] font-semibold block">Appréciation Automatique</span>
-                    <span class="text-base font-black mt-1 block {{ str_contains($evaluation->appreciation_badge_class, 'emerald') ? 'text-emerald-600' : (str_contains($evaluation->appreciation_badge_class, 'rose') ? 'text-rose-600' : 'text-[#0066FF]') }}">{{ $evaluation->appreciation }}</span>
-                    <span class="text-[10px] text-[#64748B]">Barème automatique IVOSPHERE</span>
-                </div>
+                @foreach(\App\Models\EvaluationCriterion::BLOCKS as $block => $blockDefinition)
+                    @php $blockScore = $evaluation->{'block_'.strtolower($block).'_score'}; @endphp
+                    <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                        <span class="text-[11px] text-[#64748B] font-semibold block">Bloc {{ $block }} — {{ $blockDefinition['weight'] * 100 }} %</span>
+                        <span class="text-lg font-black text-[#0B0F14] font-mono mt-0.5 block">{{ $blockScore !== null ? number_format($blockScore, 2, ',', ' ').' / 5' : 'n.c.' }}</span>
+                        <span class="text-[10px] text-[#64748B]">{{ $blockDefinition['label'] }}</span>
+                    </div>
+                @endforeach
             </div>
+
+            @if($evaluation->follow_up)
+                <div class="p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-[#0B0F14]">
+                    <strong class="text-[#0066FF]">Ce qui suit :</strong> {{ $evaluation->follow_up }}
+                </div>
+            @endif
         </div>
+
+        @if($evaluation->is_trial)
+            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                <strong>Mois d'essai :</strong> la note est donnée et expliquée, sans conséquence (pas de classement ni de récompense).
+            </div>
+        @endif
+
+        @if($evaluation->requiresFormalInterview())
+            <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900">
+                <strong>Deux mois de suite sous 10/20 :</strong> entretien formel et mesures prévues par le règlement intérieur, selon la procédure.
+            </div>
+        @endif
+
+        <!-- TABLEAU DE CONSOLIDATION DES ÉVALUATEURS -->
+        <x-card title="Tableau de consolidation (17 critères notés de 1 à 5)" subtitle="Note d'un critère = moyenne pondérée des évaluateurs qui l'ont noté (Direction 40 %, RH 20 %, responsables 25 %, pairs 15 %) ; l'auto-évaluation ne compte pas">
+            <x-slot:actions>
+                <a href="{{ route('rh.evaluation-sheets.index', ['year' => $evaluation->year, 'month' => $evaluation->month]) }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 text-[#0066FF] hover:bg-blue-100 text-xs font-bold transition">
+                    Remplir une fiche
+                </a>
+            </x-slot:actions>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="text-left text-[10px] uppercase tracking-wider text-[#64748B] border-b border-[#E2E8F0]">
+                            <th class="py-2 pr-2">Critère</th>
+                            @foreach(\App\Models\EvaluationSheet::CATEGORIES as $category)
+                                <th class="py-2 px-2 text-center">{{ $category['label'] }}<br><span class="font-mono normal-case">{{ $category['weight'] }} %</span></th>
+                            @endforeach
+                            <th class="py-2 px-2 text-center">Auto</th>
+                            <th class="py-2 pl-2 text-center">Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($consolidation as $block => $rows)
+                            <tr class="bg-[#F8FAFC]">
+                                <td colspan="{{ count(\App\Models\EvaluationSheet::CATEGORIES) + 3 }}" class="py-2 px-2 text-[11px] font-bold text-[#0B0F14] uppercase tracking-wider">
+                                    Bloc {{ $block }} — {{ \App\Models\EvaluationCriterion::BLOCKS[$block]['label'] }} ({{ \App\Models\EvaluationCriterion::BLOCKS[$block]['weight'] * 100 }} %)
+                                </td>
+                            </tr>
+                            @foreach($rows as $row)
+                                <tr class="border-b border-[#F1F5F9] align-top">
+                                    <td class="py-2 pr-2">
+                                        <span class="font-mono font-bold text-[#64748B]">{{ $row['criterion']->code }}</span>
+                                        <span class="font-semibold text-[#0B0F14]">{{ $row['criterion']->name }}</span>
+                                        @if($row['justification'])
+                                            <div class="text-[10px] text-[#0066FF] mt-0.5">{{ $row['justification'] }}</div>
+                                        @endif
+                                        @foreach($row['observations'] as $observation)
+                                            <div class="text-[10px] text-[#64748B] mt-0.5">
+                                                <strong>{{ $observation['group'] }}</strong>{{ $observation['score'] ? ' ('.$observation['score'].')' : '' }} : {{ $observation['text'] }}
+                                            </div>
+                                        @endforeach
+                                    </td>
+                                    @foreach($row['categories'] as $categoryScore)
+                                        <td class="py-2 px-2 text-center font-mono">{{ $categoryScore !== null ? number_format($categoryScore, 2, ',', ' ') : '—' }}</td>
+                                    @endforeach
+                                    <td class="py-2 px-2 text-center font-mono text-[#94A3B8]">{{ $row['self'] ?? '—' }}</td>
+                                    <td class="py-2 pl-2 text-center font-mono font-black text-[#0B0F14]">{{ $row['score'] !== null ? number_format($row['score'], 2, ',', ' ') : 'n.c.' }}</td>
+                                </tr>
+                            @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 text-[11px] text-[#64748B]">
+                Fiches reçues :
+                @forelse($evaluation->sheets->groupBy('evaluator_group') as $group => $groupSheets)
+                    <span class="inline-flex px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold mr-1">{{ \App\Models\EvaluationSheet::GROUPS[$group]['label'] ?? $group }} × {{ $groupSheets->count() }}</span>
+                @empty
+                    aucune pour le moment.
+                @endforelse
+            </div>
+        </x-card>
 
         <!-- FORMULAIRE D'ÉVALUATION DES CRITÈRES ET APPRÉCIATIONS QUALITATIVES -->
         <form action="{{ route('rh.evaluations.update', $evaluation) }}" method="POST" class="space-y-6">
             @csrf
             @method('PUT')
-
-            <!-- SECTION SYSTÈME DE NOTATION MENSUEL (10 Matières /20) -->
-            <x-card title="Système de Notation Mensuel (10 Matières sur 20)" subtitle="Chaque matière est évaluée sur 20 points — Moyenne mensuelle = Somme des 10 notes ÷ 10">
-                <div class="space-y-4">
-                    @forelse($evaluation->criteriaScores as $idx => $scoreItem)
-                        @php
-                            $crit = $scoreItem->criterion;
-                            $isAuto = $crit?->isAutomatic() ?? false;
-                            $scoreOn20 = (float) $scoreItem->score;
-                        @endphp
-                        <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white transition hover:border-[#CBD5E1]">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-6 h-6 rounded-lg bg-slate-100 font-mono font-bold text-xs text-slate-700 flex items-center justify-center shrink-0">
-                                        {{ $idx + 1 }}
-                                    </span>
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider {{ $isAuto ? 'bg-blue-50 text-[#0066FF] border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200' }}">
-                                        {{ $isAuto ? 'Automatique' : 'Évaluation RH' }}
-                                    </span>
-                                    <span class="font-bold text-sm text-[#0B0F14]">{{ $crit->name ?? 'Matière' }}</span>
-                                    <span class="text-xs text-[#64748B] font-mono">({{ $crit->weight_percentage ?? 10 }}% — Poids 1)</span>
-                                </div>
-
-                                <div class="flex items-center gap-3">
-                                    <div class="px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-center min-w-[90px]">
-                                        <span class="text-base font-black text-[#0B0F14] font-mono">
-                                            {{ number_format($scoreOn20, 2, ',', ' ') }}
-                                        </span>
-                                        <span class="text-xs font-semibold text-[#64748B]">/ 20</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            @if($crit?->description)
-                                <p class="text-xs text-[#64748B] mb-2.5">{{ $crit->description }}</p>
-                            @endif
-
-                            <!-- Justificatif factuel détaillé pour contrôle objectif -->
-                            @if($scoreItem->justification)
-                                <div class="p-2.5 rounded-xl bg-blue-50/70 border border-blue-100 text-xs flex items-center gap-2 mb-2.5 text-[#0B0F14]">
-                                    <span class="text-sm shrink-0">📊</span>
-                                    <div>
-                                        <span class="text-[10px] font-bold uppercase tracking-wider text-[#0066FF] block">Détail & Justificatif factuel :</span>
-                                        <span class="font-medium text-slate-800">{{ $scoreItem->justification }}</span>
-                                    </div>
-                                </div>
-                            @endif
-
-                            @if(!$isAuto && !$evaluation->is_locked)
-                                <!-- Saisie manuelle réservée au RH / Manager (/20) -->
-                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2 border-t border-[#F1F5F9] items-center">
-                                    <div class="sm:col-span-4">
-                                        <label class="block text-[11px] font-semibold text-[#0B0F14] mb-1">Note managériale RH (/20)</label>
-                                        <div class="relative">
-                                            <input type="number" step="0.5" min="0" max="20" 
-                                                   name="criteria[{{ $crit->id }}][score]" 
-                                                   value="{{ old('criteria.' . $crit->id . '.score', $scoreItem->score) }}"
-                                                   class="w-full px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-xs font-mono font-bold text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                                            <span class="absolute right-3 top-1.5 text-xs text-[#64748B] font-mono">/20</span>
-                                        </div>
-                                    </div>
-                                    <div class="sm:col-span-8">
-                                        <label class="block text-[11px] font-semibold text-[#0B0F14] mb-1">Observation ou commentaire du responsable</label>
-                                        <input type="text" 
-                                               name="criteria[{{ $crit->id }}][comments]" 
-                                               value="{{ old('criteria.' . $crit->id . '.comments', $scoreItem->comments) }}"
-                                               placeholder="Observation ou appréciation managériale..."
-                                               class="w-full px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                                    </div>
-                                </div>
-                            @elseif(!$isAuto && $scoreItem->comments)
-                                <div class="mt-2 text-xs text-[#64748B] bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0]">
-                                    <strong class="text-[#0B0F14]">Commentaire RH :</strong> {{ $scoreItem->comments }}
-                                </div>
-                            @endif
-                        </div>
-                    @empty
-                        <p class="text-xs text-[#64748B] py-4 text-center">Aucun critère associé. Cliquez sur « Générer Campagne » pour synchroniser les critères de base.</p>
-                    @endforelse
-
-                    <!-- Bandeau Récapitulatif Total & Moyenne sur 20 -->
-                    <div class="p-4 rounded-2xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-                        <div>
-                            <span class="text-[10px] uppercase tracking-wider font-extrabold text-[#0066FF] block">Récapitulatif du Calcul</span>
-                            <div class="text-xs text-slate-300 mt-0.5">
-                                Total des 10 matières : <strong class="text-white font-mono">{{ (float)$evaluation->total_score_200 == (int)$evaluation->total_score_200 ? number_format($evaluation->total_score_200, 0) : number_format($evaluation->total_score_200, 2) }} / 200</strong> 
-                                ÷ 10 = <strong class="text-[#38bdf8] font-mono text-sm">{{ number_format($evaluation->final_score_20, 2) }} / 20</strong>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-slate-300 font-semibold">Appréciation officielle :</span>
-                            <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-white text-slate-900">
-                                {{ $evaluation->appreciation }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </x-card>
 
             <!-- SECTION ANALYSE QUALITATIVE RH (Points 4 & 7) -->
             <x-card title="Évaluation Qualitative & Recommandations RH" subtitle="Points forts, axes d'amélioration et plan de développement">
@@ -362,7 +330,7 @@
                     <div class="pt-4 flex justify-end">
                         <x-button variant="primary" type="submit" size="md">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            <span>Enregistrer & Recalculer la Moyenne /20</span>
+                            <span>Enregistrer la synthèse</span>
                         </x-button>
                     </div>
                 @endif
@@ -424,7 +392,7 @@
         </x-card>
 
         <!-- SECTION PLAN D'AMÉLIORATION DE LA PERFORMANCE (Point 10 - PIP) -->
-        @if($evaluation->final_score_30 < 18 || $evaluation->employee->improvementPlans->isNotEmpty())
+        @if(($evaluation->isScored() && $evaluation->final_score_20 < 10) || $evaluation->employee->improvementPlans->isNotEmpty())
             <div class="p-5 rounded-2xl border border-rose-200 bg-rose-50/40 space-y-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
@@ -433,7 +401,7 @@
                         </div>
                         <div>
                             <h4 class="text-xs font-bold text-rose-900 uppercase tracking-wider">Plan d'Amélioration de la Performance (PIP)</h4>
-                            <p class="text-[11px] text-rose-700">Mesures d'accompagnement requises pour les scores inférieurs à 18/30</p>
+                            <p class="text-[11px] text-rose-700">Moins de 10/20 : plan de progrès de 30 jours, avec un référent et une formation</p>
                         </div>
                     </div>
                     <button type="button" onclick="document.getElementById('modal-add-pip').classList.remove('hidden')" 
@@ -522,6 +490,38 @@
                     @endif
                 </div>
             </div>
+        </x-card>
+
+        <!-- CONTESTATION ÉCRITE SOUS 48 HEURES -->
+        <x-card title="Contestation" subtitle="Le membre peut contester sa note par écrit dans les 48 heures qui suivent sa clôture ; la Gérante répond par écrit">
+            @if($evaluation->contested_at)
+                <div class="space-y-3 text-xs">
+                    <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+                        <strong>Contestation du {{ $evaluation->contested_at->format('d/m/Y à H:i') }} :</strong> {{ $evaluation->contestation }}
+                    </div>
+
+                    @if($evaluation->contestation_answered_at)
+                        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+                            <strong>Réponse de {{ $evaluation->contestationAnsweredBy?->name ?? 'la Gérante' }} le {{ $evaluation->contestation_answered_at->format('d/m/Y à H:i') }} :</strong> {{ $evaluation->contestation_response }}
+                        </div>
+                    @elseif(auth()->user()->hasRole('administrateur'))
+                        <form action="{{ route('rh.evaluations.answer-contestation', $evaluation) }}" method="POST" class="space-y-2">
+                            @csrf
+                            <textarea name="contestation_response" rows="3" required placeholder="Réponse écrite de la Gérante..."
+                                      class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">{{ old('contestation_response') }}</textarea>
+                            <x-button variant="primary" type="submit" size="md">Répondre à la contestation</x-button>
+                        </form>
+                    @else
+                        <p class="text-[#64748B]">En attente de la réponse écrite de la Gérante.</p>
+                    @endif
+                </div>
+            @elseif($evaluation->is_locked)
+                <p class="text-xs text-[#64748B]">
+                    Aucune contestation. Délai ouvert jusqu'au {{ $evaluation->contestationDeadline()?->format('d/m/Y à H:i') }}.
+                </p>
+            @else
+                <p class="text-xs text-[#64748B]">Le délai de 48 heures s'ouvrira à la clôture (verrouillage) de la note.</p>
+            @endif
         </x-card>
     </div>
 
