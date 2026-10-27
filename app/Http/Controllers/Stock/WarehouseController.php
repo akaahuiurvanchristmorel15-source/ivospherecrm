@@ -127,6 +127,72 @@ class WarehouseController extends Controller
     }
 
     /**
+     * Modification groupée des quantités en stock des produits de l'entrepôt (un ajustement par produit modifié).
+     * Les lignes arrivent en JSON (un seul champ) pour ne pas dépasser max_input_vars.
+     */
+    public function updateStock(Request $request, Warehouse $warehouse): RedirectResponse
+    {
+        $request->merge(['quantities' => array_values((array) json_decode((string) $request->input('quantities_json'), true))]);
+
+        $validated = $request->validate([
+            'quantities' => ['required', 'array', 'min:1'],
+            'quantities.*.id' => ['required', 'integer', 'distinct'],
+            'quantities.*.quantity' => ['required', 'integer', 'min:0'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ], [
+            'quantities.required' => 'Aucune quantité modifiée.',
+            'quantities.*.quantity.required' => 'La quantité est obligatoire.',
+            'quantities.*.quantity.integer' => 'La quantité doit être un nombre entier.',
+            'quantities.*.quantity.min' => 'La quantité ne peut pas être négative.',
+        ]);
+
+        $warehouseProductIds = StockMovement::where('warehouse_id', $warehouse->id)->distinct()->pluck('product_id')
+            ->merge($warehouse->warehouseStocks()->pluck('product_id'))
+            ->unique();
+
+        $products = Product::whereIn('id', collect($validated['quantities'])->pluck('id')->intersect($warehouseProductIds))->get()->keyBy('id');
+        $reason = $validated['reason'] ?? 'Ajustement depuis la fiche entrepôt';
+        $reference = 'AJUST-'.strtoupper(Str::random(8));
+
+        $updated = DB::transaction(function () use ($validated, $products, $warehouse, $reason, $reference) {
+            $count = 0;
+
+            foreach ($validated['quantities'] as $row) {
+                $product = $products->get($row['id']);
+                $currentStock = $product ? StockService::getStock($product->id, $warehouse->id) : null;
+
+                if (! $product || $currentStock === (int) $row['quantity']) {
+                    continue;
+                }
+
+                StockService::processMovement([
+                    'warehouse_id' => $warehouse->id,
+                    'product_id' => $product->id,
+                    'domain_id' => $product->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'ajustement',
+                    'reason_motif' => $reason,
+                    'quantity' => (int) $row['quantity'],
+                    'unit_cost' => (float) ($product->purchase_price ?: ($product->selling_price * 0.7)),
+                    'reference' => $reference,
+                    'notes' => "Ajustement du stock de {$currentStock} à {$row['quantity']} pour {$warehouse->name}",
+                    'date' => now(),
+                ]);
+                $count++;
+            }
+
+            return $count;
+        });
+
+        if ($updated > 0) {
+            ActivityLogger::log('stock_entrepot', "A ajusté le stock de {$updated} produit(s) dans l'entrepôt {$warehouse->name}", $warehouse);
+        }
+
+        return redirect()->route('stock.warehouses.show', $warehouse)
+            ->with('success', $updated > 0 ? "Stock mis à jour pour {$updated} produit(s)." : 'Aucune quantité modifiée.');
+    }
+
+    /**
      * Ajout groupé de produits du catalogue dans l'entrepôt : une entrée de stock par produit.
      * Les lignes arrivent en JSON (un seul champ) pour ne pas dépasser max_input_vars.
      */

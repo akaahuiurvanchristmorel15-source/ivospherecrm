@@ -116,6 +116,7 @@
         <!-- État du Stock (et modification groupée des prix) -->
         @php
             $canEditPrices = auth()->user()->hasPermission('products.edit');
+            $canAdjustStock = auth()->user()->hasPermission('products.adjust');
             $stockRows = $stockLevels->filter(fn ($level) => $level->product)->sortBy(fn ($level) => $level->product->name)->values()->map(fn ($level) => [
                 'id' => $level->product->id,
                 'name' => $level->product->name,
@@ -131,14 +132,21 @@
             <div class="p-5 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 class="text-base font-semibold text-[#0B0F14]">État du Stock Disponible</h3>
-                    <p class="text-xs text-[#64748B]" x-text="editing ? 'Cochez des produits puis modifiez leurs prix, un par un ou en lot.' : 'Inventaire actuel des produits référencés sur cet entrepôt'">Inventaire actuel des produits référencés sur cet entrepôt</p>
+                    <p class="text-xs text-[#64748B]" x-text="editing ? 'Cochez des produits puis modifiez leurs prix, un par un ou en lot.' : (stockEditing ? 'Saisissez les nouvelles quantités en stock puis enregistrez.' : 'Inventaire actuel des produits référencés sur cet entrepôt')">Inventaire actuel des produits référencés sur cet entrepôt</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="inline-flex items-center rounded-full bg-[#F5F7FA] px-2.5 py-1 text-xs font-medium text-[#0B0F14] border border-[#E2E8F0]">
                         {{ count($stockRows) }} référence(s)
                     </span>
+                    @if($canAdjustStock && $stockRows->isNotEmpty())
+                        <button type="button" x-show="! editing && ! stockEditing" @click="stockEditing = true"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#0B0F14] px-4 text-xs font-semibold text-[#0B0F14] hover:bg-[#0B0F14] hover:text-white transition">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            Modifier le stock
+                        </button>
+                    @endif
                     @if($canEditPrices && $stockRows->isNotEmpty())
-                        <button type="button" x-show="! editing" @click="editing = true"
+                        <button type="button" x-show="! editing && ! stockEditing" @click="editing = true"
                                 class="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0B0F14] px-4 text-xs font-semibold text-white hover:bg-black transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
                             Modifier les prix
@@ -207,7 +215,10 @@
                                     <p class="text-sm font-semibold text-[#0B0F14]" x-text="row.name"></p>
                                     <p class="text-xs font-mono text-[#64748B]" x-text="row.sku || '-'"></p>
                                 </td>
-                                <td class="py-3 px-4 text-sm font-bold text-[#0B0F14] text-right" x-text="format(row.quantity)"></td>
+                                <td class="py-3 px-4 text-right">
+                                    <span x-show="! stockEditing" class="text-sm font-bold text-[#0B0F14]" x-text="format(row.quantity)"></span>
+                                    <input x-show="stockEditing" x-cloak type="number" min="0" step="1" x-model.number="row.quantity" class="h-9 w-24 rounded-full border border-[#E2E8F0] bg-white px-3 text-right text-sm font-bold text-[#0B0F14]" :aria-label="'Quantité en stock de ' + row.name">
+                                </td>
                                 <td class="py-3 px-4 text-right">
                                     <span x-show="! editing" class="text-sm text-[#0B0F14]" x-text="format(row.purchase) + ' F'"></span>
                                     <input x-show="editing" type="number" min="0" step="any" x-model.number="row.purchase" class="h-9 w-28 rounded-full border border-[#E2E8F0] bg-white px-3 text-right text-sm text-[#0B0F14]" :aria-label="'Prix d\'achat de ' + row.name">
@@ -250,7 +261,8 @@
                         <div class="grid grid-cols-3 gap-2 text-xs bg-[#F5F7FA]/70 p-2.5 rounded-lg border border-[#E2E8F0]">
                             <div>
                                 <span class="text-[#64748B] block text-[10px] uppercase font-medium">Quantité</span>
-                                <span class="font-bold text-sm text-[#0B0F14]" x-text="format(row.quantity)"></span>
+                                <span x-show="! stockEditing" class="font-bold text-sm text-[#0B0F14]" x-text="format(row.quantity)"></span>
+                                <input x-show="stockEditing" x-cloak type="number" min="0" step="1" x-model.number="row.quantity" class="mt-0.5 h-8 w-full rounded-lg border border-[#E2E8F0] bg-white px-2 text-sm font-bold text-[#0B0F14]">
                             </div>
                             <div>
                                 <span class="text-[#64748B] block text-[10px] uppercase font-medium">Achat</span>
@@ -284,6 +296,26 @@
                     </div>
                 </form>
             @endif
+
+            @if($canAdjustStock)
+                {{-- Barre d'enregistrement du stock --}}
+                <form x-show="stockEditing" x-cloak method="POST" action="{{ route('stock.warehouses.stock', $warehouse) }}" @submit="prepareStock($event)"
+                      class="sticky bottom-[5.5rem] z-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] bg-white/95 p-4 backdrop-blur md:bottom-0">
+                    @csrf
+                    <input type="hidden" name="quantities_json" x-ref="quantitiesJson">
+                    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                        <p class="text-xs text-[#64748B]"><span class="font-semibold text-[#0B0F14]" x-text="changedQuantities.length"></span> quantité(s) modifiée(s)</p>
+                        <input type="text" name="reason" maxlength="255" placeholder="Motif (facultatif) : inventaire, casse…"
+                               class="h-9 min-w-0 flex-1 rounded-full border border-[#E2E8F0] bg-white px-3 text-xs text-[#0B0F14] sm:max-w-xs">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="cancel()" class="h-10 rounded-full border border-[#E2E8F0] px-4 text-sm font-medium text-[#0B0F14] hover:bg-slate-50">Annuler</button>
+                        <button type="submit" :disabled="changedQuantities.length === 0 || invalidQuantities" class="h-10 rounded-full bg-[#0B0F14] px-5 text-sm font-semibold text-white hover:bg-black transition disabled:opacity-40">
+                            Enregistrer le stock
+                        </button>
+                    </div>
+                </form>
+            @endif
         </div>
 
         @push('scripts')
@@ -291,19 +323,25 @@
                 function warehousePrices(products) {
                     return {
                         editing: false,
+                        stockEditing: false,
                         roundPrices: true,
                         bulk: { mode: 'selling_percent', value: '' },
                         original: JSON.parse(JSON.stringify(products)),
                         rows: products.map((product) => ({ ...product, selected: false })),
 
                         get selectedCount() { return this.rows.filter((row) => row.selected).length; },
-                        get changedRows() { return this.rows.filter((row) => this.isChanged(row)); },
+                        get changedRows() { return this.rows.filter((row) => this.isPriceChanged(row)); },
+                        get changedQuantities() { return this.rows.filter((row) => this.isQuantityChanged(row)); },
                         get invalid() { return this.rows.some((row) => row.selling === '' || row.selling < 0 || row.purchase < 0); },
+                        get invalidQuantities() { return this.rows.some((row) => row.quantity === '' || ! Number.isInteger(Number(row.quantity)) || Number(row.quantity) < 0); },
 
-                        isChanged(row) {
-                            const initial = this.original.find((item) => item.id === row.id);
+                        initialOf(row) { return this.original.find((item) => item.id === row.id); },
+                        isPriceChanged(row) {
+                            const initial = this.initialOf(row);
                             return Number(initial.purchase) !== Number(row.purchase) || Number(initial.selling) !== Number(row.selling);
                         },
+                        isQuantityChanged(row) { return Number(this.initialOf(row).quantity) !== Number(row.quantity); },
+                        isChanged(row) { return this.isPriceChanged(row) || this.isQuantityChanged(row); },
                         margin(row) {
                             const purchase = Number(row.purchase);
                             return purchase > 0 ? Math.round((Number(row.selling) - purchase) / purchase * 1000) / 10 : null;
@@ -328,6 +366,12 @@
                         cancel() {
                             this.rows = this.original.map((product) => ({ ...product, selected: false }));
                             this.editing = false;
+                            this.stockEditing = false;
+                        },
+                        prepareStock(event) {
+                            const changed = this.changedQuantities.map((row) => ({ id: row.id, quantity: Number(row.quantity) }));
+                            if (! changed.length || this.invalidQuantities) { event.preventDefault(); return; }
+                            this.$refs.quantitiesJson.value = JSON.stringify(changed);
                         },
                         prepare(event) {
                             const changed = this.changedRows.map((row) => ({ id: row.id, purchase_price: row.purchase, selling_price: row.selling }));

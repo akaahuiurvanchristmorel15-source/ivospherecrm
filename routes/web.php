@@ -470,6 +470,7 @@ Route::middleware('auth')->group(function () {
         Route::get('scanner', [StockDashboardController::class, 'scanner'])->name('scanner');
         Route::post('scanner/action', [StockDashboardController::class, 'scannerAction'])->name('scanner.action');
         Route::post('adjust', [StockDashboardController::class, 'adjustStock'])->middleware('permission:products.adjust')->name('adjust');
+        Route::post('warehouses/{warehouse}/stock', [WarehouseController::class, 'updateStock'])->middleware('permission:products.adjust')->name('warehouses.stock');
         Route::post('transfers', [StockDashboardController::class, 'storeTransfer'])->name('transfers.store');
         Route::patch('transfers/{transfer}/status', [StockDashboardController::class, 'updateTransferStatus'])->name('transfers.status');
         Route::post('inventories', [StockDashboardController::class, 'storeInventory'])->name('inventories.store');
