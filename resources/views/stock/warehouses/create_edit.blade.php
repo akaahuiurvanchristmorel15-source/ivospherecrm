@@ -151,6 +151,7 @@
                 @if(isset($warehouse))
                     <button 
                         type="button" 
+                        x-data
                         @click="$dispatch('open-delete-warehouse', { 
                             id: {{ $warehouse->id }}, 
                             name: {{ Js::from($warehouse->name) }}, 

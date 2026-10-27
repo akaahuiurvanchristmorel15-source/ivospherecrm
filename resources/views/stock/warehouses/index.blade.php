@@ -140,6 +140,7 @@
                         </a>
                         @endif
                         <button type="button" title="Supprimer l'entrepôt"
+                                x-data
                                 @click="$dispatch('open-delete-warehouse', {
                                     id: {{ $warehouse->id }},
                                     name: {{ Js::from($warehouse->name) }},
