@@ -20,7 +20,7 @@
     ];
 @endphp
 
-<nav aria-label="Volet évaluation" class="no-scrollbar -mx-3.5 flex items-center gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:flex-wrap sm:px-0">
+<nav aria-label="Volet évaluation" x-data x-init="$el.querySelector('[aria-current]')?.scrollIntoView({ inline: 'center', block: 'nearest' })" class="no-scrollbar -mx-3.5 flex items-center gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:flex-wrap sm:px-0">
     @foreach($steps as $key => [$label, $routeName, $params, $managersOnly])
         @continue($managersOnly && ! $canManage)
         <a href="{{ route($routeName, $params) }}"

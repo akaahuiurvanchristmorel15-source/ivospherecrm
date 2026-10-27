@@ -276,6 +276,15 @@ button[data-submitting]:has(> svg:only-child)::before {
         :where(.dark) :is([class~="text-purple-600"], [class~="text-indigo-600"], [class~="text-violet-600"]) { color: #A78BFA; }
         :where(.dark) :is([class~="text-purple-700"], [class~="text-purple-800"], [class~="text-indigo-700"], [class~="text-indigo-800"], [class~="text-violet-700"]) { color: #C4B5FD; }
 
+        /* ---- Volet évaluation : séparateurs, pistes de jauge et états terminés ---- */
+        :where(.dark) [class~="bg-[#EEF2F6]"] { background-color: #1F1F1F; }
+        :where(.dark) [class~="text-[#EEF2F6]"] { color: #1F1F1F; }
+        :where(.dark) [class~="border-[#EEF2F6]"] { border-color: rgb(255 255 255 / 0.06); }
+        :where(.dark) [class~="divide-[#EEF2F6]"] > :not(:last-child) { border-color: rgb(255 255 255 / 0.06); }
+        :where(.dark) [class~="text-[#CBD5E1]"] { color: rgb(255 255 255 / 0.25); }
+        :where(.dark) [class~="bg-emerald-50/50"] { background-color: rgb(16 185 129 / 0.08); }
+        :where(.dark) [class~="hover:bg-[#F1F5F9]"]:hover { background-color: rgb(255 255 255 / 0.06); }
+
         :where(.dark) [class~="bg-cyan-50"] { background-color: rgb(6 182 212 / 0.12); }
         :where(.dark) [class~="border-cyan-200"] { border-color: rgb(6 182 212 / 0.3); }
         :where(.dark) :is([class~="text-cyan-600"], [class~="text-cyan-700"], [class~="text-cyan-800"]) { color: #67E8F9; }

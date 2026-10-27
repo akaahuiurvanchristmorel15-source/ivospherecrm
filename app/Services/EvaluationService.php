@@ -373,11 +373,8 @@ class EvaluationService
             ->take(3)
             ->values();
 
-        $first = Carbon::createFromDate($months[0]['year'], $months[0]['month'], 1);
-        $last = Carbon::createFromDate($months[2]['year'], $months[2]['month'], 1);
-
         return [
-            'label' => ucfirst($first->translatedFormat('F Y')).' – '.$last->translatedFormat('F Y'),
+            'label' => MonthlyEvaluation::MONTH_NAMES[$months[0]['month']].' '.$months[0]['year'].' – '.mb_strtolower(MonthlyEvaluation::MONTH_NAMES[$months[2]['month']]).' '.$months[2]['year'],
             'rewarded' => $rewarded,
         ];
     }

@@ -1,581 +1,460 @@
+@php
+    $categories = \App\Models\EvaluationSheet::CATEGORIES;
+    $shortLabels = ['direction' => 'Dir.', 'rh' => 'RH', 'fonction' => 'Resp.', 'pairs' => 'Pairs'];
+    $isManager = auth()->user()->hasRole('administrateur', 'responsable_rh');
+    $isLocked = $evaluation->is_locked;
+
+    $steps = [
+        'en_evaluation' => ['Fiches en cours', 'Les évaluateurs notent au fil du mois'],
+        'validation_manager' => ['Consolidation', 'Du 1er au 3 du mois suivant'],
+        'valide_rh' => ['Entretien', 'Du 3 au 5 : note expliquée et plan de progrès'],
+        'verrouille' => ['Clôturée', 'Contestation possible sous 48 heures'],
+    ];
+    $stepKeys = array_keys($steps);
+    $currentStep = array_search($evaluation->workflow_step ?? 'en_evaluation', $stepKeys);
+    $currentStep = $currentStep === false ? -1 : $currentStep;
+
+    $scoreCell = fn (?float $value): string => $value === null ? '—' : number_format($value, 2, ',', '');
+    $scoreClass = fn (?float $value): string => match (true) {
+        $value === null => 'text-[#CBD5E1]',
+        $value >= 4 => 'text-emerald-700',
+        $value >= 3 => 'text-[#0B0F14]',
+        $value >= 2 => 'text-amber-700',
+        default => 'text-rose-700',
+    };
+
+    $input = 'w-full rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-2.5 text-sm text-[#0B0F14] placeholder:text-[#94A3B8] focus:border-[#0066FF] focus:outline-none focus:ring-4 focus:ring-[#0066FF]/10 disabled:bg-[#F8FAFC] disabled:text-[#94A3B8]';
+    $label = 'mb-1.5 block text-xs font-medium text-[#0B0F14]';
+    $primaryButton = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white transition hover:bg-[#0052cc] focus:outline-none focus:ring-4 focus:ring-[#0066FF]/20';
+    $ghostButton = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 text-sm font-medium text-[#0B0F14] transition hover:border-[#0066FF] hover:text-[#0066FF]';
+@endphp
+
 <x-layouts.app>
-    <x-slot:title>Fiche d'Évaluation — {{ $evaluation->employee->full_name }} — IVOSPHERE RH</x-slot>
+    <x-slot:title>Évaluation de {{ $employee->full_name }} — {{ $evaluation->month_name }} {{ $evaluation->year }}</x-slot>
 
-    <div class="max-w-5xl mx-auto space-y-6">
-        <!-- En-tête de la Fiche -->
-        <x-page-header 
-            :title="'Fiche d\'Évaluation — ' . $evaluation->month_name . ' ' . $evaluation->year" 
-            :description="$evaluation->employee->full_name . ' • ' . ($evaluation->employee->position ?? 'Collaborateur') . ' • IVOSPHERE RH'"
+    <div x-data="{ goalOpen: false, pipOpen: false }" class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
+
+        <x-evaluation.header
+            :title="$employee->full_name"
+            :subtitle="$evaluation->month_name . ' ' . $evaluation->year . ' · ' . ($employee->position ?? 'Membre') . ' · ' . ($employee->department ?? 'Général')"
+            :breadcrumbs="[
+                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
+                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index', ['year' => $evaluation->year, 'month' => $evaluation->month])],
+                ['label' => $employee->full_name],
+            ]"
         >
-            <x-slot:breadcrumbs>
-                <x-breadcrumb :items="[
-                    ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                    ['label' => 'Évaluations', 'url' => route('rh.evaluations.index', ['year' => $evaluation->year, 'month' => $evaluation->month])],
-                    ['label' => $evaluation->employee->full_name]
-                ]" />
-            </x-slot:breadcrumbs>
-
             <x-slot:actions>
-                <div class="flex flex-wrap items-center gap-2">
-                    <a href="{{ route('rh.evaluations.print', $evaluation) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#0066FF] hover:text-[#0066FF] text-xs font-semibold text-[#0B0F14] shadow-xs transition">
-                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                        <span>Imprimer Rapport A4</span>
-                    </a>
-
-                    <a href="{{ route('rh.evaluations.history', $evaluation->employee) }}" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#E2E8F0] text-xs font-semibold text-[#64748B] hover:text-[#0066FF] shadow-xs transition">
-                        <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
-                        <span>Historique</span>
-                    </a>
-
-                    @if($evaluation->is_locked)
-                        @if(auth()->user()->hasRole('administrateur', 'responsable_rh'))
-                            <form action="{{ route('rh.evaluations.unlock', $evaluation) }}" method="POST" onsubmit="return confirm('Déverrouiller cette évaluation pour correction ?');">
-                                @csrf
-                                <x-button variant="secondary" type="submit" size="md">
-                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
-                                    <span>Déverrouiller</span>
-                                </x-button>
-                            </form>
-                        @endif
-                    @else
-                        <form action="{{ route('rh.evaluations.lock', $evaluation) }}" method="POST" onsubmit="return confirm('Verrouiller définitivement cette évaluation ? Les modifications ne seront plus autorisées.');">
+                <a href="{{ route('rh.evaluations.history', $employee) }}" class="{{ $ghostButton }}">Historique</a>
+                <a href="{{ route('rh.evaluations.print', $evaluation) }}" target="_blank" class="{{ $ghostButton }}">Imprimer</a>
+                @if($isLocked)
+                    @if($isManager)
+                        <form action="{{ route('rh.evaluations.unlock', $evaluation) }}" method="POST" onsubmit="return confirm('Rouvrir cette note pour correction ?');">
                             @csrf
-                            <x-button variant="secondary" type="submit" size="md">
-                                <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                <span>Verrouiller</span>
-                            </x-button>
+                            <button type="submit" class="{{ $ghostButton }}">Rouvrir</button>
                         </form>
                     @endif
-
-                    <x-button :href="route('rh.evaluations.index', ['year' => $evaluation->year, 'month' => $evaluation->month])" variant="secondary" size="md">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                        <span>Retour</span>
-                    </x-button>
-                </div>
-            </x-slot:actions>
-        </x-page-header>
-
-        <!-- État du dossier : étape, clôture, mois d'essai, alertes -->
-        @php
-            $steps = [
-                'en_evaluation' => 'Fiches en cours',
-                'validation_manager' => 'Consolidation',
-                'valide_rh' => 'Entretien validé',
-                'verrouille' => 'Clôturée',
-            ];
-            $stepKeys = array_keys($steps);
-            $currentIndex = array_search($evaluation->workflow_step ?? 'en_evaluation', $stepKeys);
-            $currentIndex = $currentIndex === false ? -1 : $currentIndex;
-        @endphp
-        <div class="space-y-2">
-            <ol class="flex flex-wrap items-center gap-1.5 text-[11px]">
-                @foreach($steps as $key => $label)
-                    <li class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium {{ $loop->index <= $currentIndex ? 'bg-blue-50 text-[#0066FF]' : 'bg-[#F8FAFC] text-[#94A3B8] border border-[#E2E8F0]' }}">
-                        {{ $loop->iteration }}. {{ $label }}
-                    </li>
-                @endforeach
-            </ol>
-
-            @if($evaluation->is_locked)
-                <p class="rounded-xl bg-slate-900 px-4 py-2.5 text-xs text-slate-200">
-                    <strong class="text-white">Note clôturée</strong> le {{ $evaluation->locked_at?->format('d/m/Y à H:i') }} par {{ $evaluation->lockedByUser?->name ?? 'la Direction' }} — lecture seule.
-                </p>
-            @endif
-            @if($evaluation->is_trial)
-                <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
-                    <strong>Mois d'essai :</strong> la note est donnée et expliquée, sans conséquence (pas de classement ni de récompense).
-                </p>
-            @endif
-            @if($evaluation->requiresFormalInterview())
-                <p class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-900">
-                    <strong>Deux mois de suite sous 10/20 :</strong> entretien formel et mesures prévues par le règlement intérieur, selon la procédure.
-                </p>
-            @endif
-        </div>
-
-        <!-- CARTE CENTRALE : membre, note du mois et blocs -->
-        <div class="rounded-3xl bg-white border border-[#E2E8F0] p-6 sm:p-8 shadow-xs space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-[#E2E8F0] gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-bold text-xl shadow-md">
-                        {{ strtoupper(substr($evaluation->employee->first_name ?? 'E', 0, 1) . substr($evaluation->employee->last_name ?? '', 0, 1)) }}
-                    </div>
-                    <div>
-                        <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-[#64748B]">Dossier Collaborateur certifié</span>
-                        <h2 class="text-xl font-extrabold text-[#0B0F14] tracking-tight mt-0.5">{{ $evaluation->employee->full_name }}</h2>
-                        <p class="text-xs text-[#64748B] mt-0.5">
-                            Matricule : <strong class="text-[#0B0F14] font-mono">{{ $evaluation->employee->employee_code }}</strong> • 
-                            Poste : <strong class="text-[#0B0F14]">{{ $evaluation->employee->position ?? 'Collaborateur' }}</strong> • 
-                            Service : <strong class="text-[#0B0F14]">{{ $evaluation->employee->department ?? 'Général' }}</strong>
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Moyenne Mensuelle / 20 & Badge Appréciation -->
-                <div class="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-5 rounded-2xl text-center sm:min-w-[220px] shadow-lg shadow-slate-900/10">
-                    <span class="text-[9px] uppercase tracking-widest font-extrabold text-[#0066FF] block">Moyenne Mensuelle / 20</span>
-                    <div class="text-3xl sm:text-4xl font-black tracking-tight text-white mt-0.5">
-                        {{ number_format($evaluation->final_score_20, 2, ',', ' ') }}
-                        <span class="text-sm font-semibold text-slate-400">/ 20</span>
-                    </div>
-                    <div class="text-[11px] font-mono text-slate-300 mt-1">
-                        4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D)
-                    </div>
-                    <div class="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-mono">
-                        @if($evaluation->score_progress > 0)
-                            <span class="text-emerald-400 font-bold">↗ +{{ number_format($evaluation->score_progress, 2) }} pts</span>
-                        @elseif($evaluation->score_progress < 0)
-                            <span class="text-rose-400 font-bold">↘ {{ number_format($evaluation->score_progress, 2) }} pts</span>
-                        @else
-                            <span class="text-slate-400">Stable vs M-1</span>
-                        @endif
-                        <span class="text-slate-500">•</span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $evaluation->appreciation_badge_class }}">
-                            {{ $evaluation->appreciation }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notes des 4 blocs du référentiel (sur 5) -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                @foreach(\App\Models\EvaluationCriterion::BLOCKS as $block => $blockDefinition)
-                    @php $blockScore = $evaluation->{'block_'.strtolower($block).'_score'}; @endphp
-                    <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
-                        <span class="text-[11px] text-[#64748B] font-semibold block">Bloc {{ $block }} — {{ $blockDefinition['weight'] * 100 }} %</span>
-                        <span class="text-lg font-black text-[#0B0F14] font-mono mt-0.5 block">{{ $blockScore !== null ? number_format($blockScore, 2, ',', ' ').' / 5' : 'n.c.' }}</span>
-                        <span class="text-[10px] text-[#64748B]">{{ $blockDefinition['label'] }}</span>
-                    </div>
-                @endforeach
-            </div>
-
-            @if($evaluation->follow_up)
-                <div class="p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-[#0B0F14]">
-                    <strong class="text-[#0066FF]">Ce qui suit :</strong> {{ $evaluation->follow_up }}
-                </div>
-            @endif
-        </div>
-
-        <!-- TABLEAU DE CONSOLIDATION DES ÉVALUATEURS -->
-        <x-card title="Tableau de consolidation (17 critères notés de 1 à 5)" subtitle="Note d'un critère = moyenne pondérée des évaluateurs qui l'ont noté (Direction 40 %, RH 20 %, responsables 25 %, pairs 15 %) ; l'auto-évaluation ne compte pas">
-            <x-slot:actions>
-                <a href="{{ route('rh.evaluation-sheets.index', ['year' => $evaluation->year, 'month' => $evaluation->month]) }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 text-[#0066FF] hover:bg-blue-100 text-xs font-bold transition">
-                    Remplir une fiche
-                </a>
-            </x-slot:actions>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs">
-                    <thead>
-                        <tr class="text-left text-[10px] uppercase tracking-wider text-[#64748B] border-b border-[#E2E8F0]">
-                            <th class="py-2 pr-2">Critère</th>
-                            @foreach(\App\Models\EvaluationSheet::CATEGORIES as $category)
-                                <th class="py-2 px-2 text-center">{{ $category['label'] }}<br><span class="font-mono normal-case">{{ $category['weight'] }} %</span></th>
-                            @endforeach
-                            <th class="py-2 px-2 text-center">Auto</th>
-                            <th class="py-2 pl-2 text-center">Note</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($consolidation as $block => $rows)
-                            <tr class="bg-[#F8FAFC]">
-                                <td colspan="{{ count(\App\Models\EvaluationSheet::CATEGORIES) + 3 }}" class="py-2 px-2 text-[11px] font-bold text-[#0B0F14] uppercase tracking-wider">
-                                    Bloc {{ $block }} — {{ \App\Models\EvaluationCriterion::BLOCKS[$block]['label'] }} ({{ \App\Models\EvaluationCriterion::BLOCKS[$block]['weight'] * 100 }} %)
-                                </td>
-                            </tr>
-                            @foreach($rows as $row)
-                                <tr class="border-b border-[#F1F5F9] align-top">
-                                    <td class="py-2 pr-2">
-                                        <span class="font-mono font-bold text-[#64748B]">{{ $row['criterion']->code }}</span>
-                                        <span class="font-semibold text-[#0B0F14]">{{ $row['criterion']->name }}</span>
-                                        @if($row['justification'])
-                                            <div class="text-[10px] text-[#0066FF] mt-0.5">{{ $row['justification'] }}</div>
-                                        @endif
-                                        @foreach($row['observations'] as $observation)
-                                            <div class="text-[10px] text-[#64748B] mt-0.5">
-                                                <strong>{{ $observation['group'] }}</strong>{{ $observation['score'] ? ' ('.$observation['score'].')' : '' }} : {{ $observation['text'] }}
-                                            </div>
-                                        @endforeach
-                                    </td>
-                                    @foreach($row['categories'] as $categoryScore)
-                                        <td class="py-2 px-2 text-center font-mono">{{ $categoryScore !== null ? number_format($categoryScore, 2, ',', ' ') : '—' }}</td>
-                                    @endforeach
-                                    <td class="py-2 px-2 text-center font-mono text-[#94A3B8]">{{ $row['self'] ?? '—' }}</td>
-                                    <td class="py-2 pl-2 text-center font-mono font-black text-[#0B0F14]">{{ $row['score'] !== null ? number_format($row['score'], 2, ',', ' ') : 'n.c.' }}</td>
-                                </tr>
-                            @endforeach
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mt-4 text-[11px] text-[#64748B]">
-                Fiches reçues :
-                @forelse($evaluation->sheets->groupBy('evaluator_group') as $group => $groupSheets)
-                    <span class="inline-flex px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold mr-1">{{ \App\Models\EvaluationSheet::GROUPS[$group]['label'] ?? $group }} × {{ $groupSheets->count() }}</span>
-                @empty
-                    aucune pour le moment.
-                @endforelse
-            </div>
-        </x-card>
-
-        <!-- ENTRETIEN INDIVIDUEL -->
-        <form action="{{ route('rh.evaluations.update', $evaluation) }}" method="POST" class="space-y-6">
-            @csrf
-            @method('PUT')
-
-            <!-- SECTION ANALYSE QUALITATIVE RH (Points 4 & 7) -->
-            <x-card title="Entretien individuel" subtitle="Du 3 au 5 du mois suivant : note expliquée, un point fort, un point à progresser, plan de progrès">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-emerald-700 mb-1.5 flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Points forts constatés</span>
-                        </label>
-                        <textarea name="strengths" rows="3" {{ $evaluation->is_locked ? 'disabled' : '' }}
-                                  placeholder="Réalisations remarquables, esprit d'initiative, qualités techniques ou humaines..."
-                                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF] transition disabled:bg-[#F8FAFC] disabled:text-[#94A3B8]">{{ old('strengths', $evaluation->strengths) }}</textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-amber-700 mb-1.5 flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                            <span>Axes d'amélioration & points faibles</span>
-                        </label>
-                        <textarea name="weaknesses" rows="3" {{ $evaluation->is_locked ? 'disabled' : '' }}
-                                  placeholder="Retards, lenteur d'exécution, manque de rigueur, communication à parfaire..."
-                                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF] transition disabled:bg-[#F8FAFC] disabled:text-[#94A3B8]">{{ old('weaknesses', $evaluation->weaknesses) }}</textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0B0F14] mb-1.5 flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Recommandations & Actions RH</span>
-                        </label>
-                        <textarea name="recommendations" rows="3" {{ $evaluation->is_locked ? 'disabled' : '' }}
-                                  placeholder="Formation continue, mentorat, recadrage horaire, réattribution de missions..."
-                                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF] transition disabled:bg-[#F8FAFC] disabled:text-[#94A3B8]">{{ old('recommendations', $evaluation->recommendations) }}</textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0B0F14] mb-1.5 flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            <span>Objectifs prioritaires du mois prochain</span>
-                        </label>
-                        <textarea name="future_goals" rows="3" {{ $evaluation->is_locked ? 'disabled' : '' }}
-                                  placeholder="Cap à atteindre pour la prochaine période d'évaluation..."
-                                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF] transition disabled:bg-[#F8FAFC] disabled:text-[#94A3B8]">{{ old('future_goals', $evaluation->future_goals) }}</textarea>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-bold text-[#0B0F14] mb-1.5">Commentaire général de synthèse</label>
-                        <textarea name="manager_comment" rows="2" {{ $evaluation->is_locked ? 'disabled' : '' }}
-                                  placeholder="Synthèse officielle validée par le Responsable RH..."
-                                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF] transition disabled:bg-[#F8FAFC] disabled:text-[#94A3B8]">{{ old('manager_comment', $evaluation->manager_comment) }}</textarea>
-                    </div>
-                </div>
-
-                <!-- Sélecteurs de Statut & Workflow -->
-                @if(!$evaluation->is_locked)
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#E2E8F0]">
-                        <div>
-                            <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Statut du dossier</label>
-                            <select name="status" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                                <option value="en_cours" @selected($evaluation->status === 'en_cours')>En cours d'évaluation</option>
-                                <option value="valide" @selected($evaluation->status === 'valide')>Validé par le Responsable</option>
-                                <option value="cloture" @selected($evaluation->status === 'cloture')>Clôturé définitivement</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Étape du Workflow</label>
-                            <select name="workflow_step" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                                <option value="brouillon" @selected($evaluation->workflow_step === 'brouillon')>Brouillon</option>
-                                <option value="en_evaluation" @selected($evaluation->workflow_step === 'en_evaluation')>1. Fiches en cours</option>
-                                <option value="validation_manager" @selected($evaluation->workflow_step === 'validation_manager')>2. Consolidation</option>
-                                <option value="valide_rh" @selected($evaluation->workflow_step === 'valide_rh')>3. Entretien validé</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="pt-4 flex justify-end">
-                        <x-button variant="primary" type="submit" size="md">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            <span>Enregistrer la synthèse</span>
-                        </x-button>
-                    </div>
+                @else
+                    <form action="{{ route('rh.evaluations.lock', $evaluation) }}" method="POST" onsubmit="return confirm('Clôturer cette note ? Le délai de contestation de 48 heures commencera.');">
+                        @csrf
+                        <button type="submit" class="{{ $primaryButton }}">Clôturer la note</button>
+                    </form>
                 @endif
-            </x-card>
-        </form>
+            </x-slot:actions>
+        </x-evaluation.header>
 
-        <!-- SECTION PLAN D'AMÉLIORATION DE LA PERFORMANCE (Point 10 - PIP) -->
-        @if(($evaluation->isScored() && $evaluation->final_score_20 < 10) || $evaluation->employee->improvementPlans->isNotEmpty())
-            <div class="p-5 rounded-2xl border border-rose-200 bg-rose-50/40 space-y-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
-                            ⚠️
-                        </div>
-                        <div>
-                            <h4 class="text-xs font-bold text-rose-900 uppercase tracking-wider">Plan d'Amélioration de la Performance (PIP)</h4>
-                            <p class="text-[11px] text-rose-700">Moins de 10/20 : plan de progrès de 30 jours, avec un référent et une formation</p>
-                        </div>
-                    </div>
-                    <button type="button" onclick="document.getElementById('modal-add-pip').classList.remove('hidden')" 
-                            class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs">
-                        + Ouvrir un PIP
-                    </button>
-                </div>
-
-                @forelse($evaluation->employee->improvementPlans as $pip)
-                    <div class="p-4 rounded-xl bg-white border border-rose-200 space-y-2 text-xs">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-[#0B0F14] text-sm">{{ $pip->title }}</span>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                {{ ucfirst(str_replace('_', ' ', $pip->status)) }} ({{ $pip->progress_pct }}%)
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#64748B] pt-1">
-                            <div><strong class="text-[#0B0F14]">Difficulté identifiée :</strong> {{ $pip->problem_identified }}</div>
-                            <div><strong class="text-[#0B0F14]">Objectif visé :</strong> {{ $pip->target_objective }}</div>
-                        </div>
-                        <div class="pt-2 border-t border-[#F1F5F9] text-[11px] text-[#94A3B8] flex items-center justify-between">
-                            <span>Superviseur : {{ $pip->supervisor?->name ?? 'Direction RH' }}</span>
-                            <span>Période : {{ $pip->start_date?->format('d/m/Y') }} au {{ $pip->end_date?->format('d/m/Y') }}</span>
-                        </div>
-                    </div>
-                @empty
-                    <p class="text-xs text-rose-800">Aucun PIP actif. Vous pouvez ouvrir un plan d'action personnalisé ci-dessus.</p>
-                @endforelse
+        {{-- Alertes du dossier --}}
+        @if($isLocked || $evaluation->is_trial || $evaluation->requiresFormalInterview())
+            <div class="space-y-2">
+                @if($isLocked)
+                    <p class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-xs text-[#334155]">
+                        <strong class="text-[#0B0F14]">Note clôturée</strong> le {{ $evaluation->locked_at?->format('d/m/Y à H:i') }} par {{ $evaluation->lockedByUser?->name ?? 'la Direction' }} — fiche en lecture seule.
+                    </p>
+                @endif
+                @if($evaluation->is_trial)
+                    <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                        <strong>Mois d'essai</strong> — la note est donnée et expliquée, sans conséquence (ni classement, ni récompense).
+                    </p>
+                @endif
+                @if($evaluation->requiresFormalInterview())
+                    <p class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900">
+                        <strong>Deux mois de suite sous 10 / 20</strong> — entretien formel et mesures prévues par le règlement intérieur, selon la procédure.
+                    </p>
+                @endif
             </div>
         @endif
 
-        <!-- SECTION OBJECTIFS INDIVIDUELS DU MOIS (Point 9) -->
-        <x-card title="Objectifs du mois suivant" subtitle="1 à 3 objectifs ciblés fixés à l'entretien">
-            <x-slot:actions>
-                <button type="button" onclick="document.getElementById('modal-add-goal').classList.remove('hidden')" 
-                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 text-[#0066FF] hover:bg-blue-100 text-xs font-bold transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>Assigner un objectif</span>
-                </button>
-            </x-slot:actions>
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
 
-            <div class="space-y-3">
-                @forelse($evaluation->employee->goals as $goal)
-                    <div class="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="space-y-1">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-xs text-[#0B0F14]">{{ $goal->title }}</span>
-                                @php
-                                    $stBadge = match($goal->status) {
-                                        'atteint' => 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                                        'en_cours' => 'bg-blue-50 text-[#0066FF] border-blue-200',
-                                        'non_atteint' => 'bg-rose-50 text-rose-800 border-rose-200',
-                                        default => 'bg-slate-100 text-slate-700 border-slate-200',
-                                    };
-                                @endphp
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $stBadge }}">
-                                    {{ ucfirst(str_replace('_', ' ', $goal->status)) }}
-                                </span>
-                            </div>
-                            @if($goal->description)
-                                <p class="text-[11px] text-[#64748B]">{{ $goal->description }}</p>
+            {{-- ───────── Panneau latéral : note, blocs, avancement ───────── --}}
+            <aside class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:sticky xl:top-6 xl:order-last xl:block xl:space-y-4 xl:self-start">
+                <x-evaluation.section>
+                    <div class="flex items-center gap-4">
+                        <x-evaluation.score-ring :score="$evaluation->isScored() ? $evaluation->final_score_20 : null" />
+                        <div class="min-w-0 space-y-1.5">
+                            <p class="text-xs text-[#64748B]">Note du mois</p>
+                            <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold {{ $evaluation->appreciation_badge_class }}">{{ $evaluation->appreciation }}</span>
+                            @if((float) $evaluation->score_progress !== 0.0)
+                                <p class="text-xs font-medium {{ $evaluation->score_progress > 0 ? 'text-emerald-700' : 'text-rose-700' }}">
+                                    {{ $evaluation->score_progress > 0 ? '↗ +' : '↘ ' }}{{ number_format($evaluation->score_progress, 2, ',', '') }} vs mois précédent
+                                </p>
                             @endif
-                            <div class="text-[10px] text-[#94A3B8] font-mono">
-                                Échéance : {{ $goal->due_date?->format('d/m/Y') }}
-                            </div>
                         </div>
+                    </div>
 
-                        <div class="flex items-center gap-3 sm:min-w-[180px]">
-                            <div class="w-full">
-                                <div class="flex justify-between text-[11px] font-mono mb-1">
-                                    <span class="text-[#64748B]">Avancement</span>
-                                    <span class="font-bold text-[#0B0F14]">{{ $goal->progress_pct }}%</span>
+                    @if($evaluation->follow_up)
+                        <p class="mt-4 rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-xs leading-relaxed text-[#334155]">{{ $evaluation->follow_up }}</p>
+                    @endif
+
+                    <div class="mt-5 border-t border-[#EEF2F6] pt-4">
+                        <x-evaluation.block-bars :evaluation="$evaluation" />
+                        <p class="mt-3 text-[11px] text-[#94A3B8]">4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D)</p>
+                    </div>
+                </x-evaluation.section>
+
+                <x-evaluation.section title="Avancement">
+                    <ol class="space-y-3">
+                        @foreach($steps as $key => [$stepLabel, $stepHint])
+                            @php $done = $loop->index <= $currentStep; @endphp
+                            <li class="flex gap-3">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold {{ $done ? 'bg-[#0066FF] text-white' : 'border border-[#CBD5E1] text-[#94A3B8]' }}">
+                                    @if($done)
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    @else
+                                        {{ $loop->iteration }}
+                                    @endif
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-medium {{ $done ? 'text-[#0B0F14]' : 'text-[#64748B]' }}">{{ $stepLabel }}</p>
+                                    <p class="text-[11px] text-[#94A3B8]">{{ $stepHint }}</p>
                                 </div>
-                                <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                                    <div class="h-full rounded-full bg-[#0066FF] transition-all" style="width: {{ $goal->progress_pct }}%;"></div>
+                            </li>
+                        @endforeach
+                    </ol>
+                </x-evaluation.section>
+
+                <x-evaluation.section title="Fiches reçues">
+                    @unless($isLocked)
+                        <x-slot:actions>
+                            <a href="{{ route('rh.evaluation-sheets.index', ['year' => $evaluation->year, 'month' => $evaluation->month]) }}" class="text-xs font-semibold text-[#0066FF] hover:underline">Remplir une fiche</a>
+                        </x-slot:actions>
+                    @endunless
+                    @php $sheetsByGroup = $evaluation->sheets->groupBy('evaluator_group'); @endphp
+                    @if($sheetsByGroup->isEmpty())
+                        <p class="text-xs text-[#64748B]">Aucune fiche pour le moment.</p>
+                    @else
+                        <ul class="flex flex-wrap gap-1.5">
+                            @foreach($sheetsByGroup as $group => $groupSheets)
+                                <li class="rounded-full bg-[#F1F5F9] px-2.5 py-1 text-[11px] font-medium text-[#334155]">
+                                    {{ \App\Models\EvaluationSheet::GROUPS[$group]['label'] ?? $group }}
+                                    @if($groupSheets->count() > 1)<span class="text-[#64748B]">× {{ $groupSheets->count() }}</span>@endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </x-evaluation.section>
+            </aside>
+
+            {{-- ───────── Contenu principal ───────── --}}
+            <div class="min-w-0 space-y-6">
+
+                {{-- Tableau de consolidation --}}
+                <x-evaluation.section title="Tableau de consolidation" subtitle="Chaque critère est noté de 1 à 5 par les évaluateurs qui l'observent ; l'auto-évaluation ne compte pas" :padding="false">
+                    <div class="hidden grid-cols-[minmax(0,1fr)_repeat(5,3.75rem)_4.25rem] items-end gap-2 border-b border-[#EEF2F6] px-5 py-2.5 text-[10px] font-medium uppercase tracking-wide text-[#94A3B8] md:grid">
+                        <span>Critère</span>
+                        @foreach($categories as $categoryKey => $category)
+                            <span class="text-center" title="{{ $category['label'] }}">{{ $shortLabels[$categoryKey] }}<br><span class="normal-case">{{ $category['weight'] }} %</span></span>
+                        @endforeach
+                        <span class="text-center">Auto</span>
+                        <span class="text-center text-[#0B0F14]">Note</span>
+                    </div>
+
+                    @foreach($consolidation as $block => $rows)
+                        @php $blockScore = $evaluation->{'block_'.strtolower($block).'_score'}; @endphp
+                        <div class="flex items-center justify-between gap-3 bg-[#F8FAFC] px-4 py-2.5 sm:px-5">
+                            <p class="text-xs font-semibold text-[#0B0F14]">
+                                Bloc {{ $block }} <span class="font-normal text-[#64748B]">· {{ \App\Models\EvaluationCriterion::BLOCKS[$block]['label'] }} · {{ \App\Models\EvaluationCriterion::BLOCKS[$block]['weight'] * 100 }} %</span>
+                            </p>
+                            <span class="text-xs font-semibold {{ $scoreClass($blockScore === null ? null : (float) $blockScore) }}">{{ $blockScore === null ? 'n.c.' : number_format($blockScore, 2, ',', '').' / 5' }}</span>
+                        </div>
+
+                        <ul class="divide-y divide-[#EEF2F6]">
+                            @foreach($rows as $row)
+                                <li x-data="{ open: false }" class="px-4 py-3 sm:px-5">
+                                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-[minmax(0,1fr)_repeat(5,3.75rem)_4.25rem]">
+                                        <div class="min-w-0">
+                                            <p class="text-sm text-[#0B0F14]">
+                                                <span class="mr-1 font-mono text-xs text-[#94A3B8]">{{ $row['criterion']->code }}</span>{{ $row['criterion']->name }}
+                                            </p>
+                                            @if($row['justification'])
+                                                <p class="mt-0.5 text-[11px] text-[#0066FF]">{{ $row['justification'] }}</p>
+                                            @endif
+                                            @if($row['observations'])
+                                                <button type="button" @click="open = !open" class="mt-1 text-[11px] font-medium text-[#64748B] hover:text-[#0066FF]" :aria-expanded="open">
+                                                    <span x-text="open ? 'Masquer' : 'Voir'"></span> {{ count($row['observations']) }} observation(s)
+                                                </button>
+                                            @endif
+                                        </div>
+
+                                        @foreach($row['categories'] as $categoryScore)
+                                            <span class="hidden text-center text-sm md:block {{ $scoreClass($categoryScore) }}">{{ $scoreCell($categoryScore) }}</span>
+                                        @endforeach
+                                        <span class="hidden text-center text-sm text-[#94A3B8] md:block">{{ $row['self'] ?? '—' }}</span>
+                                        <span class="justify-self-end rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-center text-sm font-semibold md:justify-self-center {{ $scoreClass($row['score']) }}">{{ $row['score'] === null ? 'n.c.' : number_format($row['score'], 2, ',', '') }}</span>
+                                    </div>
+
+                                    {{-- Détail par évaluateur sur mobile --}}
+                                    <dl class="mt-2 grid grid-cols-5 gap-1 md:hidden">
+                                        @foreach($row['categories'] as $categoryKey => $categoryScore)
+                                            <div class="rounded-lg bg-[#F8FAFC] px-1 py-1.5 text-center">
+                                                <dt class="text-[9px] text-[#94A3B8]">{{ $shortLabels[$categoryKey] }}</dt>
+                                                <dd class="text-xs font-medium {{ $scoreClass($categoryScore) }}">{{ $scoreCell($categoryScore) }}</dd>
+                                            </div>
+                                        @endforeach
+                                        <div class="rounded-lg bg-[#F8FAFC] px-1 py-1.5 text-center">
+                                            <dt class="text-[9px] text-[#94A3B8]">Auto</dt>
+                                            <dd class="text-xs font-medium text-[#94A3B8]">{{ $row['self'] ?? '—' }}</dd>
+                                        </div>
+                                    </dl>
+
+                                    @if($row['observations'])
+                                        <ul x-show="open" x-collapse x-cloak class="mt-2 space-y-1.5">
+                                            @foreach($row['observations'] as $observation)
+                                                <li class="rounded-lg border-l-2 border-[#0066FF]/40 bg-[#F8FAFC] px-3 py-2 text-xs text-[#334155]">
+                                                    <span class="font-medium text-[#0B0F14]">{{ $observation['group'] }}</span>
+                                                    @if($observation['score'])<span class="text-[#64748B]"> · {{ $observation['score'] }}/5</span>@endif
+                                                    — {{ $observation['text'] }}
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endforeach
+                </x-evaluation.section>
+
+                {{-- Entretien individuel --}}
+                <form action="{{ route('rh.evaluations.update', $evaluation) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <x-evaluation.section title="Entretien individuel" subtitle="15 minutes du 3 au 5 du mois suivant : note expliquée, points forts, plan de progrès">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            @foreach([
+                                'strengths' => ['Point(s) fort(s)', 'Ex. a formé un collègue à la monétique le 23 octobre'],
+                                'weaknesses' => ['Point(s) à progresser', 'Ex. doit écrire ses heures dans chaque bilan'],
+                                'recommendations' => ['Plan de progrès', 'Actions, référent, formation…'],
+                                'future_goals' => ['Objectifs du mois suivant', 'Cap à atteindre le mois prochain'],
+                            ] as $field => [$fieldLabel, $placeholder])
+                                <div>
+                                    <label for="{{ $field }}" class="{{ $label }}">{{ $fieldLabel }}</label>
+                                    <textarea id="{{ $field }}" name="{{ $field }}" rows="3" @disabled($isLocked) placeholder="{{ $placeholder }}" class="{{ $input }}">{{ old($field, $evaluation->{$field}) }}</textarea>
+                                </div>
+                            @endforeach
+                            <div class="md:col-span-2">
+                                <label for="manager_comment" class="{{ $label }}">Synthèse de l'entretien</label>
+                                <textarea id="manager_comment" name="manager_comment" rows="2" @disabled($isLocked) class="{{ $input }}">{{ old('manager_comment', $evaluation->manager_comment) }}</textarea>
+                            </div>
+                        </div>
+
+                        @unless($isLocked)
+                            <div class="mt-5 flex flex-col gap-3 border-t border-[#EEF2F6] pt-4 sm:flex-row sm:items-end">
+                                <div class="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label for="workflow_step" class="{{ $label }}">Étape</label>
+                                        <select id="workflow_step" name="workflow_step" class="{{ $input }}">
+                                            @foreach($steps as $key => [$stepLabel])
+                                                @continue($key === 'verrouille')
+                                                <option value="{{ $key }}" @selected($evaluation->workflow_step === $key)>{{ $loop->iteration }}. {{ $stepLabel }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="status" class="{{ $label }}">Statut</label>
+                                        <select id="status" name="status" class="{{ $input }}">
+                                            <option value="en_cours" @selected($evaluation->status === 'en_cours')>En cours</option>
+                                            <option value="valide" @selected($evaluation->status === 'valide')>Validée</option>
+                                            <option value="cloture" @selected($evaluation->status === 'cloture')>Clôturée</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="{{ $primaryButton }}">Enregistrer l'entretien</button>
+                            </div>
+                        @endunless
+                    </x-evaluation.section>
+                </form>
+
+                {{-- Plan de progrès --}}
+                @php $needsPlan = $evaluation->isScored() && $evaluation->final_score_20 < 10; @endphp
+                @if($needsPlan || $employee->improvementPlans->isNotEmpty())
+                    <x-evaluation.section title="Plan de progrès" :subtitle="$needsPlan ? 'Moins de 10 / 20 : plan de 30 jours, avec un référent et une formation' : 'Plans en cours pour ce membre'">
+                        <x-slot:actions>
+                            <button type="button" @click="pipOpen = true" class="text-xs font-semibold text-[#0066FF] hover:underline">Ouvrir un plan</button>
+                        </x-slot:actions>
+                        <div class="space-y-3">
+                            @forelse($employee->improvementPlans as $pip)
+                                <article class="rounded-xl border border-[#E2E8F0] p-4 text-xs">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <p class="text-sm font-medium text-[#0B0F14]">{{ $pip->title }}</p>
+                                        <span class="rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[11px] font-medium text-[#334155]">{{ ucfirst(str_replace('_', ' ', $pip->status)) }} · {{ $pip->progress_pct }} %</span>
+                                    </div>
+                                    <div class="mt-2 h-1 overflow-hidden rounded-full bg-[#EEF2F6]"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $pip->progress_pct }}%"></div></div>
+                                    <dl class="mt-3 grid grid-cols-1 gap-2 text-[#334155] sm:grid-cols-2">
+                                        <div><dt class="text-[#94A3B8]">Difficulté</dt><dd>{{ $pip->problem_identified }}</dd></div>
+                                        <div><dt class="text-[#94A3B8]">Objectif</dt><dd>{{ $pip->target_objective }}</dd></div>
+                                    </dl>
+                                    <p class="mt-2 text-[11px] text-[#94A3B8]">{{ $pip->start_date?->format('d/m/Y') }} → {{ $pip->end_date?->format('d/m/Y') }} · {{ $pip->supervisor?->name ?? 'Référent RH' }}</p>
+                                </article>
+                            @empty
+                                <p class="text-xs text-[#64748B]">Aucun plan ouvert.</p>
+                            @endforelse
+                        </div>
+                    </x-evaluation.section>
+                @endif
+
+                {{-- Objectifs --}}
+                <x-evaluation.section title="Objectifs" subtitle="1 à 3 objectifs ciblés, fixés à l'entretien">
+                    <x-slot:actions>
+                        <button type="button" @click="goalOpen = true" class="text-xs font-semibold text-[#0066FF] hover:underline">Ajouter</button>
+                    </x-slot:actions>
+                    <div class="divide-y divide-[#EEF2F6]">
+                        @forelse($employee->goals as $goal)
+                            <div class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="min-w-0">
+                                    <p class="text-sm text-[#0B0F14]">{{ $goal->title }}</p>
+                                    <p class="text-[11px] text-[#94A3B8]">Échéance {{ $goal->due_date?->format('d/m/Y') }} · {{ ucfirst(str_replace('_', ' ', $goal->status)) }}</p>
+                                </div>
+                                <div class="flex items-center gap-2 sm:w-40">
+                                    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#EEF2F6]"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $goal->progress_pct }}%"></div></div>
+                                    <span class="w-9 text-right text-xs font-medium text-[#0B0F14]">{{ $goal->progress_pct }} %</span>
                                 </div>
                             </div>
-                        </div>
+                        @empty
+                            <p class="text-xs text-[#64748B]">Aucun objectif fixé.</p>
+                        @endforelse
                     </div>
-                @empty
-                    <p class="text-xs text-[#64748B] py-4 text-center">Aucun objectif individuel enregistré pour ce collaborateur.</p>
-                @endforelse
-            </div>
-        </x-card>
+                </x-evaluation.section>
 
-        <!-- SECTION SIGNATURE ÉLECTRONIQUE INTERNE (Point 11 & 16) -->
-        <x-card title="Signatures" subtitle="Note signée par le membre et la Gérante à l'issue de l'entretien">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <!-- Signature Manager -->
-                <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/50 space-y-3">
-                    <span class="text-xs font-bold text-[#0B0F14] block uppercase tracking-wider">Visa du Manager RH</span>
-                    @if($evaluation->manager_signature)
-                        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 space-y-1">
-                            <div class="font-bold text-xs flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>Signé par : {{ $evaluation->manager_signature }}</span>
+                {{-- Signatures --}}
+                <x-evaluation.section title="Signatures" subtitle="La note est signée par le membre et la Gérante à l'issue de l'entretien">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        @foreach([
+                            'manager' => ['La Gérante', $evaluation->manager_signature, $evaluation->manager_signed_at, auth()->user()?->name],
+                            'employee' => ['Le membre', $evaluation->employee_signature, $evaluation->employee_signed_at, $employee->full_name],
+                        ] as $signerType => [$signerLabel, $signature, $signedAt, $defaultName])
+                            <div class="rounded-xl border border-[#E2E8F0] p-4">
+                                <p class="text-xs font-medium text-[#64748B]">{{ $signerLabel }}</p>
+                                @if($signature)
+                                    <p class="mt-1.5 flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        {{ $signature }}
+                                    </p>
+                                    <p class="text-[11px] text-[#94A3B8]">le {{ $signedAt?->format('d/m/Y à H:i') }}</p>
+                                @else
+                                    <form action="{{ route('rh.evaluations.sign', $evaluation) }}" method="POST" class="mt-2 flex gap-2">
+                                        @csrf
+                                        <input type="hidden" name="signer_type" value="{{ $signerType }}">
+                                        <input type="text" name="signature_name" value="{{ $defaultName }}" required aria-label="Nom du signataire" class="{{ $input }} min-w-0">
+                                        <button type="submit" class="{{ $ghostButton }} shrink-0">Signer</button>
+                                    </form>
+                                @endif
                             </div>
-                            <div class="text-[10px] text-emerald-700 font-mono">
-                                Le {{ $evaluation->manager_signed_at?->format('d/m/Y à H:i') }}
+                        @endforeach
+                    </div>
+                </x-evaluation.section>
+
+                {{-- Contestation --}}
+                <x-evaluation.section title="Contestation" subtitle="Écrite, dans les 48 heures après la clôture ; la Gérante répond par écrit">
+                    @if($evaluation->contested_at)
+                        <div class="space-y-3 text-sm">
+                            <div class="rounded-xl bg-amber-50 px-4 py-3 text-amber-900">
+                                <p class="text-[11px] font-medium text-amber-700">Contestation du {{ $evaluation->contested_at->format('d/m/Y à H:i') }}</p>
+                                <p class="mt-1">{{ $evaluation->contestation }}</p>
                             </div>
+                            @if($evaluation->contestation_answered_at)
+                                <div class="rounded-xl bg-emerald-50 px-4 py-3 text-emerald-900">
+                                    <p class="text-[11px] font-medium text-emerald-700">Réponse de {{ $evaluation->contestationAnsweredBy?->name ?? 'la Gérante' }} le {{ $evaluation->contestation_answered_at->format('d/m/Y à H:i') }}</p>
+                                    <p class="mt-1">{{ $evaluation->contestation_response }}</p>
+                                </div>
+                            @elseif(auth()->user()->hasRole('administrateur'))
+                                <form action="{{ route('rh.evaluations.answer-contestation', $evaluation) }}" method="POST" class="space-y-2">
+                                    @csrf
+                                    <label for="contestation_response" class="{{ $label }}">Réponse écrite</label>
+                                    <textarea id="contestation_response" name="contestation_response" rows="3" required class="{{ $input }}">{{ old('contestation_response') }}</textarea>
+                                    @error('contestation_response')<p class="text-xs text-rose-600">{{ $message }}</p>@enderror
+                                    <button type="submit" class="{{ $primaryButton }}">Envoyer la réponse</button>
+                                </form>
+                            @else
+                                <p class="text-xs text-[#64748B]">En attente de la réponse écrite de la Gérante.</p>
+                            @endif
                         </div>
+                    @elseif($isLocked)
+                        <p class="text-xs text-[#64748B]">Aucune contestation. Délai ouvert jusqu'au {{ $evaluation->contestationDeadline()?->format('d/m/Y à H:i') }}.</p>
                     @else
-                        <form action="{{ route('rh.evaluations.sign', $evaluation) }}" method="POST" class="space-y-2">
-                            @csrf
-                            <input type="hidden" name="signer_type" value="manager">
-                            <input type="text" name="signature_name" value="{{ auth()->user()?->name ?? '' }}" required
-                                   placeholder="Nom et qualité du signataire..."
-                                   class="w-full px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                            <button type="submit" class="w-full py-1.5 px-3 rounded-xl bg-[#0066FF] hover:bg-blue-700 text-white text-xs font-bold transition">
-                                Apposer la signature Manager
-                            </button>
-                        </form>
+                        <p class="text-xs text-[#64748B]">Le délai de 48 heures s'ouvrira à la clôture de la note.</p>
                     @endif
-                </div>
-
-                <!-- Signature Collaborateur -->
-                <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/50 space-y-3">
-                    <span class="text-xs font-bold text-[#0B0F14] block uppercase tracking-wider">Émargement du Collaborateur</span>
-                    @if($evaluation->employee_signature)
-                        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 space-y-1">
-                            <div class="font-bold text-xs flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>Pris connaissance : {{ $evaluation->employee_signature }}</span>
-                            </div>
-                            <div class="text-[10px] text-emerald-700 font-mono">
-                                Le {{ $evaluation->employee_signed_at?->format('d/m/Y à H:i') }}
-                            </div>
-                        </div>
-                    @else
-                        <form action="{{ route('rh.evaluations.sign', $evaluation) }}" method="POST" class="space-y-2">
-                            @csrf
-                            <input type="hidden" name="signer_type" value="employee">
-                            <input type="text" name="signature_name" value="{{ $evaluation->employee->full_name }}" required
-                                   placeholder="Nom du collaborateur pour visa..."
-                                   class="w-full px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                            <button type="submit" class="w-full py-1.5 px-3 rounded-xl bg-[#0B0F14] hover:bg-slate-800 text-white text-xs font-bold transition">
-                                Émarger la fiche collaborateur
-                            </button>
-                        </form>
-                    @endif
-                </div>
+                </x-evaluation.section>
             </div>
-        </x-card>
-
-        <!-- CONTESTATION ÉCRITE SOUS 48 HEURES -->
-        <x-card title="Contestation" subtitle="Le membre peut contester sa note par écrit dans les 48 heures qui suivent sa clôture ; la Gérante répond par écrit">
-            @if($evaluation->contested_at)
-                <div class="space-y-3 text-xs">
-                    <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
-                        <strong>Contestation du {{ $evaluation->contested_at->format('d/m/Y à H:i') }} :</strong> {{ $evaluation->contestation }}
-                    </div>
-
-                    @if($evaluation->contestation_answered_at)
-                        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900">
-                            <strong>Réponse de {{ $evaluation->contestationAnsweredBy?->name ?? 'la Gérante' }} le {{ $evaluation->contestation_answered_at->format('d/m/Y à H:i') }} :</strong> {{ $evaluation->contestation_response }}
-                        </div>
-                    @elseif(auth()->user()->hasRole('administrateur'))
-                        <form action="{{ route('rh.evaluations.answer-contestation', $evaluation) }}" method="POST" class="space-y-2">
-                            @csrf
-                            <textarea name="contestation_response" rows="3" required placeholder="Réponse écrite de la Gérante..."
-                                      class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">{{ old('contestation_response') }}</textarea>
-                            <x-button variant="primary" type="submit" size="md">Répondre à la contestation</x-button>
-                        </form>
-                    @else
-                        <p class="text-[#64748B]">En attente de la réponse écrite de la Gérante.</p>
-                    @endif
-                </div>
-            @elseif($evaluation->is_locked)
-                <p class="text-xs text-[#64748B]">
-                    Aucune contestation. Délai ouvert jusqu'au {{ $evaluation->contestationDeadline()?->format('d/m/Y à H:i') }}.
-                </p>
-            @else
-                <p class="text-xs text-[#64748B]">Le délai de 48 heures s'ouvrira à la clôture (verrouillage) de la note.</p>
-            @endif
-        </x-card>
-    </div>
-
-    <!-- MODAL ASSIGNATION OBJECTIF (Point 9) -->
-    <div id="modal-add-goal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl max-w-lg w-full p-6 space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                <h3 class="text-sm font-bold text-[#0B0F14]">Nouvel Objectif Individuel</h3>
-                <button type="button" onclick="document.getElementById('modal-add-goal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <form action="{{ route('rh.goals.store') }}" method="POST" class="space-y-3 text-xs">
-                @csrf
-                <input type="hidden" name="employee_id" value="{{ $evaluation->employee_id }}">
-                <input type="hidden" name="monthly_evaluation_id" value="{{ $evaluation->id }}">
-                <div>
-                    <label class="block font-semibold mb-1">Intitulé de l'objectif *</label>
-                    <input type="text" name="title" required placeholder="Ex : Clôturer 15 devis grands comptes" class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Description / Modalités de réussite</label>
-                    <textarea name="description" rows="2" placeholder="Critères mesurables..." class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1">Date de début *</label>
-                        <input type="date" name="start_date" value="{{ now()->format('Y-m-d') }}" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Date d'échéance *</label>
-                        <input type="date" name="due_date" value="{{ now()->addMonth()->format('Y-m-d') }}" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                    </div>
-                </div>
-                <input type="hidden" name="status" value="a_faire">
-                <div class="pt-3 flex justify-end gap-2">
-                    <button type="button" onclick="document.getElementById('modal-add-goal').classList.add('hidden')" class="px-4 py-2 rounded-xl border border-[#E2E8F0] font-bold text-slate-700">Annuler</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-[#0066FF] hover:bg-blue-700 text-white font-bold">Créer l'objectif</button>
-                </div>
-            </form>
         </div>
-    </div>
 
-    <!-- MODAL CRÉATION PIP (Point 10) -->
-    <div id="modal-add-pip" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl max-w-lg w-full p-6 space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                <h3 class="text-sm font-bold text-rose-700">Ouvrir un Plan d'Amélioration (PIP)</h3>
-                <button type="button" onclick="document.getElementById('modal-add-pip').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
+        {{-- ───────── Fenêtres : objectif et plan de progrès (feuille en bas sur mobile) ───────── --}}
+        @foreach([
+            'goalOpen' => ['Nouvel objectif', route('rh.goals.store')],
+            'pipOpen' => ['Ouvrir un plan de progrès', route('rh.pips.store')],
+        ] as $flag => [$modalTitle, $action])
+            <div x-show="{{ $flag }}" x-cloak class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" @keydown.escape.window="{{ $flag }} = false">
+                <div x-show="{{ $flag }}" x-transition.opacity class="absolute inset-0 bg-[#0B0F14]/40 backdrop-blur-xs" @click="{{ $flag }} = false"></div>
+                <div x-show="{{ $flag }}" x-transition class="relative max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:max-w-lg sm:rounded-3xl sm:p-6">
+                    <div class="mb-4 flex items-center justify-between">
+                        <h3 class="text-base font-semibold text-[#0B0F14]">{{ $modalTitle }}</h3>
+                        <button type="button" @click="{{ $flag }} = false" class="rounded-lg p-1.5 text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#0B0F14]" aria-label="Fermer">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form action="{{ $action }}" method="POST" class="space-y-3">
+                        @csrf
+                        <input type="hidden" name="employee_id" value="{{ $evaluation->employee_id }}">
+                        <input type="hidden" name="monthly_evaluation_id" value="{{ $evaluation->id }}">
+                        <div>
+                            <label class="{{ $label }}">Intitulé</label>
+                            <input type="text" name="title" required class="{{ $input }}">
+                        </div>
+                        @if($flag === 'goalOpen')
+                            <input type="hidden" name="status" value="a_faire">
+                            <div>
+                                <label class="{{ $label }}">Description</label>
+                                <textarea name="description" rows="2" class="{{ $input }}"></textarea>
+                            </div>
+                        @else
+                            <div>
+                                <label class="{{ $label }}">Difficulté constatée</label>
+                                <textarea name="problem_identified" rows="2" required class="{{ $input }}"></textarea>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}">Objectif mesurable</label>
+                                <textarea name="target_objective" rows="2" required class="{{ $input }}"></textarea>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}">Actions, référent et formation</label>
+                                <textarea name="corrective_actions" rows="2" required class="{{ $input }}"></textarea>
+                            </div>
+                        @endif
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="{{ $label }}">Début</label>
+                                <input type="date" name="start_date" value="{{ now()->format('Y-m-d') }}" required class="{{ $input }}">
+                            </div>
+                            <div>
+                                <label class="{{ $label }}">{{ $flag === 'goalOpen' ? 'Échéance' : 'Fin' }}</label>
+                                <input type="date" name="{{ $flag === 'goalOpen' ? 'due_date' : 'end_date' }}" value="{{ now()->addDays(30)->format('Y-m-d') }}" required class="{{ $input }}">
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" @click="{{ $flag }} = false" class="{{ $ghostButton }}">Annuler</button>
+                            <button type="submit" class="{{ $primaryButton }}">Enregistrer</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <form action="{{ route('rh.pips.store') }}" method="POST" class="space-y-3 text-xs">
-                @csrf
-                <input type="hidden" name="employee_id" value="{{ $evaluation->employee_id }}">
-                <input type="hidden" name="monthly_evaluation_id" value="{{ $evaluation->id }}">
-                <div>
-                    <label class="block font-semibold mb-1">Titre du plan d'amélioration *</label>
-                    <input type="text" name="title" required placeholder="Ex : Rétablissement de la ponctualité & rigueur" class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Problème ou lacune identifiée *</label>
-                    <textarea name="problem_identified" rows="2" required placeholder="Description factuelle des manquements..." class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]"></textarea>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Objectif ciblé mesurable *</label>
-                    <textarea name="target_objective" rows="2" required placeholder="Zéro retard sur 30 jours, 95% des tâches complétées..." class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]"></textarea>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Actions correctives à mettre en place *</label>
-                    <textarea name="corrective_actions" rows="2" required placeholder="Point hebdomadaire, formation, binôme..." class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1">Date de début *</label>
-                        <input type="date" name="start_date" value="{{ now()->format('Y-m-d') }}" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Date de fin prévisionnelle *</label>
-                        <input type="date" name="end_date" value="{{ now()->addMonths(2)->format('Y-m-d') }}" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                    </div>
-                </div>
-                <div class="pt-3 flex justify-end gap-2">
-                    <button type="button" onclick="document.getElementById('modal-add-pip').classList.add('hidden')" class="px-4 py-2 rounded-xl border border-[#E2E8F0] font-bold text-slate-700">Annuler</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold">Lancer le PIP</button>
-                </div>
-            </form>
-        </div>
+        @endforeach
     </div>
 </x-layouts.app>

@@ -44,22 +44,19 @@
 <x-layouts.app>
     <x-slot:title>Évaluations RH — IVOSPHERE</x-slot>
 
-    <div class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
+    <div class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
 
         {{-- ───────── En-tête ───────── --}}
-        <header class="space-y-4">
-            <x-breadcrumb :items="[
+        <x-evaluation.header
+            title="Évaluations des membres"
+            subtitle="Note du mois sur 20 = 4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D)."
+            :breadcrumbs="[
                 ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
                 ['label' => 'Évaluations'],
-            ]" />
-
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div class="space-y-1">
-                    <h1 class="text-2xl font-semibold tracking-tight text-[#0B0F14]">Évaluations des membres</h1>
-                    <p class="text-sm text-[#64748B]">Note du mois sur 20 = 4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D).</p>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
+            ]"
+            active="campaign" :year="$year" :month="$month"
+        >
+            <x-slot:actions>
                     <div class="inline-flex h-10 items-center rounded-xl border border-[#E2E8F0] bg-white p-1">
                         <a href="{{ route('rh.evaluations.index', $periodQuery($currentPeriod->copy()->subMonth())) }}" class="flex h-8 w-8 items-center justify-center rounded-lg text-[#64748B] transition hover:bg-slate-100 hover:text-[#0B0F14]" aria-label="Mois précédent">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -79,11 +76,8 @@
                             <span class="whitespace-nowrap">Générer<span class="hidden sm:inline"> la campagne</span></span>
                         </button>
                     </form>
-                </div>
-            </div>
-
-            @include('rh.evaluations._nav', ['active' => 'campaign'])
-        </header>
+            </x-slot:actions>
+        </x-evaluation.header>
 
         @if(\App\Models\MonthlyEvaluation::isTrialMonth($year, $month))
             <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">

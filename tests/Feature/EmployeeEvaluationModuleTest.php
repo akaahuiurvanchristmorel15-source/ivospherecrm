@@ -18,12 +18,12 @@ test('rh manager can access evaluations dashboard and view KPIs', function () {
     $response = $this->actingAs($rh)->get(route('rh.evaluations.index'));
 
     $response->assertStatus(200);
-    $response->assertSee('Évaluations des Collaborateurs');
-    $response->assertSee('Moyenne Entreprise /30');
-    $response->assertSee('Critères RH');
+    $response->assertSee('Évaluations des membres');
+    $response->assertSee('Moyenne des membres notés');
+    $response->assertSee('Référentiel');
     $response->assertSee('Objectifs');
-    $response->assertSee('Plans d\'Amélioration', false);
-    $response->assertSee('Palmarès');
+    $response->assertSee('Plans de progrès');
+    $response->assertSee('Classement');
 });
 
 test('rh manager can generate monthly evaluation campaign', function () {
@@ -62,7 +62,7 @@ test('rh manager can view and update an employee evaluation sheet', function () 
     $response = $this->actingAs($rh)->get(route('rh.evaluations.show', $evaluation));
     $response->assertStatus(200);
     $response->assertSee($employee->full_name);
-    $response->assertSee('Fiche d\'Évaluation', false);
+    $response->assertSee('Tableau de consolidation');
 
     // Update qualitative feedback & workflow
     $updateResponse = $this->actingAs($rh)->put(route('rh.evaluations.update', $evaluation), [
@@ -148,7 +148,7 @@ test('rh manager can manage criteria, individual goals, PIP and rankings', funct
     // 1. Criteria Matrix
     $this->actingAs($rh)->get(route('rh.evaluations.criteria.index'))
         ->assertStatus(200)
-        ->assertSee('Matrice des Critères d\'Évaluation', false);
+        ->assertSee('Référentiel d\'évaluation', false);
 
     // Create a new criterion
     $this->actingAs($rh)->post(route('rh.evaluations.criteria.store'), [
@@ -164,7 +164,7 @@ test('rh manager can manage criteria, individual goals, PIP and rankings', funct
     // 2. Individual Goals
     $this->actingAs($rh)->get(route('rh.goals.index'))
         ->assertStatus(200)
-        ->assertSee('Suivi des Objectifs Individuels');
+        ->assertSee('Objectifs');
 
     $this->actingAs($rh)->post(route('rh.goals.store'), [
         'employee_id' => $employee->id,
@@ -179,7 +179,7 @@ test('rh manager can manage criteria, individual goals, PIP and rankings', funct
     // 3. Performance Improvement Plan (PIP)
     $this->actingAs($rh)->get(route('rh.pips.index'))
         ->assertStatus(200)
-        ->assertSee('Plans d\'Amélioration de la Performance', false);
+        ->assertSee('Plans de progrès');
 
     $this->actingAs($rh)->post(route('rh.pips.store'), [
         'employee_id' => $employee->id,
@@ -194,7 +194,7 @@ test('rh manager can manage criteria, individual goals, PIP and rankings', funct
     // 4. Rankings
     $this->actingAs($rh)->get(route('rh.evaluations.ranking'))
         ->assertStatus(200)
-        ->assertSee('Palmarès & Classement Interne', false);
+        ->assertSee('Classement et récompenses');
 });
 
 test('monthly evaluation consolidates the direction sheet of the 17 criteria into a score out of 20', function () {

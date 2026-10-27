@@ -1,324 +1,203 @@
+@php
+    $statuses = [
+        'a_faire' => ['À faire', 'bg-slate-100 text-slate-700'],
+        'en_cours' => ['En cours', 'bg-blue-50 text-[#0066FF]'],
+        'atteint' => ['Atteint', 'bg-emerald-50 text-emerald-700'],
+        'non_atteint' => ['Non atteint', 'bg-rose-50 text-rose-700'],
+    ];
+    $input = 'w-full rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-2.5 text-sm text-[#0B0F14] placeholder:text-[#94A3B8] focus:border-[#0066FF] focus:outline-none focus:ring-4 focus:ring-[#0066FF]/10';
+    $label = 'mb-1.5 block text-xs font-medium text-[#0B0F14]';
+    $filterUrl = fn (array $changes): string => route('rh.goals.index', array_filter(array_merge(request()->only(['employee_id', 'status']), $changes), fn ($value) => $value !== null && $value !== ''));
+@endphp
+
 <x-layouts.app>
-    <x-slot:title>Objectifs Individuels des Collaborateurs — IVOSPHERE RH</x-slot>
+    <x-slot:title>Objectifs des membres — IVOSPHERE RH</x-slot>
 
-    <div class="space-y-6">
-        <x-page-header 
-            title="Suivi des Objectifs Individuels" 
-            description="Assignation et pilotage des objectifs mensuels ciblés par collaborateur avec mesure de l'avancement"
+    <div x-data="{ createOpen: false, edit: null, updateUrl: @js(route('rh.goals.update', '__ID__')) }" class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
+        <x-evaluation.header
+            title="Objectifs"
+            subtitle="1 à 3 objectifs ciblés par membre, fixés à l'entretien et suivis jusqu'à l'échéance."
+            :breadcrumbs="[
+                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
+                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index')],
+                ['label' => 'Objectifs'],
+            ]"
+            active="goals"
         >
-            <x-slot:breadcrumbs>
-                <x-breadcrumb :items="[
-                    ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                    ['label' => 'Évaluations', 'url' => route('rh.evaluations.index')],
-                    ['label' => 'Objectifs']
-                ]" />
-            </x-slot:breadcrumbs>
-
             <x-slot:actions>
-                <div class="flex items-center gap-2">
-                    <button type="button" onclick="document.getElementById('modal-new-goal').classList.remove('hidden')"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0066FF] hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        <span>Nouvel Objectif</span>
-                    </button>
-                    <x-button :href="route('rh.evaluations.index')" variant="secondary" size="md">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                        <span>Retour Campagne</span>
-                    </x-button>
-                </div>
+                <button type="button" @click="createOpen = true" class="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white transition hover:bg-[#0052cc]">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    Nouvel objectif
+                </button>
             </x-slot:actions>
-        </x-page-header>
+        </x-evaluation.header>
 
-        @include('rh.evaluations._nav', ['active' => 'goals'])
-
-        <!-- KPI Objectifs -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <x-stat-card 
-                title="Total des Objectifs" 
-                :value="$totalGoals" 
-                change="Assignés dans le système" 
-                changeType="neutral"
-                timeframe=""
-            >
-                <x-slot:icon>
-                    <svg class="w-4 h-4 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                </x-slot:icon>
-            </x-stat-card>
-
-            <x-stat-card 
-                title="Objectifs Atteints" 
-                :value="$achievedGoals" 
-                change="Succès validés" 
-                changeType="up"
-                timeframe=""
-            >
-                <x-slot:icon>
-                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </x-slot:icon>
-            </x-stat-card>
-
-            <x-stat-card 
-                title="En Cours d'Exécution" 
-                :value="$inProgressGoals" 
-                change="En phase active" 
-                changeType="neutral"
-                timeframe=""
-            >
-                <x-slot:icon>
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </x-slot:icon>
-            </x-stat-card>
-
-            <x-stat-card 
-                title="Taux d'Accomplissement" 
-                :value="$achievementRate . ' %'" 
-                change="Efficacité collective" 
-                changeType="{{ $achievementRate >= 70 ? 'up' : 'down' }}"
-                timeframe=""
-            >
-                <x-slot:icon>
-                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                </x-slot:icon>
-            </x-stat-card>
-        </div>
-
-        <!-- Filtres -->
-        <x-card>
-            <form method="GET" action="{{ route('rh.goals.index') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
-                <div class="sm:col-span-5">
-                    <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Collaborateur</label>
-                    <select name="employee_id" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                        <option value="">Tous les collaborateurs</option>
-                        @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}" @selected(request('employee_id') == $emp->id)>
-                                {{ $emp->full_name }} ({{ $emp->employee_code }})
-                            </option>
-                        @endforeach
-                    </select>
+        {{-- Indicateurs --}}
+        <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            @foreach([
+                ['Objectifs', $totalGoals],
+                ['Atteints', $achievedGoals],
+                ['En cours', $inProgressGoals],
+                ['Taux de réussite', $achievementRate.' %'],
+            ] as [$statLabel, $statValue])
+                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                    <dt class="text-xs text-[#64748B]">{{ $statLabel }}</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-[#0B0F14]">{{ $statValue }}</dd>
                 </div>
+            @endforeach
+        </dl>
 
-                <div class="sm:col-span-4">
-                    <label class="block text-xs font-semibold text-[#0B0F14] mb-1.5">Statut de l'objectif</label>
-                    <select name="status" class="w-full px-3.5 py-2 rounded-xl border border-[#E2E8F0] text-xs text-[#0B0F14] focus:outline-none focus:border-[#0066FF]">
-                        <option value="">Tous les statuts</option>
-                        <option value="a_faire" @selected(request('status') === 'a_faire')>À faire</option>
-                        <option value="en_cours" @selected(request('status') === 'en_cours')>En cours</option>
-                        <option value="atteint" @selected(request('status') === 'atteint')>Atteint ✅</option>
-                        <option value="non_atteint" @selected(request('status') === 'non_atteint')>Non atteint ❌</option>
-                    </select>
-                </div>
-
-                <div class="sm:col-span-3 flex items-end">
-                    <button type="submit" class="w-full py-2 px-4 bg-[#0B0F14] hover:bg-[#1E293B] text-white rounded-xl text-xs font-bold transition">
-                        Filtrer les objectifs
-                    </button>
-                </div>
-            </form>
-        </x-card>
-
-        <!-- Tableau des Objectifs -->
-        <x-card :noPadding="true">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] uppercase tracking-wider text-[11px] font-semibold">
-                        <tr>
-                            <th class="py-3 px-4">Collaborateur</th>
-                            <th class="py-3 px-4">Objectif Assigné</th>
-                            <th class="py-3 px-3 text-center">Échéance</th>
-                            <th class="py-3 px-4">Avancement</th>
-                            <th class="py-3 px-3 text-center">Statut</th>
-                            <th class="py-3 px-4 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-[#E2E8F0] text-[#0B0F14]">
-                        @forelse($goals as $goal)
-                            <tr class="hover:bg-[#F8FAFC] transition">
-                                <td class="py-3.5 px-4">
-                                    <div class="font-bold text-[#0B0F14]">{{ $goal->employee->full_name }}</div>
-                                    <div class="text-[10px] font-mono text-slate-400">
-                                        {{ $goal->employee->employee_code }} • {{ $goal->employee->department ?? 'Général' }}
-                                    </div>
-                                </td>
-
-                                <td class="py-3.5 px-4">
-                                    <div class="font-bold text-[#0B0F14] text-xs">{{ $goal->title }}</div>
-                                    @if($goal->description)
-                                        <div class="text-[11px] text-[#64748B] max-w-sm truncate">{{ $goal->description }}</div>
-                                    @endif
-                                    @if($goal->result_notes)
-                                        <div class="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block">
-                                            Bilan : {{ $goal->result_notes }}
-                                        </div>
-                                    @endif
-                                </td>
-
-                                <td class="py-3.5 px-3 text-center font-mono">
-                                    <span class="text-xs font-bold text-slate-700">{{ $goal->due_date?->format('d/m/Y') }}</span>
-                                    @if($goal->due_date && $goal->due_date->isPast() && $goal->status !== 'atteint')
-                                        <span class="block text-[9px] text-rose-600 font-bold">Échu</span>
-                                    @endif
-                                </td>
-
-                                <td class="py-3.5 px-4 min-w-[150px]">
-                                    <div class="flex items-center justify-between text-[11px] font-mono mb-1">
-                                        <span class="font-bold text-[#0B0F14]">{{ $goal->progress_pct }}%</span>
-                                    </div>
-                                    <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                                        <div class="h-full rounded-full bg-[#0066FF] transition-all" style="width: {{ $goal->progress_pct }}%;"></div>
-                                    </div>
-                                </td>
-
-                                <td class="py-3.5 px-3 text-center">
-                                    @php
-                                        $badge = match($goal->status) {
-                                            'atteint' => 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                                            'en_cours' => 'bg-blue-50 text-[#0066FF] border-blue-200',
-                                            'non_atteint' => 'bg-rose-50 text-rose-800 border-rose-200',
-                                            default => 'bg-slate-100 text-slate-700 border-slate-200',
-                                        };
-                                    @endphp
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $badge }}">
-                                        {{ ucfirst(str_replace('_', ' ', $goal->status)) }}
-                                    </span>
-                                </td>
-
-                                <td class="py-3.5 px-4 text-right">
-                                    <div class="flex items-center justify-end gap-1.5">
-                                        <button type="button" 
-                                                onclick="openEditGoalModal({{ json_encode($goal) }})"
-                                                class="px-2.5 py-1 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#0066FF] hover:text-[#0066FF] text-xs font-semibold text-slate-700 transition">
-                                            Mettre à jour
-                                        </button>
-
-                                        <form action="{{ route('rh.goals.destroy', $goal) }}" method="POST" onsubmit="return confirm('Supprimer cet objectif ?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Supprimer">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="py-12 text-center text-xs text-[#64748B]">
-                                    Aucun objectif individuel répertorié.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+        {{-- Filtres --}}
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:px-0">
+                <a href="{{ $filterUrl(['status' => null]) }}" class="inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-xs font-medium transition {{ ! request('status') ? 'bg-[#0B0F14] text-white' : 'border border-[#E2E8F0] bg-white text-[#64748B] hover:text-[#0B0F14]' }}">Tous</a>
+                @foreach($statuses as $statusKey => [$statusLabel])
+                    <a href="{{ $filterUrl(['status' => $statusKey]) }}" class="inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-xs font-medium transition {{ request('status') === $statusKey ? 'bg-[#0B0F14] text-white' : 'border border-[#E2E8F0] bg-white text-[#64748B] hover:text-[#0B0F14]' }}">{{ $statusLabel }}</a>
+                @endforeach
             </div>
-
-            @if($goals->hasPages())
-                <div class="p-4 border-t border-[#E2E8F0]">
-                    {{ $goals->links() }}
-                </div>
-            @endif
-        </x-card>
-    </div>
-
-    <!-- MODAL CRÉATION OBJECTIF -->
-    <div id="modal-new-goal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl max-w-lg w-full p-6 space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                <h3 class="text-sm font-bold text-[#0B0F14]">Assigner un Objectif Individuel</h3>
-                <button type="button" onclick="document.getElementById('modal-new-goal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <form action="{{ route('rh.goals.store') }}" method="POST" class="space-y-3 text-xs">
-                @csrf
-                <div>
-                    <label class="block font-semibold mb-1">Collaborateur concerné *</label>
-                    <select name="employee_id" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                        @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->full_name }} ({{ $emp->employee_code }})</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Intitulé de l'objectif *</label>
-                    <input type="text" name="title" required placeholder="Ex : Traiter les dossiers d'impression sous 24h" class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Modalités / Livrables attendus</label>
-                    <textarea name="description" rows="2" placeholder="Critères de succès..." class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1">Date de début *</label>
-                        <input type="date" name="start_date" value="{{ now()->format('Y-m-d') }}" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Date d'échéance *</label>
-                        <input type="date" name="due_date" value="{{ now()->addMonth()->format('Y-m-d') }}" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                    </div>
-                </div>
-                <input type="hidden" name="status" value="a_faire">
-                <input type="hidden" name="progress_pct" value="0">
-                <div class="pt-3 flex justify-end gap-2">
-                    <button type="button" onclick="document.getElementById('modal-new-goal').classList.add('hidden')" class="px-4 py-2 rounded-xl border border-[#E2E8F0] font-bold text-slate-700">Annuler</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-[#0066FF] hover:bg-blue-700 text-white font-bold">Assigner l'objectif</button>
-                </div>
+            <form method="GET" action="{{ route('rh.goals.index') }}">
+                @if(request('status'))<input type="hidden" name="status" value="{{ request('status') }}">@endif
+                <select name="employee_id" aria-label="Membre" onchange="this.form.submit()" class="h-9 w-full rounded-full border border-[#E2E8F0] bg-white px-3.5 text-xs font-medium text-[#0B0F14] focus:border-[#0066FF] focus:outline-none sm:w-60">
+                    <option value="">Tous les membres</option>
+                    @foreach($employees as $emp)
+                        <option value="{{ $emp->id }}" @selected(request('employee_id') == $emp->id)>{{ $emp->full_name }}</option>
+                    @endforeach
+                </select>
             </form>
         </div>
-    </div>
 
-    <!-- MODAL MISE À JOUR OBJECTIF -->
-    <div id="modal-update-goal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl max-w-lg w-full p-6 space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                <h3 class="text-sm font-bold text-[#0B0F14]">Actualiser l'Objectif</h3>
-                <button type="button" onclick="document.getElementById('modal-update-goal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <form id="form-update-goal" method="POST" class="space-y-3 text-xs">
-                @csrf
-                @method('PUT')
-                <div>
-                    <label class="block font-semibold mb-1">Titre de l'objectif</label>
-                    <input type="text" id="goal-edit-title" name="title" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1">Avancement (%) *</label>
-                        <input type="number" id="goal-edit-progress" name="progress_pct" min="0" max="100" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] font-mono focus:outline-none focus:border-[#0066FF]">
+        {{-- Liste --}}
+        <ul class="divide-y divide-[#EEF2F6] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+            @forelse($goals as $goal)
+                @php
+                    [$statusLabel, $statusClass] = $statuses[$goal->status] ?? [$goal->status, 'bg-slate-100 text-slate-700'];
+                    $isOverdue = $goal->due_date && $goal->due_date->isPast() && $goal->status !== 'atteint';
+                @endphp
+                <li class="grid grid-cols-1 gap-3 p-4 sm:px-5 md:grid-cols-[minmax(0,1fr)_10rem_9rem_auto] md:items-center">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-[#0B0F14]">{{ $goal->title }}</p>
+                        <p class="text-xs text-[#64748B]">{{ $goal->employee->full_name }} · {{ $goal->employee->department ?? 'Général' }}</p>
+                        @if($goal->result_notes)
+                            <p class="mt-1 text-xs text-emerald-700">Bilan : {{ $goal->result_notes }}</p>
+                        @endif
                     </div>
+                    <div class="flex items-center gap-2">
+                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#EEF2F6]"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $goal->progress_pct }}%"></div></div>
+                        <span class="w-9 text-right text-xs font-medium text-[#0B0F14]">{{ $goal->progress_pct }} %</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs md:flex-col md:items-start md:gap-1">
+                        <span class="rounded-full px-2.5 py-0.5 font-medium {{ $statusClass }}">{{ $statusLabel }}</span>
+                        <span class="{{ $isOverdue ? 'font-medium text-rose-600' : 'text-[#94A3B8]' }}">{{ $isOverdue ? 'Échu le ' : 'Échéance ' }}{{ $goal->due_date?->format('d/m/Y') }}</span>
+                    </div>
+                    <div class="flex items-center gap-1 md:justify-end">
+                        <button type="button" @click="edit = @js(['id' => $goal->id, 'title' => $goal->title, 'progress_pct' => $goal->progress_pct, 'status' => $goal->status, 'due_date' => $goal->due_date?->format('Y-m-d'), 'result_notes' => $goal->result_notes])"
+                                class="inline-flex h-9 items-center rounded-xl border border-[#E2E8F0] px-3 text-xs font-medium text-[#0B0F14] transition hover:border-[#0066FF] hover:text-[#0066FF]">Mettre à jour</button>
+                        <form action="{{ route('rh.goals.destroy', $goal) }}" method="POST" onsubmit="return confirm('Supprimer cet objectif ?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="rounded-xl p-2 text-[#94A3B8] transition hover:bg-rose-50 hover:text-rose-600" aria-label="Supprimer">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </form>
+                    </div>
+                </li>
+            @empty
+                <li class="px-5 py-12 text-center">
+                    <p class="text-sm font-medium text-[#0B0F14]">Aucun objectif</p>
+                    <p class="mt-1 text-xs text-[#64748B]">Fixez 1 à 3 objectifs ciblés à chaque membre lors de l'entretien.</p>
+                </li>
+            @endforelse
+        </ul>
+
+        @if($goals->hasPages())
+            <div>{{ $goals->links() }}</div>
+        @endif
+
+        {{-- Fenêtre : nouvel objectif --}}
+        <div x-show="createOpen" x-cloak class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" @keydown.escape.window="createOpen = false">
+            <div x-show="createOpen" x-transition.opacity class="absolute inset-0 bg-[#0B0F14]/40 backdrop-blur-xs" @click="createOpen = false"></div>
+            <div x-show="createOpen" x-transition class="relative max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:max-w-lg sm:rounded-3xl sm:p-6">
+                <h3 class="mb-4 text-base font-semibold text-[#0B0F14]">Nouvel objectif</h3>
+                <form action="{{ route('rh.goals.store') }}" method="POST" class="space-y-3">
+                    @csrf
+                    <input type="hidden" name="status" value="a_faire">
+                    <input type="hidden" name="progress_pct" value="0">
                     <div>
-                        <label class="block font-semibold mb-1">Statut *</label>
-                        <select id="goal-edit-status" name="status" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                            <option value="a_faire">À faire</option>
-                            <option value="en_cours">En cours</option>
-                            <option value="atteint">Atteint (100%)</option>
-                            <option value="non_atteint">Non atteint</option>
+                        <label class="{{ $label }}">Membre</label>
+                        <select name="employee_id" required class="{{ $input }}">
+                            @foreach($employees as $emp)
+                                <option value="{{ $emp->id }}">{{ $emp->full_name }}</option>
+                            @endforeach
                         </select>
                     </div>
+                    <div>
+                        <label class="{{ $label }}">Intitulé</label>
+                        <input type="text" name="title" required placeholder="Ex. traiter les dossiers d'impression sous 24 h" class="{{ $input }}">
+                    </div>
+                    <div>
+                        <label class="{{ $label }}">Critère de réussite</label>
+                        <textarea name="description" rows="2" class="{{ $input }}"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="{{ $label }}">Début</label>
+                            <input type="date" name="start_date" value="{{ now()->format('Y-m-d') }}" required class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Échéance</label>
+                            <input type="date" name="due_date" value="{{ now()->addMonth()->format('Y-m-d') }}" required class="{{ $input }}">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" @click="createOpen = false" class="inline-flex h-10 items-center rounded-xl border border-[#E2E8F0] px-4 text-sm font-medium text-[#0B0F14]">Annuler</button>
+                        <button type="submit" class="inline-flex h-10 items-center rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white hover:bg-[#0052cc]">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Fenêtre : mise à jour --}}
+        <div x-show="edit" x-cloak class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" @keydown.escape.window="edit = null">
+            <div x-show="edit" x-transition.opacity class="absolute inset-0 bg-[#0B0F14]/40 backdrop-blur-xs" @click="edit = null"></div>
+            <template x-if="edit">
+                <div x-transition class="relative max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:max-w-lg sm:rounded-3xl sm:p-6">
+                    <h3 class="mb-4 text-base font-semibold text-[#0B0F14]">Mettre à jour l'objectif</h3>
+                    <form :action="updateUrl.replace('__ID__', edit.id)" method="POST" class="space-y-3">
+                        @csrf
+                        @method('PUT')
+                        <div>
+                            <label class="{{ $label }}">Intitulé</label>
+                            <input type="text" name="title" x-model="edit.title" required class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Avancement : <span x-text="edit.progress_pct + ' %'"></span></label>
+                            <input type="range" name="progress_pct" min="0" max="100" step="5" x-model="edit.progress_pct" class="w-full accent-[#0066FF]">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="{{ $label }}">Statut</label>
+                                <select name="status" x-model="edit.status" required class="{{ $input }}">
+                                    @foreach($statuses as $statusKey => [$statusLabel])
+                                        <option value="{{ $statusKey }}">{{ $statusLabel }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="{{ $label }}">Échéance</label>
+                                <input type="date" name="due_date" x-model="edit.due_date" required class="{{ $input }}">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Bilan</label>
+                            <textarea name="result_notes" rows="2" x-model="edit.result_notes" class="{{ $input }}"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" @click="edit = null" class="inline-flex h-10 items-center rounded-xl border border-[#E2E8F0] px-4 text-sm font-medium text-[#0B0F14]">Annuler</button>
+                            <button type="submit" class="inline-flex h-10 items-center rounded-xl bg-[#0066FF] px-4 text-sm font-semibold text-white hover:bg-[#0052cc]">Enregistrer</button>
+                        </div>
+                    </form>
                 </div>
-                <div>
-                    <label class="block font-semibold mb-1">Nouvelle date d'échéance</label>
-                    <input type="date" id="goal-edit-due-date" name="due_date" required class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Bilan / Commentaires sur le résultat</label>
-                    <textarea id="goal-edit-notes" name="result_notes" rows="2" placeholder="Observations finales, constats de réussite..." class="w-full px-3 py-2 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-[#0066FF]"></textarea>
-                </div>
-                <div class="pt-3 flex justify-end gap-2">
-                    <button type="button" onclick="document.getElementById('modal-update-goal').classList.add('hidden')" class="px-4 py-2 rounded-xl border border-[#E2E8F0] font-bold text-slate-700">Annuler</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-[#0066FF] hover:bg-blue-700 text-white font-bold">Mettre à jour</button>
-                </div>
-            </form>
+            </template>
         </div>
     </div>
-
-    <script>
-        function openEditGoalModal(goal) {
-            const form = document.getElementById('form-update-goal');
-            form.action = `/rh/goals/${goal.id}`;
-            document.getElementById('goal-edit-title').value = goal.title;
-            document.getElementById('goal-edit-progress').value = goal.progress_pct;
-            document.getElementById('goal-edit-status').value = goal.status;
-            document.getElementById('goal-edit-due-date').value = goal.due_date ? goal.due_date.substring(0, 10) : '';
-            document.getElementById('goal-edit-notes').value = goal.result_notes || '';
-            document.getElementById('modal-update-goal').classList.remove('hidden');
-        }
-    </script>
 </x-layouts.app>

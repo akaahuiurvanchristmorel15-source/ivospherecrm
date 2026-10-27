@@ -18,6 +18,15 @@ class MonthlyEvaluation extends Model
 
     public const CONTESTATION_DELAY_HOURS = 48;
 
+    /**
+     * @var array<int, string>
+     */
+    public const MONTH_NAMES = [
+        1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+        5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+        9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
+    ];
+
     protected $fillable = [
         'employee_id',
         'year',
@@ -339,12 +348,12 @@ class MonthlyEvaluation extends Model
     public function getAppreciationBadgeClassAttribute(): string
     {
         return match ($this->appreciation) {
-            'Excellent' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
-            'Très bien' => 'bg-blue-100 text-blue-800 border-blue-300',
-            'Bien' => 'bg-sky-100 text-sky-800 border-sky-300',
-            'Passable' => 'bg-amber-100 text-amber-800 border-amber-300',
-            'Insuffisant' => 'bg-rose-100 text-rose-800 border-rose-300',
-            default => 'bg-slate-100 text-slate-600 border-slate-300',
+            'Excellent' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            'Très bien' => 'bg-blue-50 text-blue-700 border-blue-200',
+            'Bien' => 'bg-sky-50 text-sky-700 border-sky-200',
+            'Passable' => 'bg-amber-50 text-amber-700 border-amber-200',
+            'Insuffisant' => 'bg-rose-50 text-rose-700 border-rose-200',
+            default => 'bg-slate-100 text-slate-600 border-slate-200',
         };
     }
 
@@ -423,12 +432,6 @@ class MonthlyEvaluation extends Model
      */
     public function getMonthNameAttribute(): string
     {
-        $months = [
-            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
-        ];
-
-        return $months[$this->month] ?? 'Mois '.$this->month;
+        return self::MONTH_NAMES[$this->month] ?? 'Mois '.$this->month;
     }
 }
