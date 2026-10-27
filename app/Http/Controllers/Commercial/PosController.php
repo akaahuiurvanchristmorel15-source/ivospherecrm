@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Warehouse;
 use App\Services\ActivityLogger;
 use App\Services\StockService;
 use Illuminate\Http\Request;
@@ -21,8 +22,10 @@ class PosController extends Controller
     {
         $productsQuery = Product::with(['category', 'domain', 'warehouseStocks.warehouse:id,name,label_number,label_color'])->active();
 
-        if ($request->filled('domain_id')) {
-            $productsQuery->where('domain_id', $request->domain_id);
+        if ($request->filled('warehouse_id')) {
+            $productsQuery->whereHas('warehouseStocks', function ($q) use ($request) {
+                $q->where('warehouse_id', $request->warehouse_id)->where('physical_quantity', '>', 0);
+            });
         }
 
         if ($request->filled('search')) {
@@ -36,9 +39,10 @@ class PosController extends Controller
 
         $products = $productsQuery->orderBy('name')->get();
         $customers = Customer::active()->orderBy('name')->get();
-        $domains = Domain::active()->get();
+        $warehouses = Warehouse::active()->orderBy('label_number')->orderBy('name')->get(['id', 'name', 'label_number', 'label_color']);
+        $selectedWarehouseId = $warehouses->firstWhere('id', (int) $request->warehouse_id)?->id;
 
-        return view('commercial.pos.index', compact('products', 'customers', 'domains'));
+        return view('commercial.pos.index', compact('products', 'customers', 'warehouses', 'selectedWarehouseId'));
     }
 
     public function checkout(Request $request)
@@ -46,6 +50,7 @@ class PosController extends Controller
         $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'domain_id' => 'nullable|exists:domains,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'payment_method' => 'required|in:especes,mobile_money,carte,virement,cheque,credit',
             'mobile_money_provider' => 'nullable|string|in:wave,orange_money',
             'amount_paid' => 'required|numeric|min:0',
@@ -64,16 +69,20 @@ class PosController extends Controller
             $groupedQuantities[$pid] = ($groupedQuantities[$pid] ?? 0) + (int) $item['quantity'];
         }
 
+        $warehouseId = $request->filled('warehouse_id') ? (int) $request->warehouse_id : null;
+
         foreach ($groupedQuantities as $productId => $totalRequestedQty) {
             $product = Product::with('warehouseStocks')->findOrFail($productId);
-            $availableStock = (int) $product->available_stock;
+            $availableStock = $warehouseId === null
+                ? (int) $product->available_stock
+                : (int) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum(fn ($ws) => max(0, $ws->physical_quantity - $ws->reserved_quantity));
 
             if ($totalRequestedQty > $availableStock) {
                 return back()->withInput()->with('error', "Validation impossible : la quantité commandée pour l'article \"{$product->name}\" ({$totalRequestedQty}) est supérieure au stock disponible ({$availableStock}).");
             }
         }
 
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $warehouseId) {
             $customer = null;
             if ($request->filled('customer_id')) {
                 $customer = Customer::find($request->customer_id);
@@ -190,7 +199,7 @@ class PosController extends Controller
             }
 
             // 4. Décrémentation automatique des stocks physiques vendus
-            StockService::deductOrderStock($order, 'Sortie vente comptoir (POS)');
+            StockService::deductOrderStock($order, 'Sortie vente comptoir (POS)', $warehouseId);
 
             // 5. Add Loyalty Points
             if ($customer->code !== 'CLI-PASSAGER' && $amountPaid > 0) {

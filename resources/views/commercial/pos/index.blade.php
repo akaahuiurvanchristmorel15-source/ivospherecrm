@@ -357,7 +357,7 @@
             return {
                 ...posBarcodeScanner(),
                 search: '',
-                selectedDomain: '',
+                selectedWarehouse: config.selectedWarehouse ? String(config.selectedWarehouse) : '',
                 cart: [],
                 cartOpen: false,
                 customerId: '',
@@ -365,7 +365,7 @@
                 mobileMoneyProvider: 'wave',
                 amountPaid: 0,
                 products: config.products || [],
-                domains: config.domains || [],
+                warehouses: config.warehouses || [],
 
                 money(value) {
                     return new Intl.NumberFormat('fr-FR').format(Math.round(Number(value) || 0));
@@ -378,7 +378,16 @@
                         .sort((a, b) => (a.label_number ?? 0) - (b.label_number ?? 0));
                 },
 
+                warehouseStockOf(product, warehouseId) {
+                    return (product.warehouse_stocks || [])
+                        .filter(ws => String(ws.warehouse_id) === String(warehouseId))
+                        .reduce((sum, ws) => sum + Math.max(0, Number(ws.physical_quantity) - Number(ws.reserved_quantity || 0)), 0);
+                },
+
                 stockOf(product) {
+                    if (this.selectedWarehouse) {
+                        return this.warehouseStockOf(product, this.selectedWarehouse);
+                    }
                     return Number(product.available_stock ?? product.current_stock ?? 0);
                 },
 
@@ -386,30 +395,38 @@
                     return this.cart.reduce((n, i) => n + i.quantity, 0);
                 },
 
-                get selectedDomainName() {
-                    if (!this.selectedDomain) {
-                        return 'Tous les domaines';
-                    }
-                    const found = this.domains.find(d => String(d.id) === String(this.selectedDomain));
-                    return found ? found.name : 'Tous les domaines';
+                isInWarehouse(product, warehouseId) {
+                    return (product.warehouse_stocks || [])
+                        .some(ws => String(ws.warehouse_id) === String(warehouseId) && Number(ws.physical_quantity) > 0);
                 },
 
-                countProductsForDomain(domainId) {
-                    if (!domainId) {
+                countProductsForWarehouse(warehouseId) {
+                    if (!warehouseId) {
                         return this.products.length;
                     }
-                    return this.products.filter(p => String(p.domain_id) === String(domainId)).length;
+                    return this.products.filter(p => this.isInWarehouse(p, warehouseId)).length;
+                },
+
+                selectWarehouse(warehouseId) {
+                    this.selectedWarehouse = warehouseId ? String(warehouseId) : '';
+                    // Le stock vendable du panier suit l'entrepôt choisi
+                    this.cart.forEach(item => {
+                        const product = this.products.find(p => p.id === item.product_id);
+                        if (product) {
+                            item.available_stock = this.stockOf(product);
+                        }
+                    });
                 },
 
                 get filteredProducts() {
                     return this.products.filter(p => {
-                        const matchDomain = !this.selectedDomain || p.domain_id == this.selectedDomain;
+                        const matchWarehouse = !this.selectedWarehouse || this.isInWarehouse(p, this.selectedWarehouse);
                         const query = this.search.toLowerCase().trim();
                         const matchSearch = !query ||
                             p.name.toLowerCase().includes(query) ||
                             (p.sku && p.sku.toLowerCase().includes(query)) ||
                             (p.barcode && p.barcode.toLowerCase().includes(query));
-                        return matchDomain && matchSearch;
+                        return matchWarehouse && matchSearch;
                     });
                 },
 
@@ -422,7 +439,7 @@
                 },
 
                 addToCart(product) {
-                    const available = Number(product.available_stock ?? product.current_stock ?? 0);
+                    const available = this.stockOf(product);
                     if (available <= 0) {
                         this.notifyScan('error', 'Article en rupture de stock : "' + product.name + '" (0 disponible)');
                         return false;
@@ -553,7 +570,8 @@
         x-init="if (window.matchMedia('(pointer: fine)').matches) { $nextTick(() => $refs.searchInput?.focus()); }"
         x-data="posTerminal({
             products: {{ Js::from($products) }},
-            domains: {{ Js::from($domains) }}
+            warehouses: {{ Js::from($warehouses) }},
+            selectedWarehouse: {{ Js::from($selectedWarehouseId) }}
         })"
         @keydown.escape.window="cartOpen = false"
         class="space-y-4 pb-24 md:pb-0"
@@ -602,18 +620,20 @@
                     </button>
                 </div>
 
-                {{-- Domaines --}}
-                <div class="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:px-0">
-                    <button type="button" @click="selectedDomain = ''"
-                            :class="selectedDomain === '' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                {{-- Entrepôts --}}
+                <div class="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:px-0" aria-label="Filtrer par entrepôt">
+                    <button type="button" @click="selectWarehouse('')"
+                            :class="selectedWarehouse === '' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
                             class="h-8 shrink-0 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition">
-                        Tous <span class="ml-1 opacity-60" x-text="countProductsForDomain('')"></span>
+                        Tous les entrepôts <span class="ml-1 opacity-60" x-text="countProductsForWarehouse('')"></span>
                     </button>
-                    @foreach($domains as $dom)
-                        <button type="button" @click="selectedDomain = '{{ $dom->id }}'"
-                                :class="selectedDomain == '{{ $dom->id }}' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
-                                class="h-8 shrink-0 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition">
-                            {{ $dom->name }} <span class="ml-1 opacity-60" x-text="countProductsForDomain('{{ $dom->id }}')"></span>
+                    @foreach($warehouses as $warehouse)
+                        <button type="button" @click="selectWarehouse('{{ $warehouse->id }}')"
+                                :class="selectedWarehouse == '{{ $warehouse->id }}' ? 'bg-[#0B0F14] text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                                class="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition">
+                            <span class="flex h-4 min-w-4 items-center justify-center rounded px-1 text-[10px] font-bold leading-none"
+                                  style="background-color: {{ $warehouse->label_color ?: '#64748B' }}; color: {{ $warehouse->label_text_color }}">{{ $warehouse->label_number ?? '?' }}</span>
+                            {{ $warehouse->name }} <span class="opacity-60" x-text="countProductsForWarehouse('{{ $warehouse->id }}')"></span>
                         </button>
                     @endforeach
                 </div>
@@ -674,7 +694,7 @@
 
                 <div x-show="filteredProducts.length === 0" x-cloak class="py-16 text-center">
                     <p class="text-sm font-medium text-slate-900">Aucun article trouvé</p>
-                    <p class="mt-1 text-sm text-slate-500">Modifiez la recherche ou le domaine.</p>
+                    <p class="mt-1 text-sm text-slate-500">Modifiez la recherche ou l'entrepôt.</p>
                 </div>
             </section>
 
@@ -711,6 +731,7 @@
 
                 <form action="{{ route('commercial.pos.checkout') }}" method="POST" @submit="submitCheckout($event)" class="flex min-h-0 flex-1 flex-col">
                     @csrf
+                    <input type="hidden" name="warehouse_id" :value="selectedWarehouse">
 
                     <div class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto overscroll-contain">
 

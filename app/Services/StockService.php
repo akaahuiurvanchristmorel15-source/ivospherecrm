@@ -134,13 +134,14 @@ class StockService
 
     /**
      * Déduit automatiquement le stock physique et enregistre le mouvement lors d'une vente.
-     * Cible avec précision le ou les entrepôts détenant physiquement le stock de l'article.
+     * Cible avec précision le ou les entrepôts détenant physiquement le stock de l'article,
+     * en servant d'abord l'entrepôt préféré (ex. celui choisi en caisse) s'il est fourni.
      *
      * @return array<StockMovement>
      */
-    public static function deductSaleStock(int $productId, int $quantity, ?int $preferredDomainId = null, ?int $orderId = null, ?string $reference = null, ?string $notes = null): array
+    public static function deductSaleStock(int $productId, int $quantity, ?int $preferredDomainId = null, ?int $orderId = null, ?string $reference = null, ?string $notes = null, ?int $preferredWarehouseId = null): array
     {
-        return DB::transaction(function () use ($productId, $quantity, $preferredDomainId, $orderId, $reference, $notes) {
+        return DB::transaction(function () use ($productId, $quantity, $preferredDomainId, $orderId, $reference, $notes, $preferredWarehouseId) {
             $product = Product::findOrFail($productId);
             $remaining = $quantity;
             $movements = [];
@@ -150,8 +151,10 @@ class StockService
                 ->where('physical_quantity', '>', 0)
                 ->get();
 
-            // Prioriser l'entrepôt rattaché au domaine s'il a du stock
-            if ($preferredDomainId && $stocks->count() > 1) {
+            // Prioriser l'entrepôt choisi, sinon celui rattaché au domaine s'il a du stock
+            if ($preferredWarehouseId && $stocks->count() > 1) {
+                $stocks = $stocks->sortByDesc(fn ($s) => $s->warehouse_id === $preferredWarehouseId ? 1 : 0);
+            } elseif ($preferredDomainId && $stocks->count() > 1) {
                 $preferredWarehouse = Warehouse::where('domain_id', $preferredDomainId)->first();
                 if ($preferredWarehouse) {
                     $stocks = $stocks->sortByDesc(fn ($s) => $s->warehouse_id === $preferredWarehouse->id ? 1 : 0);
@@ -195,7 +198,8 @@ class StockService
 
             // 2. Si le produit n'a pas encore de ligne WarehouseStock > 0 (fallback)
             if ($remaining > 0) {
-                $fallbackWarehouse = ($preferredDomainId ? Warehouse::where('domain_id', $preferredDomainId)->first() : null)
+                $fallbackWarehouse = ($preferredWarehouseId ? Warehouse::find($preferredWarehouseId) : null)
+                    ?? ($preferredDomainId ? Warehouse::where('domain_id', $preferredDomainId)->first() : null)
                     ?? Warehouse::first();
 
                 if ($fallbackWarehouse) {
@@ -242,7 +246,7 @@ class StockService
      *
      * @return array<StockMovement>
      */
-    public static function deductOrderStock(Order $order, ?string $notes = null): array
+    public static function deductOrderStock(Order $order, ?string $notes = null, ?int $preferredWarehouseId = null): array
     {
         if (! in_array($order->status, ['livrée', 'livree'])) {
             return [];
@@ -267,7 +271,8 @@ class StockService
                     preferredDomainId: $order->domain_id,
                     orderId: $order->id,
                     reference: $order->reference,
-                    notes: $notes ?? ('Sortie vente commande livrée ('.$order->reference.')')
+                    notes: $notes ?? ('Sortie vente commande livrée ('.$order->reference.')'),
+                    preferredWarehouseId: $preferredWarehouseId
                 );
                 $movements = array_merge($movements, $mvts);
             }
