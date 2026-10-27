@@ -142,10 +142,10 @@
                         <button type="button" title="Supprimer l'entrepôt"
                                 @click="$dispatch('open-delete-warehouse', {
                                     id: {{ $warehouse->id }},
-                                    name: '{{ addslashes($warehouse->name) }}',
-                                    code: '{{ $warehouse->code }}',
-                                    totalStock: {{ (int) $warehouse->total_items }},
-                                    productCount: {{ (int) $warehouse->product_count }}
+                                    name: {{ Js::from($warehouse->name) }},
+                                    code: {{ Js::from($warehouse->code) }},
+                                    totalStock: {{ (int) $warehouse->physical_stock }},
+                                    productCount: {{ (int) $warehouse->physical_product_count }}
                                 })"
                                 class="flex flex-col items-center gap-1 rounded-xl border border-rose-200 py-2 text-[11px] font-medium text-rose-600 transition hover:bg-rose-50">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -173,5 +173,5 @@
     @endif
 
     {{-- Modal de confirmation / transfert pour suppression d'entrepôt --}}
-    <x-delete-warehouse-modal :warehouses="$warehouses" />
+    <x-delete-warehouse-modal />
 </x-layouts.app>

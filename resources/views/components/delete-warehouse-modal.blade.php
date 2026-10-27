@@ -1,7 +1,7 @@
-@props(['warehouses' => null])
-
 @php
-    $allWarehousesList = $warehouses ?? \App\Models\Warehouse::orderBy('name')->get(['id', 'name', 'code']);
+    $allWarehousesList = \App\Models\Warehouse::orderBy('name')->get(['id', 'name', 'code'])
+        ->map(fn ($warehouse) => ['id' => $warehouse->id, 'name' => $warehouse->name, 'code' => $warehouse->code])
+        ->values();
 @endphp
 
 <div
@@ -108,6 +108,7 @@
                                     <select 
                                         name="transfer_to_warehouse_id" 
                                         x-model="transferToWarehouseId"
+                                        :disabled="stockResolution !== 'transfer'"
                                         class="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-medium text-[#0B0F14] focus:outline-none focus:border-[#0066FF]"
                                     >
                                         <template x-for="wh in otherWarehouses" :key="wh.id">
@@ -181,7 +182,7 @@ function deleteWarehouseModal() {
 
         get deleteActionUrl() {
             if (!this.warehouseId) return '#';
-            return '{{ url('stock/warehouses') }}/' + this.warehouseId;
+            return @js(route('stock.warehouses.destroy', '__ID__')).replace('__ID__', this.warehouseId);
         },
 
         open(detail) {

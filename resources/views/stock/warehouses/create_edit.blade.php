@@ -153,8 +153,8 @@
                         type="button" 
                         @click="$dispatch('open-delete-warehouse', { 
                             id: {{ $warehouse->id }}, 
-                            name: '{{ addslashes($warehouse->name) }}', 
-                            code: '{{ $warehouse->code }}', 
+                            name: {{ Js::from($warehouse->name) }}, 
+                            code: {{ Js::from($warehouse->code) }}, 
                             totalStock: {{ (int) $warehouse->warehouseStocks->sum('physical_quantity') }},
                             productCount: {{ (int) $warehouse->warehouseStocks->where('physical_quantity', '>', 0)->count() }}
                         })"

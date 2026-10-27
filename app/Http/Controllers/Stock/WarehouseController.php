@@ -30,7 +30,10 @@ class WarehouseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Warehouse::with('domain')->orderBy('label_number');
+        $query = Warehouse::with('domain')
+            ->withSum('warehouseStocks as physical_stock', 'physical_quantity')
+            ->withCount(['warehouseStocks as physical_product_count' => fn ($stockQuery) => $stockQuery->where('physical_quantity', '>', 0)])
+            ->orderBy('label_number');
 
         if ($request->filled('domain_id')) {
             $query->where('domain_id', $request->domain_id);
@@ -270,33 +273,45 @@ class WarehouseController extends Controller
         $remainingStocks = $warehouse->warehouseStocks()->where('physical_quantity', '>', 0)->get();
         $totalUnits = (int) $remainingStocks->sum('physical_quantity');
 
+        $wantsForceDelete = $request->input('stock_resolution') === 'force' || $request->boolean('force_delete');
+
         // Si l'utilisateur a choisi de transférer les stocks vers un autre entrepôt avant suppression
-        if ($request->filled('transfer_to_warehouse_id') && $totalUnits > 0) {
-            $destWarehouse = Warehouse::findOrFail($request->input('transfer_to_warehouse_id'));
+        if (! $wantsForceDelete && $request->filled('transfer_to_warehouse_id') && $totalUnits > 0) {
+            $destWarehouse = Warehouse::find($request->input('transfer_to_warehouse_id'));
+
+            if (! $destWarehouse) {
+                return back()->with('error', "L'entrepôt de destination sélectionné est introuvable.");
+            }
 
             if ($destWarehouse->id === $warehouse->id) {
                 return back()->with('error', "L'entrepôt de destination doit être différent de l'entrepôt à supprimer.");
             }
 
-            DB::transaction(function () use ($warehouse, $destWarehouse, $remainingStocks) {
-                foreach ($remainingStocks as $ws) {
-                    StockService::processMovement([
-                        'warehouse_id' => $warehouse->id,
-                        'destination_warehouse_id' => $destWarehouse->id,
-                        'product_id' => $ws->product_id,
-                        'domain_id' => $ws->product?->domain_id,
-                        'user_id' => auth()->id(),
-                        'type' => 'transfert',
-                        'reason_motif' => 'Transfert avant suppression entrepôt',
-                        'quantity' => $ws->physical_quantity,
-                        'reference' => 'TRF-CLOTURE-'.strtoupper(Str::random(5)),
-                        'notes' => "Transfert automatique de clôture vers {$destWarehouse->name} avant suppression de {$warehouse->name}",
-                        'date' => now(),
-                    ]);
-                }
+            try {
+                DB::transaction(function () use ($warehouse, $destWarehouse, $remainingStocks) {
+                    foreach ($remainingStocks as $ws) {
+                        StockService::processMovement([
+                            'warehouse_id' => $warehouse->id,
+                            'destination_warehouse_id' => $destWarehouse->id,
+                            'product_id' => $ws->product_id,
+                            'domain_id' => $ws->product?->domain_id,
+                            'user_id' => auth()->id(),
+                            'type' => 'transfert',
+                            'reason_motif' => 'Transfert avant suppression entrepôt',
+                            'quantity' => $ws->physical_quantity,
+                            'reference' => 'TRF-CLOTURE-'.strtoupper(Str::random(5)),
+                            'notes' => "Transfert automatique de clôture vers {$destWarehouse->name} avant suppression de {$warehouse->name}",
+                            'date' => now(),
+                        ]);
+                    }
 
-                $warehouse->delete();
-            });
+                    $warehouse->delete();
+                });
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return back()->with('error', "Le transfert des stocks a échoué, l'entrepôt n'a pas été supprimé : {$exception->getMessage()}");
+            }
 
             ActivityLogger::log('delete_warehouse', "Suppression de l'entrepôt {$warehouseName} (stocks transférés vers {$destWarehouse->name})", null);
 
@@ -304,7 +319,7 @@ class WarehouseController extends Controller
         }
 
         // Si des stocks physiques existent et que la suppression forcée n'a pas été confirmée
-        if ($totalUnits > 0 && ! $request->boolean('force_delete')) {
+        if ($totalUnits > 0 && ! $wantsForceDelete) {
             return back()->with('error', "Cet entrepôt contient encore {$totalUnits} unité(s) en stock. Veuillez transférer les stocks vers un autre entrepôt ou confirmer la suppression forcée.");
         }
 
