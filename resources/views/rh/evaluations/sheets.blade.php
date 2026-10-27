@@ -32,6 +32,28 @@
             </x-slot:actions>
         </x-evaluation.header>
 
+        @if($possible > 0)
+            @php $donePct = round($done / $possible * 100); @endphp
+            <x-evaluation.hero>
+                <div class="flex items-center gap-5">
+                    <div class="relative h-24 w-24 shrink-0">
+                        <svg viewBox="0 0 36 36" class="h-full w-full -rotate-90">
+                            <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+                            @if($donePct > 0)
+                                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#3B8BFF" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{ $donePct }} 100"/>
+                            @endif
+                        </svg>
+                        <span class="absolute inset-0 flex items-center justify-center text-xl font-semibold">{{ $donePct }}%</span>
+                    </div>
+                    <div class="min-w-0 space-y-1">
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Vos fiches remises</p>
+                        <p class="text-3xl font-semibold tracking-tight">{{ $done }} <span class="text-base font-normal text-slate-400">/ {{ $possible }}</span></p>
+                        <p class="text-xs {{ $done >= $possible ? 'text-emerald-300' : 'text-slate-400' }}">{{ $done >= $possible ? 'Toutes vos fiches sont remises' : 'À remettre avant le dernier jour ouvrable' }}</p>
+                    </div>
+                </div>
+            </x-evaluation.hero>
+        @endif
+
         {{-- Auto-évaluation --}}
         @if($selfRow)
             @php $selfDone = $selfRow['evaluation']->sheets->isNotEmpty(); @endphp
@@ -51,12 +73,7 @@
         @if($others->isNotEmpty())
             {{-- Avancement et recherche --}}
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div class="min-w-0 sm:w-64">
-                    <p class="text-xs text-[#64748B]">Vos fiches remises : <span class="font-semibold text-[#0B0F14]">{{ $done }}</span> / {{ $possible }}</p>
-                    <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#EEF2F6]">
-                        <div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $possible ? round($done / $possible * 100) : 0 }}%"></div>
-                    </div>
-                </div>
+                <h2 class="px-1 text-sm font-semibold text-[#0B0F14]">Membres à évaluer</h2>
                 <label class="relative block sm:w-72">
                     <span class="sr-only">Rechercher un membre</span>
                     <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
@@ -64,7 +81,7 @@
                 </label>
             </div>
 
-            <ul class="divide-y divide-[#EEF2F6] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+            <ul class="divide-y divide-[#E2E8F0] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
                 @foreach($others as $row)
                     @php
                         $evaluation = $row['evaluation'];
@@ -72,9 +89,9 @@
                         $initials = strtoupper(mb_substr($employee->first_name ?? '', 0, 1).mb_substr($employee->last_name ?? '', 0, 1));
                     @endphp
                     <li x-show="search === '' || @js(mb_strtolower($employee->full_name)).includes(search.toLowerCase())"
-                        class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                        <div class="flex min-w-0 items-center gap-3">
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F1F5F9] text-xs font-semibold text-[#334155]">{{ $initials }}</span>
+                        class="flex flex-col gap-3 p-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="flex min-w-0 shrink-0 items-center gap-3 lg:w-64">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F5F7FA] text-xs font-semibold text-[#334155]">{{ $initials }}</span>
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-medium text-[#0B0F14]">{{ $employee->full_name }}</p>
                                 <p class="truncate text-xs text-[#64748B]">
@@ -83,7 +100,7 @@
                                 </p>
                             </div>
                         </div>
-                        <div class="flex flex-wrap gap-1.5 sm:justify-end">
+                        <div class="flex flex-wrap gap-1.5 lg:justify-end">
                             @foreach($row['groups'] as $group)
                                 @php $filled = $evaluation->sheets->contains('evaluator_group', $group); @endphp
                                 @if($evaluation->is_locked)

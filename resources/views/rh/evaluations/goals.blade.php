@@ -13,15 +13,10 @@
 <x-layouts.app>
     <x-slot:title>Objectifs des membres — IVOSPHERE RH</x-slot>
 
-    <div x-data="{ createOpen: false, edit: null, updateUrl: @js(route('rh.goals.update', '__ID__')) }" class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
+    <div x-data="{ createOpen: false, edit: null, updateUrl: @js(route('rh.goals.update', '__ID__')) }" class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
         <x-evaluation.header
             title="Objectifs"
             subtitle="1 à 3 objectifs ciblés par membre, fixés à l'entretien et suivis jusqu'à l'échéance."
-            :breadcrumbs="[
-                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index')],
-                ['label' => 'Objectifs'],
-            ]"
             active="goals"
         >
             <x-slot:actions>
@@ -33,19 +28,31 @@
         </x-evaluation.header>
 
         {{-- Indicateurs --}}
-        <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            @foreach([
-                ['Objectifs', $totalGoals],
-                ['Atteints', $achievedGoals],
-                ['En cours', $inProgressGoals],
-                ['Taux de réussite', $achievementRate.' %'],
-            ] as [$statLabel, $statValue])
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                    <dt class="text-xs text-[#64748B]">{{ $statLabel }}</dt>
-                    <dd class="mt-1 text-2xl font-semibold text-[#0B0F14]">{{ $statValue }}</dd>
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-12" aria-label="Indicateurs">
+            <x-evaluation.hero glow="bg-emerald-500/25" class="lg:col-span-5">
+                <div class="flex items-center gap-5">
+                    <div class="relative h-24 w-24 shrink-0">
+                        <svg viewBox="0 0 36 36" class="h-full w-full -rotate-90">
+                            <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+                            @if($achievementRate > 0)
+                                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{ $achievementRate }} 100"/>
+                            @endif
+                        </svg>
+                        <span class="absolute inset-0 flex items-center justify-center text-xl font-semibold">{{ $achievementRate }}%</span>
+                    </div>
+                    <div class="min-w-0 space-y-1">
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Taux de réussite</p>
+                        <p class="text-3xl font-semibold tracking-tight">{{ $achievedGoals }} <span class="text-base font-normal text-slate-400">/ {{ $totalGoals }}</span></p>
+                        <p class="text-xs text-emerald-300">objectifs atteints</p>
+                    </div>
                 </div>
-            @endforeach
-        </dl>
+            </x-evaluation.hero>
+            <div class="grid grid-cols-3 gap-3 sm:gap-4 lg:col-span-7">
+                <x-evaluation.stat label="Objectifs" :value="$totalGoals" icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <x-evaluation.stat label="En cours" :value="$inProgressGoals" tint="bg-blue-50 text-[#0066FF]" icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <x-evaluation.stat label="Atteints" :value="$achievedGoals" tint="bg-emerald-50 text-emerald-600" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </div>
+        </section>
 
         {{-- Filtres --}}
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -67,7 +74,7 @@
         </div>
 
         {{-- Liste --}}
-        <ul class="divide-y divide-[#EEF2F6] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+        <ul class="divide-y divide-[#E2E8F0] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
             @forelse($goals as $goal)
                 @php
                     [$statusLabel, $statusClass] = $statuses[$goal->status] ?? [$goal->status, 'bg-slate-100 text-slate-700'];
@@ -82,7 +89,7 @@
                         @endif
                     </div>
                     <div class="flex items-center gap-2">
-                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#EEF2F6]"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $goal->progress_pct }}%"></div></div>
+                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $goal->progress_pct }}%"></div></div>
                         <span class="w-9 text-right text-xs font-medium text-[#0B0F14]">{{ $goal->progress_pct }} %</span>
                     </div>
                     <div class="flex items-center gap-2 text-xs md:flex-col md:items-start md:gap-1">

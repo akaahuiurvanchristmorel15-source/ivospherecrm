@@ -11,15 +11,10 @@
 <x-layouts.app>
     <x-slot:title>Classement et récompenses — {{ $monthNames[$month] }} {{ $year }}</x-slot>
 
-    <div class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
+    <div class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
         <x-evaluation.header
             title="Classement et récompenses"
             subtitle="Seul le membre du mois est annoncé en réunion ; les notes détaillées restent confidentielles."
-            :breadcrumbs="[
-                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index', ['year' => $year, 'month' => $month])],
-                ['label' => 'Classement'],
-            ]"
             active="ranking" :year="$year" :month="$month"
         >
             <x-slot:actions>
@@ -46,59 +41,57 @@
         </x-evaluation.header>
 
         {{-- ───────── Récompenses ───────── --}}
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-12" aria-label="Récompenses">
             {{-- Membre du mois --}}
-            <section class="rounded-2xl border border-[#E2E8F0] bg-white p-5 lg:col-span-1">
-                <p class="text-xs font-medium text-[#64748B]">Membre du mois</p>
+            <x-evaluation.hero glow="bg-emerald-500/25" class="lg:col-span-5">
+                <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Membre du mois</p>
                 @if($memberOfTheMonth)
-                    <div class="mt-4 flex items-center gap-4">
-                        <x-evaluation.score-ring :score="$memberOfTheMonth->final_score_20" />
-                        <div class="min-w-0">
-                            <p class="truncate text-base font-semibold text-[#0B0F14]">{{ $memberOfTheMonth->employee->full_name }}</p>
-                            <p class="truncate text-xs text-[#64748B]">{{ $memberOfTheMonth->employee->position ?? 'Membre' }}</p>
-                            <span class="mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold {{ $memberOfTheMonth->appreciation_badge_class }}">{{ $memberOfTheMonth->appreciation }}</span>
+                    <div class="mt-4 flex items-center gap-5">
+                        <x-evaluation.score-ring :score="$memberOfTheMonth->final_score_20" on-dark />
+                        <div class="min-w-0 space-y-1">
+                            <p class="truncate text-2xl font-semibold tracking-tight">{{ $memberOfTheMonth->employee->full_name }}</p>
+                            <p class="truncate text-xs text-slate-400">{{ $memberOfTheMonth->employee->position ?? 'Membre' }} · {{ $memberOfTheMonth->appreciation }}</p>
                         </div>
                     </div>
-                    <p class="mt-4 text-[11px] leading-relaxed text-[#64748B]">Félicitations en réunion, affichage dans les magasins, encouragement.</p>
+                    <p class="mt-5 border-t border-white/10 pt-4 text-xs text-emerald-300">Félicitations en réunion, affichage dans les magasins, encouragement.</p>
                 @else
-                    <p class="mt-4 text-sm text-[#0B0F14]">{{ $isTrial ? 'Mois d\'essai' : 'Pas de membre du mois' }}</p>
-                    <p class="mt-1 text-xs text-[#64748B]">{{ $isTrial ? 'Les notes sont données sans conséquence.' : 'Il faut une note d\'au moins 14 / 20.' }}</p>
+                    <p class="mt-4 text-2xl font-semibold tracking-tight">{{ $isTrial ? "Mois d'essai" : 'Pas de membre du mois' }}</p>
+                    <p class="mt-1 text-xs text-slate-400">{{ $isTrial ? 'Les notes sont données sans conséquence.' : "Il faut une note d'au moins 14 / 20." }}</p>
                 @endif
-            </section>
+            </x-evaluation.hero>
 
-            {{-- Récompense du trimestre --}}
-            <section class="rounded-2xl border border-[#E2E8F0] bg-white p-5">
-                <p class="text-xs font-medium text-[#64748B]">Récompense du trimestre</p>
-                <p class="text-[11px] text-[#94A3B8]">{{ $ranking['quarter']['label'] }} · moyenne ≥ 12 / 20</p>
-                <ol class="mt-4 space-y-2.5">
-                    @forelse($ranking['quarter']['rewarded'] as $index => $row)
-                        <li class="flex items-center gap-3">
-                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold {{ $index === 0 ? 'bg-[#0B0F14] text-white' : 'bg-[#F1F5F9] text-[#334155]' }}">{{ $index + 1 }}</span>
-                            <span class="min-w-0 flex-1 truncate text-sm text-[#0B0F14]">{{ $row['employee']->full_name }}</span>
-                            <span class="shrink-0 text-sm font-semibold text-[#0B0F14]">{{ number_format($row['average'], 2, ',', '') }}</span>
-                        </li>
-                    @empty
-                        <li class="text-xs text-[#64748B]">Aucune moyenne d'au moins 12 / 20 sur le trimestre.</li>
-                    @endforelse
-                </ol>
-            </section>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-7">
+                {{-- Récompense du trimestre --}}
+                <x-evaluation.section title="Récompense du trimestre" :subtitle="$ranking['quarter']['label'] . ' · moyenne ≥ 12 / 20'" :padding="false">
+                    <ol class="divide-y divide-[#E2E8F0] px-5">
+                        @forelse($ranking['quarter']['rewarded'] as $index => $row)
+                            <li class="flex items-center gap-3 py-3">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold {{ $index === 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#F5F7FA] text-[#0B0F14]' }}">{{ $index + 1 }}</span>
+                                <span class="min-w-0 flex-1 truncate text-sm font-medium text-[#0B0F14]">{{ $row['employee']->full_name }}</span>
+                                <span class="shrink-0 text-sm font-semibold text-[#0B0F14]">{{ number_format($row['average'], 2, ',', '') }}</span>
+                            </li>
+                        @empty
+                            <li class="py-10 text-center text-xs text-[#64748B]">Aucune moyenne d'au moins 12 / 20.</li>
+                        @endforelse
+                    </ol>
+                </x-evaluation.section>
 
-            {{-- Progressions --}}
-            <section class="rounded-2xl border border-[#E2E8F0] bg-white p-5">
-                <p class="text-xs font-medium text-[#64748B]">Plus fortes progressions</p>
-                <p class="text-[11px] text-[#94A3B8]">Par rapport au mois précédent</p>
-                <ol class="mt-4 space-y-2.5">
-                    @forelse($ranking['topProgression'] as $evaluation)
-                        <li class="flex items-center gap-3">
-                            <span class="min-w-0 flex-1 truncate text-sm text-[#0B0F14]">{{ $evaluation->employee->full_name }}</span>
-                            <span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">+{{ number_format($evaluation->score_progress, 2, ',', '') }}</span>
-                        </li>
-                    @empty
-                        <li class="text-xs text-[#64748B]">Aucune progression ce mois.</li>
-                    @endforelse
-                </ol>
-            </section>
-        </div>
+                {{-- Progressions --}}
+                <x-evaluation.section title="Plus fortes progressions" subtitle="Par rapport au mois précédent" :padding="false">
+                    <ol class="divide-y divide-[#E2E8F0] px-5">
+                        @forelse($ranking['topProgression'] as $evaluation)
+                            <li class="flex items-center gap-3 py-3">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F5F7FA] text-[11px] font-semibold text-[#0B0F14]">{{ $initials($evaluation->employee) }}</span>
+                                <span class="min-w-0 flex-1 truncate text-sm font-medium text-[#0B0F14]">{{ $evaluation->employee->full_name }}</span>
+                                <span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">+{{ number_format($evaluation->score_progress, 2, ',', '') }}</span>
+                            </li>
+                        @empty
+                            <li class="py-10 text-center text-xs text-[#64748B]">Aucune progression ce mois.</li>
+                        @endforelse
+                    </ol>
+                </x-evaluation.section>
+            </div>
+        </section>
 
         {{-- ───────── Classement du mois ───────── --}}
         <x-evaluation.section title="Classement du mois" subtitle="Les 10 meilleures notes sur 20" :padding="false">
@@ -107,7 +100,7 @@
             @else
                 {{-- Desktop --}}
                 <table class="hidden w-full text-left text-sm md:table">
-                    <thead class="border-b border-[#EEF2F6] text-[11px] font-medium text-[#94A3B8]">
+                    <thead class="border-b border-[#E2E8F0] text-[11px] font-medium text-[#94A3B8]">
                         <tr>
                             <th class="w-14 px-5 py-2.5 font-medium">Rang</th>
                             <th class="px-3 py-2.5 font-medium">Membre</th>
@@ -119,7 +112,7 @@
                             <th class="w-24 px-5 py-2.5 text-right font-medium">Évolution</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-[#EEF2F6]">
+                    <tbody class="divide-y divide-[#E2E8F0]">
                         @foreach($ranking['topOverall'] as $index => $evaluation)
                             <tr class="group cursor-pointer transition hover:bg-[#F8FAFC]" onclick="window.location='{{ route('rh.evaluations.show', $evaluation) }}'">
                                 <td class="px-5 py-3 font-semibold {{ $index < 3 ? 'text-[#0B0F14]' : 'text-[#94A3B8]' }}">{{ $index + 1 }}</td>
@@ -142,12 +135,12 @@
                 </table>
 
                 {{-- Mobile --}}
-                <ol class="divide-y divide-[#EEF2F6] md:hidden">
+                <ol class="divide-y divide-[#E2E8F0] md:hidden">
                     @foreach($ranking['topOverall'] as $index => $evaluation)
                         <li>
                             <a href="{{ route('rh.evaluations.show', $evaluation) }}" class="flex items-center gap-3 px-4 py-3 active:bg-[#F8FAFC]">
                                 <span class="w-5 shrink-0 text-sm font-semibold {{ $index < 3 ? 'text-[#0B0F14]' : 'text-[#94A3B8]' }}">{{ $index + 1 }}</span>
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F1F5F9] text-[11px] font-semibold text-[#334155]">{{ $initials($evaluation->employee) }}</span>
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F5F7FA] text-[11px] font-semibold text-[#334155]">{{ $initials($evaluation->employee) }}</span>
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate text-sm font-medium text-[#0B0F14]">{{ $evaluation->employee->full_name }}</span>
                                     <span class="block text-[11px] text-[#64748B]">{{ $evaluation->appreciation }}</span>

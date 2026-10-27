@@ -20,10 +20,8 @@
         <x-evaluation.header
             :title="$evaluation->employee->full_name"
             :subtitle="$groupLabel . ' · ' . $evaluation->month_name . ' ' . $evaluation->year"
-            :breadcrumbs="[
-                ['label' => 'Fiches d\'évaluation', 'url' => route('rh.evaluation-sheets.index', ['year' => $evaluation->year, 'month' => $evaluation->month])],
-                ['label' => $evaluation->employee->full_name],
-            ]"
+            :back-url="route('rh.evaluation-sheets.index', ['year' => $evaluation->year, 'month' => $evaluation->month])"
+            back-label="Fiches d'évaluation"
         />
 
         <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4 text-xs leading-relaxed text-[#334155] sm:p-5">
@@ -118,7 +116,7 @@
             <div class="flex items-center gap-4 px-4 py-3">
                 <div class="min-w-0 flex-1">
                     <p class="text-xs text-[#64748B]"><span class="font-semibold text-[#0B0F14]" x-text="rated"></span> / {{ $total }} critères notés</p>
-                    <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#EEF2F6]">
+                    <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
                         <div class="h-full rounded-full bg-[#0066FF] transition-all duration-300" :style="`width: ${total ? rated / total * 100 : 0}%`"></div>
                     </div>
                 </div>

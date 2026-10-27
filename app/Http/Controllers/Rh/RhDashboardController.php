@@ -42,7 +42,8 @@ class RhDashboardController extends Controller
         $currentMonth = now()->month;
         $monthlyEvaluationAvg = round((float) MonthlyEvaluation::where('year', $currentYear)
             ->where('month', $currentMonth)
-            ->avg('final_score_30'), 1);
+            ->whereNotNull('appreciation')
+            ->avg('final_score_20'), 1);
 
         // Tâches du jour en attente de validation par les managers
         $pendingTaskValidations = DailyTaskSheet::whereDate('date', $today)

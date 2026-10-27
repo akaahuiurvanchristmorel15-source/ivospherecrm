@@ -32,16 +32,13 @@
 <x-layouts.app>
     <x-slot:title>Évaluation de {{ $employee->full_name }} — {{ $evaluation->month_name }} {{ $evaluation->year }}</x-slot>
 
-    <div x-data="{ goalOpen: false, pipOpen: false }" class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
+    <div x-data="{ goalOpen: false, pipOpen: false }" class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
 
         <x-evaluation.header
             :title="$employee->full_name"
             :subtitle="$evaluation->month_name . ' ' . $evaluation->year . ' · ' . ($employee->position ?? 'Membre') . ' · ' . ($employee->department ?? 'Général')"
-            :breadcrumbs="[
-                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index', ['year' => $evaluation->year, 'month' => $evaluation->month])],
-                ['label' => $employee->full_name],
-            ]"
+            :back-url="route('rh.evaluations.index', ['year' => $evaluation->year, 'month' => $evaluation->month])"
+            back-label="Évaluations"
         >
             <x-slot:actions>
                 <a href="{{ route('rh.evaluations.history', $employee) }}" class="{{ $ghostButton }}">Historique</a>
@@ -87,14 +84,14 @@
 
             {{-- ───────── Panneau latéral : note, blocs, avancement ───────── --}}
             <aside class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:sticky xl:top-6 xl:order-last xl:block xl:space-y-4 xl:self-start">
-                <x-evaluation.section>
-                    <div class="flex items-center gap-4">
-                        <x-evaluation.score-ring :score="$evaluation->isScored() ? $evaluation->final_score_20 : null" />
-                        <div class="min-w-0 space-y-1.5">
-                            <p class="text-xs text-[#64748B]">Note du mois</p>
-                            <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold {{ $evaluation->appreciation_badge_class }}">{{ $evaluation->appreciation }}</span>
+                <x-evaluation.hero :glow="$evaluation->isScored() && $evaluation->final_score_20 < 10 ? 'bg-rose-500/25' : 'bg-[#0066FF]/30'">
+                    <div class="flex items-center gap-5">
+                        <x-evaluation.score-ring :score="$evaluation->isScored() ? $evaluation->final_score_20 : null" on-dark />
+                        <div class="min-w-0 space-y-1">
+                            <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Note du mois</p>
+                            <p class="text-2xl font-semibold tracking-tight">{{ $evaluation->appreciation }}</p>
                             @if((float) $evaluation->score_progress !== 0.0)
-                                <p class="text-xs font-medium {{ $evaluation->score_progress > 0 ? 'text-emerald-700' : 'text-rose-700' }}">
+                                <p class="text-xs {{ $evaluation->score_progress > 0 ? 'text-emerald-300' : 'text-rose-300' }}">
                                     {{ $evaluation->score_progress > 0 ? '↗ +' : '↘ ' }}{{ number_format($evaluation->score_progress, 2, ',', '') }} vs mois précédent
                                 </p>
                             @endif
@@ -102,14 +99,14 @@
                     </div>
 
                     @if($evaluation->follow_up)
-                        <p class="mt-4 rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-xs leading-relaxed text-[#334155]">{{ $evaluation->follow_up }}</p>
+                        <p class="mt-4 text-xs leading-relaxed text-slate-300">{{ $evaluation->follow_up }}</p>
                     @endif
 
-                    <div class="mt-5 border-t border-[#EEF2F6] pt-4">
-                        <x-evaluation.block-bars :evaluation="$evaluation" />
-                        <p class="mt-3 text-[11px] text-[#94A3B8]">4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D)</p>
+                    <div class="mt-5 border-t border-white/10 pt-4">
+                        <x-evaluation.block-bars :evaluation="$evaluation" on-dark />
+                        <p class="mt-3 text-[11px] text-slate-500">4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D)</p>
                     </div>
-                </x-evaluation.section>
+                </x-evaluation.hero>
 
                 <x-evaluation.section title="Avancement">
                     <ol class="space-y-3">
@@ -144,7 +141,7 @@
                     @else
                         <ul class="flex flex-wrap gap-1.5">
                             @foreach($sheetsByGroup as $group => $groupSheets)
-                                <li class="rounded-full bg-[#F1F5F9] px-2.5 py-1 text-[11px] font-medium text-[#334155]">
+                                <li class="rounded-full bg-[#F5F7FA] px-2.5 py-1 text-[11px] font-medium text-[#334155]">
                                     {{ \App\Models\EvaluationSheet::GROUPS[$group]['label'] ?? $group }}
                                     @if($groupSheets->count() > 1)<span class="text-[#64748B]">× {{ $groupSheets->count() }}</span>@endif
                                 </li>
@@ -159,7 +156,7 @@
 
                 {{-- Tableau de consolidation --}}
                 <x-evaluation.section title="Tableau de consolidation" subtitle="Chaque critère est noté de 1 à 5 par les évaluateurs qui l'observent ; l'auto-évaluation ne compte pas" :padding="false">
-                    <div class="hidden grid-cols-[minmax(0,1fr)_repeat(5,3.75rem)_4.25rem] items-end gap-2 border-b border-[#EEF2F6] px-5 py-2.5 text-[10px] font-medium uppercase tracking-wide text-[#94A3B8] md:grid">
+                    <div class="hidden grid-cols-[minmax(0,1fr)_repeat(5,3.75rem)_4.25rem] items-end gap-2 border-b border-[#E2E8F0] px-5 py-2.5 text-[10px] font-medium uppercase tracking-wide text-[#94A3B8] md:grid">
                         <span>Critère</span>
                         @foreach($categories as $categoryKey => $category)
                             <span class="text-center" title="{{ $category['label'] }}">{{ $shortLabels[$categoryKey] }}<br><span class="normal-case">{{ $category['weight'] }} %</span></span>
@@ -177,7 +174,7 @@
                             <span class="text-xs font-semibold {{ $scoreClass($blockScore === null ? null : (float) $blockScore) }}">{{ $blockScore === null ? 'n.c.' : number_format($blockScore, 2, ',', '').' / 5' }}</span>
                         </div>
 
-                        <ul class="divide-y divide-[#EEF2F6]">
+                        <ul class="divide-y divide-[#E2E8F0]">
                             @foreach($rows as $row)
                                 <li x-data="{ open: false }" class="px-4 py-3 sm:px-5">
                                     <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-[minmax(0,1fr)_repeat(5,3.75rem)_4.25rem]">
@@ -257,7 +254,7 @@
                         </div>
 
                         @unless($isLocked)
-                            <div class="mt-5 flex flex-col gap-3 border-t border-[#EEF2F6] pt-4 sm:flex-row sm:items-end">
+                            <div class="mt-5 flex flex-col gap-3 border-t border-[#E2E8F0] pt-4 sm:flex-row sm:items-end">
                                 <div class="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
                                         <label for="workflow_step" class="{{ $label }}">Étape</label>
@@ -295,9 +292,9 @@
                                 <article class="rounded-xl border border-[#E2E8F0] p-4 text-xs">
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <p class="text-sm font-medium text-[#0B0F14]">{{ $pip->title }}</p>
-                                        <span class="rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[11px] font-medium text-[#334155]">{{ ucfirst(str_replace('_', ' ', $pip->status)) }} · {{ $pip->progress_pct }} %</span>
+                                        <span class="rounded-full bg-[#F5F7FA] px-2.5 py-0.5 text-[11px] font-medium text-[#334155]">{{ ucfirst(str_replace('_', ' ', $pip->status)) }} · {{ $pip->progress_pct }} %</span>
                                     </div>
-                                    <div class="mt-2 h-1 overflow-hidden rounded-full bg-[#EEF2F6]"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $pip->progress_pct }}%"></div></div>
+                                    <div class="mt-2 h-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $pip->progress_pct }}%"></div></div>
                                     <dl class="mt-3 grid grid-cols-1 gap-2 text-[#334155] sm:grid-cols-2">
                                         <div><dt class="text-[#94A3B8]">Difficulté</dt><dd>{{ $pip->problem_identified }}</dd></div>
                                         <div><dt class="text-[#94A3B8]">Objectif</dt><dd>{{ $pip->target_objective }}</dd></div>
@@ -316,7 +313,7 @@
                     <x-slot:actions>
                         <button type="button" @click="goalOpen = true" class="text-xs font-semibold text-[#0066FF] hover:underline">Ajouter</button>
                     </x-slot:actions>
-                    <div class="divide-y divide-[#EEF2F6]">
+                    <div class="divide-y divide-[#E2E8F0]">
                         @forelse($employee->goals as $goal)
                             <div class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="min-w-0">
@@ -324,7 +321,7 @@
                                     <p class="text-[11px] text-[#94A3B8]">Échéance {{ $goal->due_date?->format('d/m/Y') }} · {{ ucfirst(str_replace('_', ' ', $goal->status)) }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 sm:w-40">
-                                    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#EEF2F6]"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $goal->progress_pct }}%"></div></div>
+                                    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $goal->progress_pct }}%"></div></div>
                                     <span class="w-9 text-right text-xs font-medium text-[#0B0F14]">{{ $goal->progress_pct }} %</span>
                                 </div>
                             </div>

@@ -13,15 +13,10 @@
 <x-layouts.app>
     <x-slot:title>Plans de progrès — IVOSPHERE RH</x-slot>
 
-    <div x-data="{ createOpen: false, edit: null, updateUrl: @js(route('rh.pips.update', '__ID__')) }" class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
+    <div x-data="{ createOpen: false, edit: null, updateUrl: @js(route('rh.pips.update', '__ID__')) }" class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
         <x-evaluation.header
             title="Plans de progrès"
             subtitle="Sous 10 / 20 : plan de 30 jours, avec un référent et une formation."
-            :breadcrumbs="[
-                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index')],
-                ['label' => 'Plans de progrès'],
-            ]"
             active="pips"
         >
             <x-slot:actions>
@@ -32,14 +27,11 @@
             </x-slot:actions>
         </x-evaluation.header>
 
-        <dl class="grid grid-cols-3 gap-3">
-            @foreach([['En cours', $activeCount], ['Réussis', $satisfactoryCount], ['Total', $totalCount]] as [$statLabel, $statValue])
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                    <dt class="text-xs text-[#64748B]">{{ $statLabel }}</dt>
-                    <dd class="mt-1 text-2xl font-semibold text-[#0B0F14]">{{ $statValue }}</dd>
-                </div>
-            @endforeach
-        </dl>
+        <div class="grid grid-cols-3 gap-3 sm:gap-4">
+            <x-evaluation.stat label="Plans en cours" :value="$activeCount" :value-class="$activeCount > 0 ? 'text-amber-600' : 'text-[#0B0F14]'" tint="bg-amber-50 text-amber-600" icon="M13 10V3L4 14h7v7l9-11h-7z" />
+            <x-evaluation.stat label="Plans réussis" :value="$satisfactoryCount" tint="bg-emerald-50 text-emerald-600" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <x-evaluation.stat label="Plans ouverts au total" :value="$totalCount" icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </div>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:px-0">
@@ -75,7 +67,7 @@
                     </div>
 
                     <div class="mt-4 flex items-center gap-3">
-                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#EEF2F6]"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $pip->progress_pct }}%"></div></div>
+                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#0066FF]" style="width: {{ $pip->progress_pct }}%"></div></div>
                         <span class="text-xs font-medium text-[#0B0F14]">{{ $pip->progress_pct }} %</span>
                     </div>
                     <p class="mt-1.5 text-[11px] text-[#94A3B8]">
@@ -86,7 +78,7 @@
                         · {{ $pip->supervisor?->name ?? 'Référent RH' }}
                     </p>
 
-                    <div x-show="open" x-collapse x-cloak class="mt-4 space-y-3 border-t border-[#EEF2F6] pt-4 text-xs text-[#334155]">
+                    <div x-show="open" x-collapse x-cloak class="mt-4 space-y-3 border-t border-[#E2E8F0] pt-4 text-xs text-[#334155]">
                         <div><p class="font-medium text-[#94A3B8]">Difficulté</p><p class="mt-0.5">{{ $pip->problem_identified }}</p></div>
                         <div><p class="font-medium text-[#94A3B8]">Objectif</p><p class="mt-0.5">{{ $pip->target_objective }}</p></div>
                         <div><p class="font-medium text-[#94A3B8]">Actions</p><p class="mt-0.5">{{ $pip->corrective_actions }}</p></div>

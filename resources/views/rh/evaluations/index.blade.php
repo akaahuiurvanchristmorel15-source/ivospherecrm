@@ -44,16 +44,12 @@
 <x-layouts.app>
     <x-slot:title>Évaluations RH — IVOSPHERE</x-slot>
 
-    <div class="mx-auto max-w-6xl space-y-6 [font-variant-numeric:tabular-nums]">
+    <div class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
 
         {{-- ───────── En-tête ───────── --}}
         <x-evaluation.header
             title="Évaluations des membres"
             subtitle="Note du mois sur 20 = 4 × (0,40 A + 0,25 B + 0,25 C + 0,10 D)."
-            :breadcrumbs="[
-                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                ['label' => 'Évaluations'],
-            ]"
             active="campaign" :year="$year" :month="$month"
         >
             <x-slot:actions>
@@ -85,37 +81,79 @@
             </p>
         @endif
 
+        {{-- ───────── Synthèse du mois ───────── --}}
+        @php $coveragePct = $evaluatedCount > 0 ? round($flow['scored'] / $evaluatedCount * 100) : 0; @endphp
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-12" aria-label="Synthèse du mois">
+            <x-evaluation.hero class="lg:col-span-5">
+                <div class="flex items-center gap-5">
+                    <x-evaluation.score-ring :score="$companyAverage > 0 ? $companyAverage : null" on-dark />
+                    <div class="min-w-0 space-y-1">
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Moyenne du mois</p>
+                        <p class="text-3xl font-semibold tracking-tight">{{ $flow['scored'] }} <span class="text-base font-normal text-slate-400">/ {{ $evaluatedCount }} notés</span></p>
+                        <p class="text-xs {{ $companyAverage >= 12 ? 'text-emerald-300' : ($companyAverage > 0 ? 'text-amber-300' : 'text-slate-400') }}">
+                            {{ $companyAverage > 0 ? \App\Models\MonthlyEvaluation::computeAppreciation($companyAverage).' en moyenne' : 'Aucune note consolidée' }}
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-5 space-y-2 border-t border-white/10 pt-4">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-400">Notes consolidées</span>
+                        <span class="font-semibold">{{ $coveragePct }} %</span>
+                    </div>
+                    <div class="h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div class="h-full rounded-full bg-[#3B8BFF]" style="width: {{ $coveragePct }}%"></div>
+                    </div>
+                    <p class="text-[11px] text-slate-400">{{ $flow['sheets'] }} fiche(s) d'évaluateurs remises · {{ $totalActive }} membre(s) actif(s)</p>
+                </div>
+            </x-evaluation.hero>
+
+            <div class="grid grid-cols-3 gap-3 sm:gap-4 lg:col-span-7">
+                <x-evaluation.stat
+                    label="En progression"
+                    :value="$stats['progressingCount'] ?? 0"
+                    tint="bg-emerald-50 text-emerald-600" hover="hover:border-emerald-300"
+                    icon="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    :href="route('rh.evaluations.index', array_merge(request()->query(), ['tab' => 'progressing', 'page' => null]))"
+                />
+                <x-evaluation.stat
+                    label="À suivre (sous 10 / 20)"
+                    :value="$stats['followUpCount'] ?? 0"
+                    :value-class="($stats['followUpCount'] ?? 0) > 0 ? 'text-rose-600' : 'text-[#0B0F14]'"
+                    tint="bg-rose-50 text-rose-600" hover="hover:border-rose-300"
+                    icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    :href="route('rh.evaluations.index', array_merge(request()->query(), ['tab' => 'follow_up', 'page' => null]))"
+                />
+                <x-evaluation.stat
+                    label="Contestations à traiter"
+                    :value="$flow['pendingContestations']"
+                    :value-class="$flow['pendingContestations'] > 0 ? 'text-amber-600' : 'text-[#0B0F14]'"
+                    tint="bg-amber-50 text-amber-600"
+                    icon="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                />
+            </div>
+        </section>
+
         {{-- ───────── Déroulé du mois ───────── --}}
-        <section aria-labelledby="flow-title" class="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
-            <h2 id="flow-title" class="text-sm font-semibold text-[#0B0F14]">Déroulé du mois</h2>
-            <ol class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <section aria-labelledby="flow-title">
+            <h2 id="flow-title" class="mb-3 px-1 text-sm font-semibold text-[#0B0F14]">Déroulé du mois</h2>
+            <ol class="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 @foreach($flowSteps as [$label, $value, $when, $done])
-                    <li class="rounded-xl border p-3 {{ $done ? 'border-emerald-200 bg-emerald-50/50' : 'border-[#E2E8F0] bg-[#F8FAFC]' }}">
-                        <p class="text-[11px] font-medium text-[#64748B]">{{ $loop->iteration }}. {{ $label }}</p>
-                        <p class="mt-1 text-lg font-semibold {{ $done ? 'text-emerald-700' : 'text-[#0B0F14]' }}">{{ $value }}</p>
-                        <p class="text-[10px] text-[#94A3B8]">{{ $when }}</p>
+                    <li class="rounded-2xl border bg-white p-4 {{ $done ? 'border-emerald-200' : 'border-[#E2E8F0]' }}">
+                        <div class="flex items-center gap-2">
+                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold {{ $done ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-700' }}">
+                                @if($done)
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                @else
+                                    {{ $loop->iteration }}
+                                @endif
+                            </span>
+                            <p class="text-xs font-medium leading-tight text-[#0B0F14]">{{ $label }}</p>
+                        </div>
+                        <p class="mt-3 text-xl font-semibold text-[#0B0F14]">{{ $value }}</p>
+                        <p class="text-[11px] text-[#64748B]">{{ $when }}</p>
                     </li>
                 @endforeach
             </ol>
-        </section>
-
-        {{-- ───────── Synthèse ───────── --}}
-        <section class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4" aria-label="Synthèse du mois">
-            <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                <p class="text-xs text-[#64748B]">Moyenne des membres notés</p>
-                <p class="mt-1 text-2xl font-semibold {{ $scoreTone($companyAverage)['text'] }}">{{ number_format($companyAverage, 2, ',', ' ') }} <span class="text-sm font-normal text-[#94A3B8]">/ 20</span></p>
-                <p class="text-[11px] text-[#64748B]">{{ $companyAverage > 0 ? \App\Models\MonthlyEvaluation::computeAppreciation($companyAverage) : 'Aucune note consolidée' }}</p>
-            </div>
-            <a href="{{ route('rh.evaluations.index', array_merge(request()->query(), ['tab' => 'progressing', 'page' => null])) }}" class="rounded-2xl border border-[#E2E8F0] bg-white p-4 transition hover:border-emerald-300">
-                <p class="text-xs text-[#64748B]">En progression vs mois précédent</p>
-                <p class="mt-1 text-2xl font-semibold text-emerald-600">{{ $stats['progressingCount'] ?? 0 }}</p>
-                <p class="text-[11px] text-[#64748B]">Voir la liste →</p>
-            </a>
-            <a href="{{ route('rh.evaluations.index', array_merge(request()->query(), ['tab' => 'follow_up', 'page' => null])) }}" class="rounded-2xl border border-[#E2E8F0] bg-white p-4 transition hover:border-rose-300">
-                <p class="text-xs text-[#64748B]">À suivre (sous 10 / 20 ou en forte baisse)</p>
-                <p class="mt-1 text-2xl font-semibold {{ ($stats['followUpCount'] ?? 0) > 0 ? 'text-rose-600' : 'text-[#0B0F14]' }}">{{ $stats['followUpCount'] ?? 0 }}</p>
-                <p class="text-[11px] text-[#64748B]">Plan de progrès de 30 jours →</p>
-            </a>
         </section>
 
         {{-- ───────── Membres ───────── --}}

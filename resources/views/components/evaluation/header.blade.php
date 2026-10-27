@@ -1,27 +1,36 @@
-{{-- En-tête des pages du volet évaluation : fil d'Ariane, titre, sous-titre, actions et navigation du volet. --}}
+{{--
+    En-tête des pages du volet évaluation, dans le style du tableau de bord RH :
+    ligne d'accroche (date ou lien de retour), titre, sous-titre, actions, puis navigation du volet.
+--}}
 @props([
     'title',
     'subtitle' => null,
-    'breadcrumbs' => [],
+    'kicker' => null,
+    'backUrl' => null,
+    'backLabel' => null,
     'active' => null,
     'year' => null,
     'month' => null,
 ])
 
 <header class="space-y-4">
-    @if($breadcrumbs)
-        <x-breadcrumb :items="$breadcrumbs" />
-    @endif
-
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="min-w-0 space-y-1">
-            <h1 class="text-xl font-semibold tracking-tight text-[#0B0F14] sm:text-2xl">{{ $title }}</h1>
+            @if($backUrl)
+                <a href="{{ $backUrl }}" class="inline-flex items-center gap-1 text-xs font-medium text-[#64748B] transition hover:text-[#0066FF]">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    {{ $backLabel }}
+                </a>
+            @else
+                <p class="text-xs font-medium capitalize text-[#64748B]">{{ $kicker ?? now()->locale('fr')->isoFormat('dddd D MMMM YYYY') }}</p>
+            @endif
+            <h1 class="truncate text-2xl font-semibold tracking-tight text-[#0B0F14]">{{ $title }}</h1>
             @if($subtitle)
                 <p class="text-sm text-[#64748B]">{{ $subtitle }}</p>
             @endif
         </div>
         @isset($actions)
-            <div class="flex flex-wrap items-center gap-2">{{ $actions }}</div>
+            <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">{{ $actions }}</div>
         @endisset
     </div>
 

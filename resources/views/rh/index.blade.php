@@ -91,7 +91,7 @@
                     </span>
                     <div class="mt-3">
                         <p class="text-2xl font-semibold text-[#0B0F14]">{{ $monthlyEvaluationAvg > 0 ? number_format($monthlyEvaluationAvg, 1, ',', '') : '—' }}</p>
-                        <p class="text-[11px] leading-tight text-[#64748B] sm:text-xs">Moyenne / 30</p>
+                        <p class="text-[11px] leading-tight text-[#64748B] sm:text-xs">Moyenne / 20</p>
                     </div>
                 </a>
             </div>

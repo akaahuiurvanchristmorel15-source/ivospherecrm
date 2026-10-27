@@ -7,41 +7,37 @@
 <x-layouts.app>
     <x-slot:title>Historique — {{ $employee->full_name }}</x-slot>
 
-    <div class="mx-auto max-w-5xl space-y-6 [font-variant-numeric:tabular-nums]">
+    <div class="space-y-5 sm:space-y-6 [font-variant-numeric:tabular-nums]">
         <x-evaluation.header
             :title="$employee->full_name"
             :subtitle="'Historique des notes · ' . ($employee->position ?? 'Membre') . ' · ' . ($employee->department ?? 'Général')"
-            :breadcrumbs="[
-                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index')],
-                ['label' => 'Historique'],
-            ]"
+            :back-url="route('rh.evaluations.index')"
+            back-label="Évaluations"
         />
 
         {{-- Synthèse --}}
-        <section class="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
-            <div class="flex items-center gap-4 rounded-2xl border border-[#E2E8F0] bg-white p-5">
-                <x-evaluation.score-ring :score="$latest?->final_score_20" />
-                <div>
-                    <p class="text-xs text-[#64748B]">Dernière note</p>
-                    <p class="text-sm font-medium text-[#0B0F14]">{{ $latest ? $latest->month_name.' '.$latest->year : '—' }}</p>
-                    @if($latest)
-                        <span class="mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold {{ $latest->appreciation_badge_class }}">{{ $latest->appreciation }}</span>
-                    @endif
-                </div>
-            </div>
-            <dl class="grid grid-cols-3 divide-x divide-[#EEF2F6] rounded-2xl border border-[#E2E8F0] bg-white">
-                @foreach([
-                    ['Moyenne', $scored->isNotEmpty() ? $scored->avg(fn ($e) => (float) $e->final_score_20) : null],
-                    ['Meilleure', $scored->isNotEmpty() ? $scored->max(fn ($e) => (float) $e->final_score_20) : null],
-                    ['Plus basse', $scored->isNotEmpty() ? $scored->min(fn ($e) => (float) $e->final_score_20) : null],
-                ] as [$statLabel, $statValue])
-                    <div class="flex flex-col justify-center p-4 sm:p-5">
-                        <dt class="text-xs text-[#64748B]">{{ $statLabel }}</dt>
-                        <dd class="mt-1 text-xl font-semibold text-[#0B0F14] sm:text-2xl">{{ $statValue === null ? '—' : number_format($statValue, 2, ',', '') }}</dd>
+        @php
+            $fmt = fn ($value) => $value === null ? '—' : number_format($value, 2, ',', '');
+            $average = $scored->isNotEmpty() ? $scored->avg(fn ($e) => (float) $e->final_score_20) : null;
+            $best = $scored->isNotEmpty() ? $scored->max(fn ($e) => (float) $e->final_score_20) : null;
+            $lowest = $scored->isNotEmpty() ? $scored->min(fn ($e) => (float) $e->final_score_20) : null;
+        @endphp
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-12" aria-label="Synthèse">
+            <x-evaluation.hero class="lg:col-span-5">
+                <div class="flex items-center gap-5">
+                    <x-evaluation.score-ring :score="$latest?->final_score_20" on-dark />
+                    <div class="min-w-0 space-y-1">
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Dernière note</p>
+                        <p class="text-2xl font-semibold tracking-tight">{{ $latest ? $latest->month_name.' '.$latest->year : '—' }}</p>
+                        <p class="text-xs text-slate-400">{{ $latest?->appreciation ?? 'Aucune note consolidée' }}</p>
                     </div>
-                @endforeach
-            </dl>
+                </div>
+            </x-evaluation.hero>
+            <div class="grid grid-cols-3 gap-3 sm:gap-4 lg:col-span-7">
+                <x-evaluation.stat label="Moyenne" :value="$fmt($average)" tint="bg-blue-50 text-[#0066FF]" icon="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <x-evaluation.stat label="Meilleure note" :value="$fmt($best)" tint="bg-emerald-50 text-emerald-600" icon="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                <x-evaluation.stat label="Plus basse" :value="$fmt($lowest)" tint="bg-rose-50 text-rose-600" icon="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+            </div>
         </section>
 
         {{-- Évolution --}}
@@ -72,7 +68,7 @@
 
         {{-- Mois par mois --}}
         <x-evaluation.section title="Mois par mois" :padding="false">
-            <ul class="divide-y divide-[#EEF2F6]">
+            <ul class="divide-y divide-[#E2E8F0]">
                 @forelse($evaluations as $evaluation)
                     <li>
                         <a href="{{ route('rh.evaluations.show', $evaluation) }}" class="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3.5 transition hover:bg-[#F8FAFC] sm:grid-cols-[10rem_1fr_auto] sm:px-5">

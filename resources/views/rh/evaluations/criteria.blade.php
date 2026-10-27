@@ -1,15 +1,10 @@
 <x-layouts.app>
     <x-slot:title>Configuration des Critères d'Évaluation — IVOSPHERE RH</x-slot>
 
-    <div class="mx-auto max-w-5xl space-y-6">
+    <div class="space-y-5 sm:space-y-6">
         <x-evaluation.header
             title="Référentiel d'évaluation"
             subtitle="17 critères notés de 1 à 5 en 4 blocs pondérés ; chaque évaluateur note seulement les critères de son domaine."
-            :breadcrumbs="[
-                ['label' => 'Ressources Humaines', 'url' => route('rh.index')],
-                ['label' => 'Évaluations', 'url' => route('rh.evaluations.index')],
-                ['label' => 'Référentiel'],
-            ]"
             active="criteria"
         >
             <x-slot:actions>
@@ -27,19 +22,23 @@
         @endphp
 
         <!-- Rappel du barème : 4 blocs pondérés, échelle de 1 à 5 -->
+        @php
+            $blockTints = ['A' => 'bg-blue-50 text-[#0066FF]', 'B' => 'bg-purple-50 text-purple-600', 'C' => 'bg-emerald-50 text-emerald-600', 'D' => 'bg-amber-50 text-amber-600'];
+        @endphp
         <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Blocs du référentiel">
             @foreach(\App\Models\EvaluationCriterion::BLOCKS as $block => $definition)
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                    <p class="text-[11px] font-medium text-[#64748B]">Bloc {{ $block }}</p>
-                    <p class="mt-0.5 text-lg font-semibold text-[#0B0F14]">{{ $definition['weight'] * 100 }} %</p>
-                    <p class="text-[11px] text-[#64748B]">{{ $definition['label'] }} · {{ $referential->get($block)?->count() ?? 0 }} critère(s)</p>
-                </div>
+                <a href="#bloc-{{ $block }}" class="group rounded-2xl border border-[#E2E8F0] bg-white p-4 transition hover:border-[#0066FF]/40 hover:shadow-[0_8px_24px_-12px_rgba(0,102,255,0.25)]">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold {{ $blockTints[$block] }}">{{ $block }}</span>
+                    <p class="mt-3 text-2xl font-semibold text-[#0B0F14]">{{ $definition['weight'] * 100 }} %</p>
+                    <p class="text-sm font-medium text-[#0B0F14] group-hover:text-[#0066FF]">{{ $definition['label'] }}</p>
+                    <p class="mt-0.5 text-[11px] text-[#64748B]">{{ $referential->get($block)?->count() ?? 0 }} critère(s)</p>
+                </a>
             @endforeach
         </section>
 
         <!-- Les 17 critères du référentiel, par bloc -->
         @foreach($referential as $block => $blockCriteria)
-            <x-evaluation.section :title="'Bloc ' . $block . ' — ' . \App\Models\EvaluationCriterion::BLOCKS[$block]['label']" :subtitle="(\App\Models\EvaluationCriterion::BLOCKS[$block]['weight'] * 100) . ' % de la note'" :padding="false">
+            <x-evaluation.section :id="'bloc-' . $block" class="scroll-mt-6" :title="'Bloc ' . $block . ' — ' . \App\Models\EvaluationCriterion::BLOCKS[$block]['label']" :subtitle="(\App\Models\EvaluationCriterion::BLOCKS[$block]['weight'] * 100) . ' % de la note'" :padding="false">
                 <ul class="divide-y divide-[#E2E8F0]">
                     @foreach($blockCriteria as $crit)
                         <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:justify-between {{ ! $crit->is_active ? 'opacity-60' : '' }}">
