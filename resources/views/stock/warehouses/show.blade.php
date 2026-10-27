@@ -44,6 +44,11 @@
                     <x-button href="{{ route('stock.warehouses.edit', $warehouse) }}" variant="secondary">
                         Modifier
                     </x-button>
+                    <button type="button" x-data @click="$dispatch('open-modal', 'add-warehouse-products')"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold text-[#0B0F14] transition hover:bg-slate-50">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        Ajouter des produits
+                    </button>
                     <x-button href="{{ route('stock.movements.create', ['warehouse_id' => $warehouse->id]) }}" variant="primary">
                         <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -460,4 +465,130 @@
 
     {{-- Modal de confirmation / transfert pour suppression d'entrepôt --}}
     <x-delete-warehouse-modal />
+
+    {{-- Ajout groupé de produits du catalogue dans l'entrepôt --}}
+    @php($hasItemsError = $errors->has('items') || $errors->has('items.*'))
+    <x-modal name="add-warehouse-products" title="Ajouter des produits à l'entrepôt" maxWidth="2xl">
+        <form method="POST" action="{{ route('stock.warehouses.products.add', $warehouse) }}"
+              x-data="warehouseAddProducts(@js($catalogProducts), @js($stockLevels->pluck('stock_after', 'product_id')))"
+              @if($hasItemsError) x-init="$nextTick(() => $dispatch('open-modal', 'add-warehouse-products'))" @endif
+              @submit="prepare($event)" class="space-y-4">
+            @csrf
+            <input type="hidden" name="items_json" x-ref="itemsJson">
+
+            <p class="text-xs text-[#64748B]">
+                Recherchez des produits du catalogue et indiquez la quantité qui entre dans <span class="font-semibold text-[#0B0F14]">{{ $warehouse->name }}</span>.
+                Pour des produits qui n'existent pas encore, utilisez la
+                <a href="{{ route('stock.products.bulk-create', ['warehouse_id' => $warehouse->id]) }}" class="font-semibold text-[#0066FF] hover:underline">création groupée</a>.
+            </p>
+
+            @if($hasItemsError)
+                <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    {{ $errors->first('items') ?: collect($errors->get('items.*'))->flatten()->first() }}
+                </div>
+            @endif
+
+            <div class="relative">
+                <input type="text" x-model="search" @keydown.enter.prevent="addFirstMatch()" autocomplete="off"
+                       placeholder="Nom, référence ou code-barres"
+                       class="h-10 w-full rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm text-[#0B0F14] placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-black/5">
+                <div x-show="search.trim() !== ''" x-cloak class="absolute inset-x-0 top-11 z-20 max-h-56 overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white shadow-lg">
+                    <template x-for="product in matches" :key="product.id">
+                        <button type="button" @click="add(product)" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50">
+                            <span class="min-w-0">
+                                <span class="block truncate font-medium text-[#0B0F14]" x-text="product.name"></span>
+                                <span class="block truncate text-xs text-[#64748B]" x-text="product.sku || product.barcode || ''"></span>
+                            </span>
+                            <span class="shrink-0 text-xs text-[#64748B]" x-text="'En stock : ' + stockOf(product.id)"></span>
+                        </button>
+                    </template>
+                    <p x-show="matches.length === 0" class="px-3 py-3 text-xs text-[#64748B]">Aucun produit trouvé.</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-[#E2E8F0]">
+                <table class="w-full text-sm">
+                    <thead class="bg-[#F5F7FA] text-xs text-[#64748B]">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">Produit</th>
+                            <th class="px-3 py-2 text-right font-medium">En stock</th>
+                            <th class="w-28 px-3 py-2 text-right font-medium">Quantité</th>
+                            <th class="w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#E2E8F0]">
+                        <template x-for="(item, index) in items" :key="item.product_id">
+                            <tr>
+                                <td class="px-3 py-2">
+                                    <span class="block font-medium text-[#0B0F14]" x-text="item.name"></span>
+                                    <span class="block text-xs text-[#64748B]" x-text="item.sku || ''"></span>
+                                </td>
+                                <td class="px-3 py-2 text-right text-xs text-[#64748B]" x-text="stockOf(item.product_id)"></td>
+                                <td class="px-3 py-2 text-right">
+                                    <input type="number" min="1" step="1" x-model.number="item.quantity"
+                                           class="h-9 w-20 rounded-lg border border-[#E2E8F0] px-2 text-right text-sm focus:border-slate-400 focus:outline-none">
+                                </td>
+                                <td class="px-2 py-2 text-right">
+                                    <button type="button" @click="items.splice(index, 1)" class="rounded-md p-1 text-slate-400 hover:text-rose-600" aria-label="Retirer">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="items.length === 0">
+                            <td colspan="4" class="px-3 py-6 text-center text-xs text-[#64748B]">Aucun produit sélectionné.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <input type="text" name="notes" maxlength="500" placeholder="Note (facultatif) : bon de livraison, fournisseur…"
+                   class="h-10 w-full rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm text-[#0B0F14] placeholder-slate-400 focus:border-slate-400 focus:outline-none">
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] pt-4">
+                <p class="text-xs text-[#64748B]"><span class="font-semibold text-[#0B0F14]" x-text="items.length"></span> produit(s), <span class="font-semibold text-[#0B0F14]" x-text="totalUnits"></span> unité(s)</p>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="$dispatch('close-modal', 'add-warehouse-products')" class="h-10 rounded-full border border-[#E2E8F0] px-4 text-sm font-medium text-[#0B0F14] hover:bg-slate-50">Annuler</button>
+                    <button type="submit" :disabled="items.length === 0 || invalid" class="h-10 rounded-full bg-[#0B0F14] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:opacity-40">
+                        Ajouter au stock
+                    </button>
+                </div>
+            </div>
+        </form>
+    </x-modal>
+
+    @push('scripts')
+        <script>
+            function warehouseAddProducts(catalog, stockByProduct) {
+                return {
+                    search: '',
+                    items: [],
+
+                    get matches() {
+                        const query = this.search.toLowerCase().trim();
+                        return catalog.filter((product) => !this.items.some((item) => item.product_id === product.id) && (
+                            product.name.toLowerCase().includes(query) ||
+                            (product.sku && product.sku.toLowerCase().includes(query)) ||
+                            (product.barcode && product.barcode.toLowerCase().includes(query))
+                        )).slice(0, 30);
+                    },
+                    get totalUnits() { return this.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0); },
+                    get invalid() { return this.items.some((item) => !Number.isInteger(Number(item.quantity)) || Number(item.quantity) < 1); },
+
+                    stockOf(productId) { return Number(stockByProduct[productId] ?? 0); },
+                    add(product) {
+                        this.items.push({ product_id: product.id, name: product.name, sku: product.sku, quantity: 1 });
+                        this.search = '';
+                    },
+                    addFirstMatch() {
+                        if (this.matches.length > 0) { this.add(this.matches[0]); }
+                    },
+                    prepare(event) {
+                        if (this.items.length === 0 || this.invalid) { event.preventDefault(); return; }
+                        this.$refs.itemsJson.value = JSON.stringify(this.items.map((item) => ({ product_id: item.product_id, quantity: Number(item.quantity) })));
+                    },
+                };
+            }
+        </script>
+    @endpush
 </x-layouts.app>

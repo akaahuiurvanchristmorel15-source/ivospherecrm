@@ -121,7 +121,62 @@ class WarehouseController extends Controller
             ->take(20)
             ->get();
 
-        return view('stock.warehouses.show', compact('warehouse', 'stockLevels', 'recentMovements'));
+        $catalogProducts = Product::active()->orderBy('name')->get(['id', 'name', 'sku', 'barcode']);
+
+        return view('stock.warehouses.show', compact('warehouse', 'stockLevels', 'recentMovements', 'catalogProducts'));
+    }
+
+    /**
+     * Ajout groupé de produits du catalogue dans l'entrepôt : une entrée de stock par produit.
+     * Les lignes arrivent en JSON (un seul champ) pour ne pas dépasser max_input_vars.
+     */
+    public function addProducts(Request $request, Warehouse $warehouse): RedirectResponse
+    {
+        $request->merge(['items' => array_values((array) json_decode((string) $request->input('items_json'), true))]);
+
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'distinct'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'items.required' => 'Ajoutez au moins un produit.',
+            'items.*.product_id.distinct' => 'Un même produit est ajouté deux fois.',
+            'items.*.quantity.min' => "La quantité doit être d'au moins 1.",
+        ]);
+
+        $products = Product::whereIn('id', collect($validated['items'])->pluck('product_id'))->get()->keyBy('id');
+
+        if ($products->count() !== count($validated['items'])) {
+            return back()->withErrors(['items' => 'Un des produits sélectionnés est introuvable.']);
+        }
+
+        $reference = 'AJT-'.strtoupper(Str::random(8));
+
+        DB::transaction(function () use ($validated, $products, $warehouse, $reference) {
+            foreach ($validated['items'] as $item) {
+                StockService::processMovement([
+                    'warehouse_id' => $warehouse->id,
+                    'product_id' => (int) $item['product_id'],
+                    'domain_id' => $products->get($item['product_id'])?->domain_id ?? $warehouse->domain_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'entree',
+                    'reason_motif' => 'ajout_entrepot',
+                    'quantity' => (int) $item['quantity'],
+                    'reference' => $reference,
+                    'notes' => $validated['notes'] ?? "Ajout groupé dans l'entrepôt {$warehouse->name}",
+                    'date' => now(),
+                ]);
+            }
+        });
+
+        $count = count($validated['items']);
+        $units = collect($validated['items'])->sum('quantity');
+
+        ActivityLogger::log('ajout_produits_entrepot', "A ajouté {$count} produit(s) ({$units} unité(s)) dans l'entrepôt {$warehouse->name}", $warehouse);
+
+        return redirect()->route('stock.warehouses.show', $warehouse)
+            ->with('success', "{$count} produit(s) ajouté(s) à l'entrepôt ({$units} unité(s)).");
     }
 
     /**

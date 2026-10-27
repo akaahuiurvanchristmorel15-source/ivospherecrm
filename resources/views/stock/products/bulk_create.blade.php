@@ -61,7 +61,7 @@
                         >
                             <option value="">-- Sélectionnez l'entrepôt d'accueil --</option>
                             @foreach($warehouses as $wh)
-                                <option value="{{ $wh->id }}" {{ (string) old('warehouse_id', $warehouses->first()?->id) === (string) $wh->id ? 'selected' : '' }}>
+                                <option value="{{ $wh->id }}" {{ (string) old('warehouse_id', request('warehouse_id', $warehouses->first()?->id)) === (string) $wh->id ? 'selected' : '' }}>
                                     {{ $wh->name }} (Code : {{ $wh->code }})
                                 </option>
                             @endforeach
