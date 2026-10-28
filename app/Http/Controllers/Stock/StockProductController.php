@@ -558,13 +558,20 @@ class StockProductController extends Controller
         $validated = $request->validate([
             'product_ids' => 'required|array|min:1',
             'product_ids.*' => 'required|integer|exists:products,id',
+            'warehouse_id' => 'nullable|integer',
         ]);
+
+        // Suppression lancée depuis une fiche entrepôt : on y revient ensuite
+        $returnWarehouse = isset($validated['warehouse_id']) ? Warehouse::find($validated['warehouse_id']) : null;
+        $redirect = $returnWarehouse
+            ? redirect()->route('stock.warehouses.show', $returnWarehouse)
+            : redirect()->route('stock.index', ['tab' => 'disponibilite']);
 
         $products = Product::whereIn('id', $validated['product_ids'])->get();
         $count = $products->count();
 
         if ($count === 0) {
-            return redirect()->route('stock.index', ['tab' => 'disponibilite'])->with('error', 'Aucun produit sélectionné pour la suppression.');
+            return $redirect->with('error', 'Aucun produit sélectionné pour la suppression.');
         }
 
         $names = $products->pluck('name')->take(5)->implode(', ');
@@ -584,8 +591,7 @@ class StockProductController extends Controller
 
         ActivityLogger::log('bulk_deleted_stock_products', "Suppression groupée de {$count} articles : {$names}", null);
 
-        return redirect()->route('stock.index', ['tab' => 'disponibilite'])
-            ->with('success', "{$count} article(s) supprimé(s) des stocks avec succès.");
+        return $redirect->with('success', "{$count} article(s) supprimé(s) des stocks avec succès.");
     }
 
     /**

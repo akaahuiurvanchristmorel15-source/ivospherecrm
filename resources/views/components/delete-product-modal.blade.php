@@ -82,6 +82,9 @@
                         <template x-for="id in productIds" :key="id">
                             <input type="hidden" name="product_ids[]" :value="id">
                         </template>
+                        <template x-if="warehouseId">
+                            <input type="hidden" name="warehouse_id" :value="warehouseId">
+                        </template>
                     </div>
                 </template>
 
@@ -152,6 +155,7 @@
             productSku: '',
             currentStock: 0,
             productIds: [],
+            warehouseId: null,
             actionUrl: '',
 
             openSingle(detail) {
@@ -168,6 +172,7 @@
             openBulk(detail) {
                 this.isBulk = true;
                 this.productIds = detail.product_ids || [];
+                this.warehouseId = detail.warehouse_id || null;
                 this.actionUrl = '{{ route('stock.products.bulk-destroy') }}';
                 this.isOpen = true;
             },

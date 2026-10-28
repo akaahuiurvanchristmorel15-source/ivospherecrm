@@ -117,6 +117,7 @@
         @php
             $canEditPrices = auth()->user()->hasPermission('products.edit');
             $canAdjustStock = auth()->user()->hasPermission('products.adjust');
+            $canDeleteProducts = auth()->user()->hasPermission('products.delete');
             $stockRows = $stockLevels->filter(fn ($level) => $level->product)->sortBy(fn ($level) => $level->product->name)->values()->map(fn ($level) => [
                 'id' => $level->product->id,
                 'name' => $level->product->name,
@@ -132,7 +133,7 @@
             <div class="p-5 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 class="text-base font-semibold text-[#0B0F14]">État du Stock Disponible</h3>
-                    <p class="text-xs text-[#64748B]" x-text="editing ? 'Cochez des produits puis modifiez leurs prix, un par un ou en lot.' : (stockEditing ? 'Saisissez les nouvelles quantités en stock puis enregistrez.' : (transferring ? 'Cochez les articles à transférer, ajustez les quantités puis choisissez l\'entrepôt de destination.' : 'Inventaire actuel des produits référencés sur cet entrepôt'))">Inventaire actuel des produits référencés sur cet entrepôt</p>
+                    <p class="text-xs text-[#64748B]" x-text="editing ? 'Cochez des produits puis modifiez leurs prix, un par un ou en lot.' : (stockEditing ? 'Saisissez les nouvelles quantités en stock puis enregistrez.' : (transferring ? 'Cochez les articles à transférer, ajustez les quantités puis choisissez l\'entrepôt de destination.' : (deleting ? 'Cochez les articles à supprimer définitivement du catalogue.' : 'Inventaire actuel des produits référencés sur cet entrepôt')))">Inventaire actuel des produits référencés sur cet entrepôt</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="inline-flex items-center rounded-full bg-[#F5F7FA] px-2.5 py-1 text-xs font-medium text-[#0B0F14] border border-[#E2E8F0]">
@@ -150,6 +151,13 @@
                                 class="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#0B0F14] px-4 text-xs font-semibold text-[#0B0F14] hover:bg-[#0B0F14] hover:text-white transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                             Transférer
+                        </button>
+                    @endif
+                    @if($canDeleteProducts && $stockRows->isNotEmpty())
+                        <button type="button" x-show="! busy" @click="deleting = true"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-full border border-rose-200 px-4 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            Supprimer des articles
                         </button>
                     @endif
                     @if($canEditPrices && $stockRows->isNotEmpty())
@@ -203,7 +211,7 @@
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-[#F5F7FA] border-b border-[#E2E8F0]">
                         <tr>
-                            <th x-show="editing || transferring" x-cloak class="w-10 py-3 pl-4">
+                            <th x-show="selecting" x-cloak class="w-10 py-3 pl-4">
                                 <input type="checkbox" :checked="selectedCount === rows.length && rows.length > 0" @change="toggleAll($event.target.checked)" class="rounded border-slate-300" aria-label="Tout sélectionner">
                             </th>
                             <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">Produit</th>
@@ -217,7 +225,7 @@
                     <tbody class="divide-y divide-[#E2E8F0]">
                         <template x-for="row in rows" :key="row.id">
                             <tr class="transition-colors" :class="isChanged(row) ? 'bg-amber-50/60' : 'hover:bg-[#F5F7FA]/60'">
-                                <td x-show="editing || transferring" class="py-3 pl-4"><input type="checkbox" x-model="row.selected" class="rounded border-slate-300" :aria-label="'Sélectionner ' + row.name"></td>
+                                <td x-show="selecting" class="py-3 pl-4"><input type="checkbox" x-model="row.selected" class="rounded border-slate-300" :aria-label="'Sélectionner ' + row.name"></td>
                                 <td class="py-3 px-4">
                                     <p class="text-sm font-semibold text-[#0B0F14]" x-text="row.name"></p>
                                     <p class="text-xs font-mono text-[#64748B]" x-text="row.sku || '-'"></p>
@@ -259,7 +267,7 @@
                     <div class="rounded-xl p-4 border flex flex-col gap-2.5" :class="isChanged(row) ? 'border-amber-300 bg-amber-50/60' : 'bg-white border-[#E2E8F0]'">
                         <div class="flex items-start justify-between gap-2">
                             <label class="flex min-w-0 items-start gap-2.5">
-                                <input x-show="editing || transferring" type="checkbox" x-model="row.selected" class="mt-0.5 rounded border-slate-300">
+                                <input x-show="selecting" type="checkbox" x-model="row.selected" class="mt-0.5 rounded border-slate-300">
                                 <span class="min-w-0">
                                     <span class="block font-bold text-sm text-[#0B0F14]" x-text="row.name"></span>
                                     <span class="text-xs font-mono text-[#64748B] block mt-0.5" x-text="row.sku || '-'"></span>
@@ -307,6 +315,22 @@
                         </button>
                     </div>
                 </form>
+            @endif
+
+            @if($canDeleteProducts)
+                {{-- Barre de suppression définitive --}}
+                <div x-show="deleting" x-cloak
+                     class="sticky bottom-[5.5rem] z-10 flex flex-wrap items-center justify-between gap-3 border-t border-rose-200 bg-white/95 p-4 backdrop-blur md:bottom-0">
+                    <p class="text-xs text-[#64748B]"><span class="font-semibold text-rose-600" x-text="selectedCount"></span> article(s) sélectionné(s) : ils seront supprimés du catalogue et de tous les entrepôts.</p>
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="cancel()" class="h-10 rounded-full border border-[#E2E8F0] px-4 text-sm font-medium text-[#0B0F14] hover:bg-slate-50">Annuler</button>
+                        <button type="button" :disabled="selectedCount === 0"
+                                @click="$dispatch('open-bulk-delete-products', { product_ids: rows.filter((row) => row.selected).map((row) => row.id), warehouse_id: {{ $warehouse->id }} })"
+                                class="h-10 rounded-full bg-rose-600 px-5 text-sm font-semibold text-white hover:bg-rose-700 transition disabled:opacity-40">
+                            Supprimer définitivement
+                        </button>
+                    </div>
+                </div>
             @endif
 
             @if($destinationWarehouses->isNotEmpty())
@@ -370,8 +394,10 @@
                         stockEditing: false,
                         transferring: @js($errors->has('transfers') || $errors->has('transfers.*') || $errors->has('destination_warehouse_id')),
                         destination: '',
+                        deleting: false,
 
-                        get busy() { return this.editing || this.stockEditing || this.transferring; },
+                        get busy() { return this.editing || this.stockEditing || this.transferring || this.deleting; },
+                        get selecting() { return this.editing || this.transferring || this.deleting; },
                         get transferRows() { return this.rows.filter((row) => row.selected); },
                         get transferUnits() { return this.transferRows.reduce((sum, row) => sum + (Number(row.transfer_qty) || 0), 0); },
                         get invalidTransfer() {
@@ -425,6 +451,7 @@
                             this.editing = false;
                             this.stockEditing = false;
                             this.transferring = false;
+                            this.deleting = false;
                             this.destination = '';
                         },
                         prepareStock(event) {
@@ -568,6 +595,10 @@
 
     {{-- Modal de confirmation / transfert pour suppression d'entrepôt --}}
     <x-delete-warehouse-modal />
+
+    @if(auth()->user()->hasPermission('products.delete'))
+        <x-delete-product-modal />
+    @endif
 
     {{-- Ajout groupé de produits du catalogue dans l'entrepôt --}}
     @php($hasItemsError = $errors->has('items') || $errors->has('items.*'))
