@@ -103,7 +103,16 @@ class StockService
                 self::checkProductAlert($productId, $destWarehouseId, $destStockAfter);
             }
 
-            self::checkProductAlert($productId, $warehouseId, $stockAfter);
+            if ($type === 'transfert' && $stockAfter === 0) {
+                // Article entièrement transféré : il n'existe plus dans l'entrepôt source
+                WarehouseStock::where('warehouse_id', $warehouseId)->where('product_id', $productId)->delete();
+                StockAlert::where('product_id', $productId)
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('status', 'active')
+                    ->update(['status' => 'resolved']);
+            } else {
+                self::checkProductAlert($productId, $warehouseId, $stockAfter);
+            }
 
             ActivityLogger::log('create_stock_movement', "Mouvement de stock ({$type}) de {$quantity} unité(s)", $movement);
 

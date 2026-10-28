@@ -132,21 +132,28 @@
             <div class="p-5 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 class="text-base font-semibold text-[#0B0F14]">État du Stock Disponible</h3>
-                    <p class="text-xs text-[#64748B]" x-text="editing ? 'Cochez des produits puis modifiez leurs prix, un par un ou en lot.' : (stockEditing ? 'Saisissez les nouvelles quantités en stock puis enregistrez.' : 'Inventaire actuel des produits référencés sur cet entrepôt')">Inventaire actuel des produits référencés sur cet entrepôt</p>
+                    <p class="text-xs text-[#64748B]" x-text="editing ? 'Cochez des produits puis modifiez leurs prix, un par un ou en lot.' : (stockEditing ? 'Saisissez les nouvelles quantités en stock puis enregistrez.' : (transferring ? 'Cochez les articles à transférer, ajustez les quantités puis choisissez l\'entrepôt de destination.' : 'Inventaire actuel des produits référencés sur cet entrepôt'))">Inventaire actuel des produits référencés sur cet entrepôt</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="inline-flex items-center rounded-full bg-[#F5F7FA] px-2.5 py-1 text-xs font-medium text-[#0B0F14] border border-[#E2E8F0]">
                         {{ count($stockRows) }} référence(s)
                     </span>
                     @if($canAdjustStock && $stockRows->isNotEmpty())
-                        <button type="button" x-show="! editing && ! stockEditing" @click="stockEditing = true"
+                        <button type="button" x-show="! busy" @click="stockEditing = true"
                                 class="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#0B0F14] px-4 text-xs font-semibold text-[#0B0F14] hover:bg-[#0B0F14] hover:text-white transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                             Modifier le stock
                         </button>
                     @endif
+                    @if($destinationWarehouses->isNotEmpty() && $stockRows->isNotEmpty())
+                        <button type="button" x-show="! busy" @click="transferring = true"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#0B0F14] px-4 text-xs font-semibold text-[#0B0F14] hover:bg-[#0B0F14] hover:text-white transition">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            Transférer
+                        </button>
+                    @endif
                     @if($canEditPrices && $stockRows->isNotEmpty())
-                        <button type="button" x-show="! editing && ! stockEditing" @click="editing = true"
+                        <button type="button" x-show="! busy" @click="editing = true"
                                 class="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0B0F14] px-4 text-xs font-semibold text-white hover:bg-black transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
                             Modifier les prix
@@ -196,7 +203,7 @@
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-[#F5F7FA] border-b border-[#E2E8F0]">
                         <tr>
-                            <th x-show="editing" x-cloak class="w-10 py-3 pl-4">
+                            <th x-show="editing || transferring" x-cloak class="w-10 py-3 pl-4">
                                 <input type="checkbox" :checked="selectedCount === rows.length && rows.length > 0" @change="toggleAll($event.target.checked)" class="rounded border-slate-300" aria-label="Tout sélectionner">
                             </th>
                             <th scope="col" class="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">Produit</th>
@@ -210,7 +217,7 @@
                     <tbody class="divide-y divide-[#E2E8F0]">
                         <template x-for="row in rows" :key="row.id">
                             <tr class="transition-colors" :class="isChanged(row) ? 'bg-amber-50/60' : 'hover:bg-[#F5F7FA]/60'">
-                                <td x-show="editing" class="py-3 pl-4"><input type="checkbox" x-model="row.selected" class="rounded border-slate-300" :aria-label="'Sélectionner ' + row.name"></td>
+                                <td x-show="editing || transferring" class="py-3 pl-4"><input type="checkbox" x-model="row.selected" class="rounded border-slate-300" :aria-label="'Sélectionner ' + row.name"></td>
                                 <td class="py-3 px-4">
                                     <p class="text-sm font-semibold text-[#0B0F14]" x-text="row.name"></p>
                                     <p class="text-xs font-mono text-[#64748B]" x-text="row.sku || '-'"></p>
@@ -218,6 +225,10 @@
                                 <td class="py-3 px-4 text-right">
                                     <span x-show="! stockEditing" class="text-sm font-bold text-[#0B0F14]" x-text="format(row.quantity)"></span>
                                     <input x-show="stockEditing" x-cloak type="number" min="0" step="1" x-model.number="row.quantity" class="h-9 w-24 rounded-full border border-[#E2E8F0] bg-white px-3 text-right text-sm font-bold text-[#0B0F14]" :aria-label="'Quantité en stock de ' + row.name">
+                                    <label x-show="transferring && row.selected" x-cloak class="mt-1 flex items-center justify-end gap-1.5 text-[11px] text-[#64748B]">
+                                        à transférer
+                                        <input type="number" min="1" :max="row.quantity" step="1" x-model.number="row.transfer_qty" class="h-8 w-20 rounded-full border border-[#E2E8F0] bg-white px-2 text-right text-xs font-semibold text-[#0B0F14]" :aria-label="'Quantité à transférer de ' + row.name">
+                                    </label>
                                 </td>
                                 <td class="py-3 px-4 text-right">
                                     <span x-show="! editing" class="text-sm text-[#0B0F14]" x-text="format(row.purchase) + ' F'"></span>
@@ -248,7 +259,7 @@
                     <div class="rounded-xl p-4 border flex flex-col gap-2.5" :class="isChanged(row) ? 'border-amber-300 bg-amber-50/60' : 'bg-white border-[#E2E8F0]'">
                         <div class="flex items-start justify-between gap-2">
                             <label class="flex min-w-0 items-start gap-2.5">
-                                <input x-show="editing" type="checkbox" x-model="row.selected" class="mt-0.5 rounded border-slate-300">
+                                <input x-show="editing || transferring" type="checkbox" x-model="row.selected" class="mt-0.5 rounded border-slate-300">
                                 <span class="min-w-0">
                                     <span class="block font-bold text-sm text-[#0B0F14]" x-text="row.name"></span>
                                     <span class="text-xs font-mono text-[#64748B] block mt-0.5" x-text="row.sku || '-'"></span>
@@ -263,6 +274,7 @@
                                 <span class="text-[#64748B] block text-[10px] uppercase font-medium">Quantité</span>
                                 <span x-show="! stockEditing" class="font-bold text-sm text-[#0B0F14]" x-text="format(row.quantity)"></span>
                                 <input x-show="stockEditing" x-cloak type="number" min="0" step="1" x-model.number="row.quantity" class="mt-0.5 h-8 w-full rounded-lg border border-[#E2E8F0] bg-white px-2 text-sm font-bold text-[#0B0F14]">
+                                <input x-show="transferring && row.selected" x-cloak type="number" min="1" :max="row.quantity" step="1" x-model.number="row.transfer_qty" placeholder="À transférer" class="mt-1 h-8 w-full rounded-lg border border-[#E2E8F0] bg-white px-2 text-xs font-semibold text-[#0B0F14]" :aria-label="'Quantité à transférer de ' + row.name">
                             </div>
                             <div>
                                 <span class="text-[#64748B] block text-[10px] uppercase font-medium">Achat</span>
@@ -297,6 +309,38 @@
                 </form>
             @endif
 
+            @if($destinationWarehouses->isNotEmpty())
+                {{-- Barre de transfert groupé --}}
+                <form x-show="transferring" x-cloak method="POST" action="{{ route('stock.warehouses.transfer', $warehouse) }}" @submit="prepareTransfer($event)"
+                      class="sticky bottom-[5.5rem] z-10 space-y-3 border-t border-[#E2E8F0] bg-white/95 p-4 backdrop-blur md:bottom-0">
+                    @csrf
+                    <input type="hidden" name="transfers_json" x-ref="transferJson">
+                    @if($errors->has('transfers') || $errors->has('transfers.*') || $errors->has('destination_warehouse_id'))
+                        <p class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{{ $errors->first('transfers') ?: (collect($errors->get('transfers.*'))->flatten()->first() ?: $errors->first('destination_warehouse_id')) }}</p>
+                    @endif
+                    <div class="flex flex-wrap items-center gap-2">
+                        <p class="text-xs text-[#64748B]"><span class="font-semibold text-[#0B0F14]" x-text="transferRows.length"></span> article(s), <span class="font-semibold text-[#0B0F14]" x-text="transferUnits"></span> unité(s) vers</p>
+                        <select name="destination_warehouse_id" x-model="destination" required class="h-9 min-w-0 rounded-full border border-[#E2E8F0] bg-white px-3 text-xs text-[#0B0F14]">
+                            <option value="">Entrepôt de destination…</option>
+                            @foreach($destinationWarehouses as $destinationWarehouse)
+                                <option value="{{ $destinationWarehouse->id }}">{{ $destinationWarehouse->label_number ? $destinationWarehouse->label_number.' · ' : '' }}{{ $destinationWarehouse->name }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="notes" maxlength="500" placeholder="Note (facultatif)"
+                               class="h-9 min-w-0 flex-1 rounded-full border border-[#E2E8F0] bg-white px-3 text-xs text-[#0B0F14] sm:max-w-xs">
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-[11px] text-[#64748B]">Un article transféré en totalité n'existera plus dans cet entrepôt.</p>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="cancel()" class="h-10 rounded-full border border-[#E2E8F0] px-4 text-sm font-medium text-[#0B0F14] hover:bg-slate-50">Annuler</button>
+                            <button type="submit" :disabled="transferRows.length === 0 || invalidTransfer || ! destination" class="h-10 rounded-full bg-[#0B0F14] px-5 text-sm font-semibold text-white hover:bg-black transition disabled:opacity-40">
+                                Transférer
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @endif
+
             @if($canAdjustStock)
                 {{-- Barre d'enregistrement du stock --}}
                 <form x-show="stockEditing" x-cloak method="POST" action="{{ route('stock.warehouses.stock', $warehouse) }}" @submit="prepareStock($event)"
@@ -324,10 +368,23 @@
                     return {
                         editing: false,
                         stockEditing: false,
+                        transferring: @js($errors->has('transfers') || $errors->has('transfers.*') || $errors->has('destination_warehouse_id')),
+                        destination: '',
+
+                        get busy() { return this.editing || this.stockEditing || this.transferring; },
+                        get transferRows() { return this.rows.filter((row) => row.selected); },
+                        get transferUnits() { return this.transferRows.reduce((sum, row) => sum + (Number(row.transfer_qty) || 0), 0); },
+                        get invalidTransfer() {
+                            return this.transferRows.some((row) => ! Number.isInteger(Number(row.transfer_qty)) || Number(row.transfer_qty) < 1 || Number(row.transfer_qty) > Number(row.quantity));
+                        },
+                        prepareTransfer(event) {
+                            if (! this.transferRows.length || this.invalidTransfer || ! this.destination) { event.preventDefault(); return; }
+                            this.$refs.transferJson.value = JSON.stringify(this.transferRows.map((row) => ({ product_id: row.id, quantity: Number(row.transfer_qty) })));
+                        },
                         roundPrices: true,
                         bulk: { mode: 'selling_percent', value: '' },
                         original: JSON.parse(JSON.stringify(products)),
-                        rows: products.map((product) => ({ ...product, selected: false })),
+                        rows: products.map((product) => ({ ...product, selected: false, transfer_qty: product.quantity })),
 
                         get selectedCount() { return this.rows.filter((row) => row.selected).length; },
                         get changedRows() { return this.rows.filter((row) => this.isPriceChanged(row)); },
@@ -364,9 +421,11 @@
                             });
                         },
                         cancel() {
-                            this.rows = this.original.map((product) => ({ ...product, selected: false }));
+                            this.rows = this.original.map((product) => ({ ...product, selected: false, transfer_qty: product.quantity }));
                             this.editing = false;
                             this.stockEditing = false;
+                            this.transferring = false;
+                            this.destination = '';
                         },
                         prepareStock(event) {
                             const changed = this.changedQuantities.map((row) => ({ id: row.id, quantity: Number(row.quantity) }));

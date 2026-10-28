@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Domain;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\StockTransfer;
 use App\Models\Warehouse;
 use App\Services\ActivityLogger;
 use App\Services\QrCodeService;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class WarehouseController extends Controller
@@ -105,7 +107,12 @@ class WarehouseController extends Controller
         // Quantité réelle de l'entrepôt quand elle existe, sinon le stock après le dernier mouvement
         $warehouseStocks = $warehouse->warehouseStocks()->with('product')->get()->keyBy('product_id');
 
-        $stockLevels = $movementLevels->keys()->merge($warehouseStocks->keys())->unique()
+        // Un article entièrement transféré ailleurs n'a plus de ligne de stock ici : il n'est plus listé
+        $transferredOut = $movementLevels->filter(fn (StockMovement $movement) => $movement->type === 'transfert'
+            && (int) $movement->stock_after === 0
+            && ! $warehouseStocks->has($movement->product_id))->keys();
+
+        $stockLevels = $movementLevels->keys()->diff($transferredOut)->merge($warehouseStocks->keys())->unique()
             ->map(fn ($productId) => (object) [
                 'product_id' => $productId,
                 'product' => $warehouseStocks->get($productId)?->product ?? $movementLevels->get($productId)?->product,
@@ -123,7 +130,9 @@ class WarehouseController extends Controller
 
         $catalogProducts = Product::active()->orderBy('name')->get(['id', 'name', 'sku', 'barcode']);
 
-        return view('stock.warehouses.show', compact('warehouse', 'stockLevels', 'recentMovements', 'catalogProducts'));
+        $destinationWarehouses = Warehouse::active()->whereKeyNot($warehouse->id)->orderBy('label_number')->orderBy('name')->get(['id', 'name', 'label_number']);
+
+        return view('stock.warehouses.show', compact('warehouse', 'stockLevels', 'recentMovements', 'catalogProducts', 'destinationWarehouses'));
     }
 
     /**
@@ -190,6 +199,94 @@ class WarehouseController extends Controller
 
         return redirect()->route('stock.warehouses.show', $warehouse)
             ->with('success', $updated > 0 ? "Stock mis à jour pour {$updated} produit(s)." : 'Aucune quantité modifiée.');
+    }
+
+    /**
+     * Transfert groupé d'articles vers un autre entrepôt, exécuté immédiatement.
+     * Un article transféré en totalité n'existe plus dans l'entrepôt source.
+     */
+    public function transferProducts(Request $request, Warehouse $warehouse): RedirectResponse
+    {
+        $request->merge(['transfers' => array_values((array) json_decode((string) $request->input('transfers_json'), true))]);
+
+        $validated = $request->validate([
+            'destination_warehouse_id' => ['required', 'integer', Rule::notIn([$warehouse->id])],
+            'transfers' => ['required', 'array', 'min:1'],
+            'transfers.*.product_id' => ['required', 'integer', 'distinct'],
+            'transfers.*.quantity' => ['required', 'integer', 'min:1'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'destination_warehouse_id.required' => "Choisissez l'entrepôt de destination.",
+            'destination_warehouse_id.not_in' => "L'entrepôt de destination doit être différent de l'entrepôt source.",
+            'transfers.required' => 'Sélectionnez au moins un article à transférer.',
+            'transfers.*.quantity.min' => "La quantité doit être d'au moins 1.",
+        ]);
+
+        $destination = Warehouse::find($validated['destination_warehouse_id']);
+        if (! $destination) {
+            return back()->withErrors(['destination_warehouse_id' => "L'entrepôt de destination est introuvable."]);
+        }
+
+        $products = Product::whereIn('id', collect($validated['transfers'])->pluck('product_id'))->get()->keyBy('id');
+
+        foreach ($validated['transfers'] as $item) {
+            $product = $products->get($item['product_id']);
+            $available = $product ? StockService::getStock($product->id, $warehouse->id) : 0;
+
+            if (! $product || $item['quantity'] > $available) {
+                $name = $product?->name ?? 'inconnu';
+
+                return back()->withErrors(['transfers' => "Transfert impossible : seulement {$available} unité(s) de « {$name} » dans {$warehouse->name}, pour {$item['quantity']} demandée(s)."]);
+            }
+        }
+
+        $notes = $validated['notes'] ?? null;
+
+        try {
+            DB::transaction(function () use ($validated, $products, $warehouse, $destination, $notes) {
+                foreach ($validated['transfers'] as $item) {
+                    $transfer = StockTransfer::create([
+                        'reference' => 'TRF-'.now()->format('Y').'-'.strtoupper(Str::random(8)),
+                        'source_warehouse_id' => $warehouse->id,
+                        'destination_warehouse_id' => $destination->id,
+                        'product_id' => $item['product_id'],
+                        'user_id' => auth()->id(),
+                        'quantity' => $item['quantity'],
+                        'reason' => $notes ?? 'Transfert groupé inter-entrepôts',
+                        'status' => 'receptionne',
+                        'shipped_at' => now(),
+                        'received_at' => now(),
+                        'notes' => $notes,
+                    ]);
+
+                    StockService::processMovement([
+                        'warehouse_id' => $warehouse->id,
+                        'destination_warehouse_id' => $destination->id,
+                        'product_id' => (int) $item['product_id'],
+                        'domain_id' => $products->get($item['product_id'])?->domain_id,
+                        'user_id' => auth()->id(),
+                        'type' => 'transfert',
+                        'reason_motif' => 'transfert_inter_entrepots',
+                        'quantity' => (int) $item['quantity'],
+                        'reference' => $transfer->reference,
+                        'notes' => $notes ?? "Transfert groupé vers {$destination->name}",
+                        'date' => now(),
+                    ]);
+                }
+            });
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->withErrors(['transfers' => "Le transfert a échoué, aucun stock n'a été déplacé : {$exception->getMessage()}"]);
+        }
+
+        $count = count($validated['transfers']);
+        $units = collect($validated['transfers'])->sum('quantity');
+
+        ActivityLogger::log('transfert_entrepot', "A transféré {$count} article(s) ({$units} unité(s)) de {$warehouse->name} vers {$destination->name}", $warehouse);
+
+        return redirect()->route('stock.warehouses.show', $warehouse)
+            ->with('success', "{$count} article(s) transféré(s) vers {$destination->name} ({$units} unité(s)).");
     }
 
     /**
