@@ -43,15 +43,10 @@ class WarehouseController extends Controller
 
         $warehouses = $query->paginate(20);
 
-        // Append stock summary
+        // Indicateurs tirés du stock réel : ils suivent aussitôt transferts, ajustements, ventes et suppressions
         foreach ($warehouses as $warehouse) {
-            $latestIds = StockMovement::where('warehouse_id', $warehouse->id)
-                ->select(DB::raw('MAX(id) as id'))
-                ->groupBy('product_id')
-                ->pluck('id');
-
-            $warehouse->product_count = StockMovement::whereIn('id', $latestIds)->count();
-            $warehouse->total_items = StockMovement::whereIn('id', $latestIds)->sum('stock_after');
+            $warehouse->product_count = (int) $warehouse->physical_product_count;
+            $warehouse->total_items = (int) $warehouse->physical_stock;
         }
 
         $domains = Domain::all();
