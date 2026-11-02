@@ -22,7 +22,6 @@
 
     $editedAt = now()->format('d/m/Y à H:i');
     $editor = auth()->user()->name ?? '';
-    $nameLimit = $alertsOnly ? 70 : 44;
     $lineLimit = $alertsOnly ? 100 : 64;
 @endphp
 <!DOCTYPE html>
@@ -103,6 +102,7 @@
         .grid td.c-num { color: #64748B; }
         .c-ref { width: 27mm; }
         .grid td.c-ref { font-family: {!! $isPdf ? "'DejaVu Sans Mono', monospace" : "ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" !!}; font-size: 7.2pt; }
+        .grid td.c-name { white-space: normal; line-height: 1.1; }
         .c-name .n { font-weight: bold; }
         .c-name .s { color: #64748B; font-size: 6.8pt; }
         .c-qty { width: 18mm; text-align: right; }
@@ -164,6 +164,9 @@
     @foreach($section['chunks'] as $pageRows)
         @php
             $pageNumber++;
+            // Une ligne garde sa hauteur jusqu'à 2 lignes de nom ; au-delà, on retire des lignes vides pour rester sur la page
+            $extraLines = $pageRows->sum(fn (array $row) => max(0, (int) ceil(mb_strlen($row['product']->name) / $lineLimit) - 2));
+            $emptyRows = max(0, $rowsPerPage - $pageRows->count() - (int) ceil($extraLines / 2));
         @endphp
         <section class="sheet{{ $pageNumber === $totalPages ? ' is-last' : '' }}">
             <table class="head">
@@ -217,7 +220,7 @@
                         @php
                             $product = $row['product'];
                             $index++;
-                            $productName = Str::limit($product->name, $nameLimit);
+                            $productName = $product->name;
                             $detailsRoom = $lineLimit - mb_strlen($productName);
                             $details = collect([$product->brand?->name, $product->category?->name])->filter()->implode(' · ');
                             $details = $detailsRoom >= 10 ? Str::limit($details, $detailsRoom) : '';
@@ -235,9 +238,9 @@
                             @endif
                         </tr>
                     @endforeach
-                    @for($i = $pageRows->count(); $i < $rowsPerPage; $i++)
+                    @for($i = 1; $i <= $emptyRows; $i++)
                         <tr>
-                            <td class="c-num">{{ $index + ($i - $pageRows->count() + 1) }}</td>
+                            <td class="c-num">{{ $index + $i }}</td>
                             @unless($alertsOnly)<td class="c-ref"></td>@endunless
                             <td class="c-name"></td>
                             <td class="c-qty"></td>

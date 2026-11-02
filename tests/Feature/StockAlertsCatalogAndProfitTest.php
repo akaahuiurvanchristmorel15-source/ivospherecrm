@@ -89,6 +89,19 @@ test('the alerts catalog hides the reference and minimum stock columns, the usua
         ->assertSee($product->sku);
 });
 
+test('both catalogs show the full name of a long article', function () {
+    $name = 'Cartouche encre noire haute capacité compatible imprimantes laser professionnelles série 4000 et 5000 édition bureau';
+    productInWarehouse($name, $this->plateau, 3);
+
+    $this->get(route('stock.products.print-catalog', ['warehouse_id' => $this->plateau->id, 'alerts_only' => 1]))
+        ->assertOk()
+        ->assertSee($name);
+
+    $this->get(route('stock.products.print-catalog', ['warehouse_id' => $this->plateau->id]))
+        ->assertOk()
+        ->assertSee($name);
+});
+
 test('an article is low from one unit even without a minimum stock', function () {
     productInWarehouse('Dernier exemplaire', $this->plateau, 1, 0);
     productInWarehouse('Deux exemplaires', $this->plateau, 2, 0);
