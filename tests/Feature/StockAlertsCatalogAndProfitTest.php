@@ -72,6 +72,23 @@ test('the alerts catalog of a warehouse keeps its low and out of stock articles,
             === ['Article en rupture', 'Article au seuil', 'Article faible']);
 });
 
+test('the alerts catalog hides the reference and minimum stock columns, the usual catalog keeps its reference', function () {
+    $product = productInWarehouse('Article faible', $this->plateau, 3);
+
+    $this->get(route('stock.products.print-catalog', ['warehouse_id' => $this->plateau->id, 'alerts_only' => 1]))
+        ->assertOk()
+        ->assertSee('Article faible')
+        ->assertSee('Faible')
+        ->assertDontSee('Référence')
+        ->assertDontSee('Seuil mini')
+        ->assertDontSee($product->sku);
+
+    $this->get(route('stock.products.print-catalog', ['warehouse_id' => $this->plateau->id]))
+        ->assertOk()
+        ->assertSee('Référence')
+        ->assertSee($product->sku);
+});
+
 test('an article is low from one unit even without a minimum stock', function () {
     productInWarehouse('Dernier exemplaire', $this->plateau, 1, 0);
     productInWarehouse('Deux exemplaires', $this->plateau, 2, 0);

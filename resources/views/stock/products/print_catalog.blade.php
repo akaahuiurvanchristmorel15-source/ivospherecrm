@@ -22,8 +22,8 @@
 
     $editedAt = now()->format('d/m/Y à H:i');
     $editor = auth()->user()->name ?? '';
-    $nameLimit = 44;
-    $lineLimit = 64;
+    $nameLimit = $alertsOnly ? 70 : 44;
+    $lineLimit = $alertsOnly ? 100 : 64;
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -204,10 +204,10 @@
                 <thead>
                     <tr>
                         <th class="c-num">N°</th>
-                        <th class="c-ref">Référence</th>
+                        @unless($alertsOnly)<th class="c-ref">Référence</th>@endunless
                         <th class="c-name">Désignation</th>
                         <th class="c-qty">{{ $warehouse ? 'Qté dépôt' : 'Quantité' }}</th>
-                        <th class="c-price">{{ $alertsOnly ? 'Seuil mini' : 'Prix unitaire' }}</th>
+                        @unless($alertsOnly)<th class="c-price">Prix unitaire</th>@endunless
                         <th class="c-price">{{ $alertsOnly ? 'État' : 'Prix revente' }}</th>
                     </tr>
                 </thead>
@@ -223,11 +223,10 @@
                         @endphp
                         <tr>
                             <td class="c-num">{{ $index }}</td>
-                            <td class="c-ref">{{ Str::limit((string) $product->sku, 16) }}</td>
+                            @unless($alertsOnly)<td class="c-ref">{{ Str::limit((string) $product->sku, 16) }}</td>@endunless
                             <td class="c-name"><span class="n">{{ $productName }}</span>@if($details) <span class="s">{{ $details }}</span>@endif</td>
                             <td class="c-qty">{{ number_format($row['quantity'], 0, ',', ' ') }} <small>{{ $product->unit ?? 'pcs' }}</small></td>
                             @if($alertsOnly)
-                                <td class="c-price" style="text-align: right;">{{ number_format($product->lowStockThreshold(), 0, ',', ' ') }}</td>
                                 <td class="c-price" style="text-align: right; font-weight: bold; color: {{ $row['quantity'] > 0 ? '#B45309' : '#BE123C' }};">{{ $row['quantity'] > 0 ? 'Faible' : 'Rupture' }}</td>
                             @else
                                 <td class="c-price"></td>
@@ -238,10 +237,10 @@
                     @for($i = $pageRows->count(); $i < $rowsPerPage; $i++)
                         <tr>
                             <td class="c-num">{{ $index + ($i - $pageRows->count() + 1) }}</td>
-                            <td class="c-ref"></td>
+                            @unless($alertsOnly)<td class="c-ref"></td>@endunless
                             <td class="c-name"></td>
                             <td class="c-qty"></td>
-                            <td class="c-price"></td>
+                            @unless($alertsOnly)<td class="c-price"></td>@endunless
                             <td class="c-price"></td>
                         </tr>
                     @endfor
