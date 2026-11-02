@@ -105,7 +105,8 @@
         .grid td.c-ref { font-family: {!! $isPdf ? "'DejaVu Sans Mono', monospace" : "ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" !!}; font-size: 7.2pt; }
         .c-name .n { font-weight: bold; }
         .c-name .s { color: #64748B; font-size: 6.8pt; }
-        .c-qty { width: 22mm; text-align: right; }
+        .c-qty { width: 18mm; text-align: right; }
+        .grid th.c-qty, .grid td.c-qty { padding: 0 1.2mm; }
         .grid td.c-qty { font-weight: bold; }
         .c-qty small { color: #64748B; font-weight: normal; font-size: 6.4pt; }
         .c-price { width: 26mm; }
