@@ -139,6 +139,21 @@
             </button>
         </section>
 
+        {{-- ============ BÉNÉFICES ============ --}}
+        <section class="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Bénéfices">
+            <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                <p class="flex items-center gap-1.5 text-xs text-emerald-700"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Bénéfice total à gagner</p>
+                <p class="mt-1 break-words text-2xl font-semibold tabular-nums text-emerald-600">{{ number_format($profitToEarn, 0, ',', ' ') }} <span class="text-sm font-normal text-slate-400">FCFA</span></p>
+                <p class="mt-0.5 text-[11px] text-slate-400">Si tout le stock actuel est vendu aux prix actuels</p>
+            </div>
+
+            <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                <p class="flex items-center gap-1.5 text-xs text-[#0066FF]"><span class="h-1.5 w-1.5 rounded-full bg-[#0066FF]"></span>Bénéfice gagné</p>
+                <p class="mt-1 break-words text-2xl font-semibold tabular-nums text-[#0B0F14]">{{ number_format($profitEarned, 0, ',', ' ') }} <span class="text-sm font-normal text-slate-400">FCFA</span></p>
+                <p class="mt-0.5 text-[11px] text-slate-400">Ventes validées · dont {{ number_format($profitEarnedThisMonth, 0, ',', ' ') }} FCFA ce mois-ci</p>
+            </div>
+        </section>
+
         {{-- ============ ONGLETS ============ --}}
         <nav class="no-scrollbar -mx-1 flex gap-1 overflow-x-auto border-b border-[#E2E8F0] px-1">
             @foreach([

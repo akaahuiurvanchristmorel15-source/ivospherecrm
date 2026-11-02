@@ -1,5 +1,6 @@
 @php
     $isPdf = $isPdf ?? false;
+    $alertsOnly = $alertsOnly ?? false;
     $rowsPerPage = $rowsPerPage ?? 30;
     $totalPages = max(1, $chunks->count());
     $pageNumber = 0;
@@ -149,7 +150,7 @@
     <section class="sheet is-last">
         <div class="empty">
             <strong>Aucun produit à afficher</strong>
-            <p>Aucun article ne correspond à ce catalogue (filtres ou entrepôt sans stock).</p>
+            <p>{{ $alertsOnly ? "Aucun article faible ou en rupture : le stock est au-dessus des seuils." : "Aucun article ne correspond à ce catalogue (filtres ou entrepôt sans stock)." }}</p>
         </div>
     </section>
 @endif
@@ -174,7 +175,7 @@
                         @endif
                     </td>
                     <td class="title">
-                        <h1>Catalogue produits</h1>
+                        <h1>{{ $alertsOnly ? 'Articles faibles et en rupture' : 'Catalogue produits' }}</h1>
                         <p>
                             @if($warehouse)
                                 Entrepôt <strong>{{ $warehouse->name }}</strong> · {{ $warehouse->code }}@if($warehouse->address) · {{ Str::limit($warehouse->address, 40) }}@endif
@@ -206,8 +207,8 @@
                         <th class="c-ref">Référence</th>
                         <th class="c-name">Désignation</th>
                         <th class="c-qty">{{ $warehouse ? 'Qté dépôt' : 'Quantité' }}</th>
-                        <th class="c-price">Prix unitaire</th>
-                        <th class="c-price">Prix revente</th>
+                        <th class="c-price">{{ $alertsOnly ? 'Seuil mini' : 'Prix unitaire' }}</th>
+                        <th class="c-price">{{ $alertsOnly ? 'État' : 'Prix revente' }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -225,8 +226,13 @@
                             <td class="c-ref">{{ Str::limit((string) $product->sku, 16) }}</td>
                             <td class="c-name"><span class="n">{{ $productName }}</span>@if($details) <span class="s">{{ $details }}</span>@endif</td>
                             <td class="c-qty">{{ number_format($row['quantity'], 0, ',', ' ') }} <small>{{ $product->unit ?? 'pcs' }}</small></td>
-                            <td class="c-price"></td>
-                            <td class="c-price"></td>
+                            @if($alertsOnly)
+                                <td class="c-price" style="text-align: right;">{{ number_format($product->lowStockThreshold(), 0, ',', ' ') }}</td>
+                                <td class="c-price" style="text-align: right; font-weight: bold; color: {{ $row['quantity'] > 0 ? '#B45309' : '#BE123C' }};">{{ $row['quantity'] > 0 ? 'Faible' : 'Rupture' }}</td>
+                            @else
+                                <td class="c-price"></td>
+                                <td class="c-price"></td>
+                            @endif
                         </tr>
                     @endforeach
                     @for($i = $pageRows->count(); $i < $rowsPerPage; $i++)

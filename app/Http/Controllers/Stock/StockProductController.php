@@ -628,9 +628,9 @@ class StockProductController extends Controller
                 ->with('pdf_unavailable', true);
         }
 
-        $suffix = $request->filled('warehouse_id')
+        $suffix = ($request->boolean('alerts_only') ? '-faibles-ruptures' : '').($request->filled('warehouse_id')
             ? '-'.Str::slug((string) Warehouse::whereKey($request->integer('warehouse_id'))->value('code'))
-            : ($request->boolean('per_warehouse') ? '-par-entrepot' : '');
+            : ($request->boolean('per_warehouse') ? '-par-entrepot' : ''));
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
@@ -641,10 +641,14 @@ class StockProductController extends Controller
     /**
      * Sections du catalogue (une par entrepôt, ou le stock global) découpées en pages.
      *
-     * @return array{sections: Collection, chunks: Collection, productCount: int, rowsPerPage: int}
+     * Avec alerts_only, seuls les articles faibles ou en rupture sont gardés (ruptures en tête) ;
+     * pour un entrepôt, ce sont ceux qui y ont une ligne de stock.
+     *
+     * @return array{sections: Collection, chunks: Collection, productCount: int, rowsPerPage: int, alertsOnly: bool}
      */
     private function catalogData(Request $request): array
     {
+        $alertsOnly = $request->boolean('alerts_only');
         $query = Product::with(['domain', 'category', 'brand', 'warehouseStocks']);
 
         if ($request->filled('domain_id')) {
@@ -656,9 +660,9 @@ class StockProductController extends Controller
         }
 
         if ($request->filled('warehouse_id')) {
-            $query->whereHas('warehouseStocks', function ($q) use ($request) {
+            $query->whereHas('warehouseStocks', function ($q) use ($request, $alertsOnly) {
                 $q->where('warehouse_id', $request->integer('warehouse_id'))
-                    ->where('physical_quantity', '>', 0);
+                    ->when(! $alertsOnly, fn ($stocks) => $stocks->where('physical_quantity', '>', 0));
             });
         }
 
@@ -669,6 +673,10 @@ class StockProductController extends Controller
                     ->orWhere('sku', 'like', "%{$s}%")
                     ->orWhere('barcode', 'like', "%{$s}%");
             });
+        }
+
+        if ($alertsOnly) {
+            $query->where('is_active', true);
         }
 
         $products = $query->orderBy('name')->get();
@@ -682,15 +690,22 @@ class StockProductController extends Controller
             $warehouses = collect([null]);
         }
 
-        $sections = $warehouses->map(function (?Warehouse $warehouse) use ($products) {
+        $sections = $warehouses->map(function (?Warehouse $warehouse) use ($products, $alertsOnly) {
             $rows = $products
+                ->when($alertsOnly && $warehouse, fn ($items) => $items->filter(fn (Product $product) => $product->warehouseStocks->contains('warehouse_id', $warehouse->id)))
                 ->map(fn (Product $product) => [
                     'product' => $product,
                     'quantity' => $warehouse
                         ? (float) $product->warehouseStocks->where('warehouse_id', $warehouse->id)->sum('physical_quantity')
                         : (float) $product->current_stock,
                 ])
-                ->when($warehouse, fn ($rows) => $rows->filter(fn (array $row) => $row['quantity'] > 0))
+                ->when(
+                    $alertsOnly,
+                    fn ($rows) => $rows
+                        ->filter(fn (array $row) => $row['quantity'] <= $row['product']->lowStockThreshold())
+                        ->sortBy(fn (array $row) => [$row['quantity'] > 0 ? 1 : 0, $row['product']->name]),
+                    fn ($rows) => $rows->when($warehouse, fn ($stocked) => $stocked->filter(fn (array $row) => $row['quantity'] > 0)),
+                )
                 ->values();
 
             return ['warehouse' => $warehouse, 'rows' => $rows, 'chunks' => $rows->chunk(self::CATALOG_ROWS_PER_PAGE)];
@@ -699,7 +714,7 @@ class StockProductController extends Controller
         $chunks = $sections->flatMap(fn (array $section) => $section['chunks']);
         $productCount = $sections->sum(fn (array $section) => $section['rows']->count());
 
-        return ['sections' => $sections, 'chunks' => $chunks, 'productCount' => $productCount, 'rowsPerPage' => self::CATALOG_ROWS_PER_PAGE];
+        return ['sections' => $sections, 'chunks' => $chunks, 'productCount' => $productCount, 'rowsPerPage' => self::CATALOG_ROWS_PER_PAGE, 'alertsOnly' => $alertsOnly];
     }
 
     /**

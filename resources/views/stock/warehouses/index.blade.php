@@ -16,11 +16,15 @@
                 @if($canPrintCatalog)
                 <x-button href="{{ route('stock.products.print-catalog', ['per_warehouse' => 1]) }}" target="_blank" variant="secondary">
                     <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    Imprimer les catalogues
+                    Imprimer
                 </x-button>
                 <x-button href="{{ route('stock.products.download-catalog', ['per_warehouse' => 1]) }}" variant="secondary">
                     <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                     Télécharger (PDF)
+                </x-button>
+                <x-button :href="route('stock.products.download-catalog', ['per_warehouse' => 1, 'alerts_only' => 1])" variant="secondary">
+                    <svg class="h-4 w-4 mr-1.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    Faibles et ruptures (PDF)
                 </x-button>
                 @endif
                 <x-button href="{{ route('stock.warehouses.create') }}" variant="primary">
@@ -121,6 +125,13 @@
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>
                         PDF des QR codes
                     </a>
+                    @if($canPrintCatalog)
+                    <a href="{{ route('stock.products.download-catalog', ['warehouse_id' => $warehouse->id, 'alerts_only' => 1]) }}" title="Télécharger le catalogue des articles faibles et en rupture de cet entrepôt"
+                       class="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] text-xs font-semibold text-[#0B0F14] transition hover:bg-[#F5F7FA]">
+                        <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        Faibles et ruptures (PDF)
+                    </a>
+                    @endif
                     <div class="grid gap-2 {{ $canPrintCatalog ? 'grid-cols-4' : 'grid-cols-2' }}">
                         <a href="{{ route('stock.warehouses.edit', $warehouse) }}" title="Paramètres de l'entrepôt"
                            class="flex flex-col items-center gap-1 rounded-xl border border-[#E2E8F0] py-2 text-[11px] font-medium text-[#64748B] transition hover:bg-[#F5F7FA] hover:text-[#0B0F14]">

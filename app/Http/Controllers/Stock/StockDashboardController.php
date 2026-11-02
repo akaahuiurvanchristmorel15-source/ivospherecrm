@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Stock;
 use App\Http\Controllers\Controller;
 use App\Models\Domain;
 use App\Models\EquipmentMaintenance;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\PhysicalInventory;
 use App\Models\PhysicalInventoryItem;
 use App\Models\Product;
@@ -114,6 +116,11 @@ class StockDashboardController extends Controller
             return max(0, (int) $p->current_stock) * $cost;
         });
 
+        // Bénéfice à gagner : marge attendue si tout le stock est vendu aux prix actuels
+        $profitToEarn = $potentialSellingValue - $immobilizedCostValue;
+        $profitEarned = $this->profitEarned($request->integer('domain_id') ?: null);
+        $profitEarnedThisMonth = $this->profitEarned($request->integer('domain_id') ?: null, now()->startOfMonth());
+
         $lowStockProducts = $products->filter(fn (Product $p) => $p->current_stock > 0 && $p->current_stock <= max(1, (int) $p->min_stock));
         $outOfStockProducts = $products->filter(fn (Product $p) => $p->current_stock <= 0);
         $overstockProducts = $products->filter(fn (Product $p) => $p->max_stock > 0 && $p->current_stock > $p->max_stock);
@@ -171,6 +178,9 @@ class StockDashboardController extends Controller
             'availableStockValue',
             'potentialSellingValue',
             'immobilizedCostValue',
+            'profitToEarn',
+            'profitEarned',
+            'profitEarnedThisMonth',
             'lowStockCount',
             'outOfStockCount',
             'overstockCount',
@@ -199,6 +209,22 @@ class StockDashboardController extends Controller
             'batches',
             'maintenances'
         ));
+    }
+
+    /**
+     * Bénéfice réalisé sur les articles vendus (ventes validées) : montant hors taxes moins le coût d'achat actuel.
+     * Sans prix d'achat, le coût est estimé à 65 % du prix de vente, comme pour la valeur du stock.
+     */
+    private function profitEarned(?int $domainId = null, ?Carbon $since = null): float
+    {
+        return (float) OrderItem::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('products', 'products.id', '=', 'order_items.product_id')
+            ->whereIn('orders.status', Order::VALIDATED_STATUSES)
+            ->when($domainId, fn ($query) => $query->where('products.domain_id', $domainId))
+            ->when($since, fn ($query) => $query->whereDate('orders.date', '>=', $since->toDateString()))
+            ->selectRaw('SUM(order_items.total - order_items.tax_amount - order_items.quantity * CASE WHEN products.purchase_price > 0 THEN products.purchase_price ELSE products.selling_price * 0.65 END) as profit')
+            ->value('profit');
     }
 
     public function scanner()

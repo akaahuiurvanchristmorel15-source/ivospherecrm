@@ -222,6 +222,14 @@ class Product extends Model
         return $last ? (int) $last->stock_after : 0;
     }
 
+    /**
+     * Quantité à partir de laquelle l'article est considéré comme faible (au moins 1).
+     */
+    public function lowStockThreshold(): int
+    {
+        return max(1, (int) $this->min_stock);
+    }
+
     public function getReservedStockAttribute(): int
     {
         return $this->relationLoaded('warehouseStocks')

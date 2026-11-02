@@ -5,7 +5,7 @@
 ])
 
 <header class="mb-5 sm:mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-    <div class="space-y-1">
+    <div class="min-w-0 space-y-1 sm:min-w-64 sm:flex-1">
         @if(!empty($breadcrumbs))
             <div class="mb-1.5">
                 <x-breadcrumb :items="$breadcrumbs" />
@@ -25,7 +25,7 @@
     </div>
 
     @if(isset($actions))
-        <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap shrink-0">
+        <div class="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end sm:gap-2.5">
             {{ $actions }}
         </div>
     @endif
